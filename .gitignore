@@ -1,0 +1,19 @@
+# Gradle
+.gradle/
+build/
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+
+# ローカル設定（マシン固有のSDKパス。共有しない）
+local.properties
+
+# macOS
+.DS_Store
+
+# ビルド生成物
+*.apk
+*.aab
+.cxx/
+captures/
