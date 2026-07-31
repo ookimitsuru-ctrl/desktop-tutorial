@@ -1,14 +1,20 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、Claude Code(claude.ai/code)がこのリポジトリ(プロジェクトのファイル一式が保存されている場所)で作業するときに読む「案内書」です。
 
-## Repository status
+## このリポジトリの今の状態
 
-This repository is currently the default **GitHub Desktop tutorial repo** (created via GitHub Desktop's "create your first repository" flow). It contains only a placeholder `README.md` and no source code, build tooling, dependencies, tests, or configuration.
+このリポジトリは、GitHub Desktop というアプリを初めて使うときに自動で作られる「お試し用(チュートリアル用)」のものです。
 
-There is no codebase structure, build/lint/test workflow, or architecture to document yet — there is nothing here to build or run.
+中身は `README.md` という説明用の文章ファイルが1つあるだけで、実際のプログラムのコード(コンピュータに動作を指示する文章)はまだ何も入っていません。そのため、次のようなものもまだありません。
 
-## Working here
+- **ビルド**:書いたコードを実際に動くプログラムに変換する作業
+- **テスト**:プログラムが正しく動くか自動でチェックする仕組み
+- **設定ファイル**:プログラムの動き方を決めるためのファイル
 
-- Do not invent frameworks, commands, or conventions that aren't present in the repo.
-- Once real project files are added (package manifests, source directories, config, etc.), update this file to reflect the actual build/lint/test commands and the resulting architecture.
+つまり、今の時点では「動かす」「組み立てる」「確認する」といった作業自体が存在しません。
+
+## ここで作業するときの注意
+
+- まだ存在しないプログラムの仕組みや手順を、勝手に想像して作らないでください。
+- 今後、実際のプログラムのファイルが追加されたら、このCLAUDE.mdも「実際にどうやって動かすか」「どういう構成になっているか」がわかる内容に書き直してください。
