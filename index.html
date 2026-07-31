@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塗るタウン | 街を自由に塗ろう</title>
+<style>
+  :root {
+    --bg: #eef2f7;
+    --panel: #ffffff;
+    --ink: #2b2f38;
+    --muted: #6b7280;
+    --accent: #ff6b6b;
+    --radius: 16px;
+    --shadow: 0 8px 24px rgba(20, 30, 60, 0.10);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
+  }
+  header {
+    padding: 20px 16px 8px;
+    text-align: center;
+  }
+  header h1 {
+    margin: 0;
+    font-size: clamp(22px, 4vw, 32px);
+    letter-spacing: 0.02em;
+  }
+  header p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .stage {
+    background: var(--panel);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 12px;
+    display: flex;
+    justify-content: center;
+  }
+  #town {
+    width: 100%;
+    height: auto;
+    max-width: 900px;
+    touch-action: manipulation;
+  }
+  #town .paintable {
+    cursor: pointer;
+    stroke: #33333322;
+    stroke-width: 1.5;
+    transition: filter 0.12s ease;
+  }
+  #town .paintable:hover {
+    filter: brightness(1.08);
+  }
+  .toolbar {
+    background: var(--panel);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  }
+  .swatch.selected {
+    border-color: var(--ink);
+    transform: scale(1.12);
+  }
+  #customColor {
+    width: 36px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+  }
+  .actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  button.btn {
+    border: none;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #eef1f6;
+    color: var(--ink);
+    transition: transform 0.08s ease, background 0.15s ease;
+  }
+  button.btn:hover { background: #e2e7ef; }
+  button.btn:active { transform: scale(0.96); }
+  button.btn.primary {
+    background: var(--accent);
+    color: white;
+  }
+  button.btn.primary:hover { background: #ff5252; }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 8px 16px 24px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🖌️ 塗るタウン</h1>
+  <p>好きな色を選んで、街並みをクリック(タップ)して塗ってみよう</p>
+</header>
+
+<main>
+  <div class="stage">
+    <svg id="town" viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg">
+      <!-- 空 -->
+      <rect class="paintable" id="sky" x="0" y="0" width="900" height="360" fill="#bfe3ff"/>
+
+      <!-- 太陽 -->
+      <circle class="paintable" id="sun" cx="800" cy="70" r="40" fill="#ffe066"/>
+
+      <!-- 雲 -->
+      <g id="cloud1">
+        <ellipse class="paintable" cx="120" cy="80" rx="45" ry="22" fill="#ffffff"/>
+        <ellipse class="paintable" cx="160" cy="70" rx="35" ry="18" fill="#ffffff"/>
+        <ellipse class="paintable" cx="90" cy="70" rx="30" ry="16" fill="#ffffff"/>
+      </g>
+      <g id="cloud2">
+        <ellipse class="paintable" cx="430" cy="60" rx="38" ry="18" fill="#ffffff"/>
+        <ellipse class="paintable" cx="465" cy="52" rx="28" ry="14" fill="#ffffff"/>
+      </g>
+
+      <!-- 山 -->
+      <polygon class="paintable" id="mountain1" points="0,360 120,240 240,360" fill="#9fc38a"/>
+      <polygon class="paintable" id="mountain2" points="150,360 260,270 370,360" fill="#8ab074"/>
+
+      <!-- 地面 -->
+      <rect class="paintable" id="ground" x="0" y="360" width="900" height="140" fill="#bfe0a6"/>
+
+      <!-- 道路 -->
+      <rect class="paintable" id="road" x="0" y="420" width="900" height="80" fill="#5b6270"/>
+      <rect class="paintable" id="roadline1" x="60" y="455" width="60" height="10" fill="#f4f4f4"/>
+      <rect class="paintable" id="roadline2" x="200" y="455" width="60" height="10" fill="#f4f4f4"/>
+      <rect class="paintable" id="roadline3" x="340" y="455" width="60" height="10" fill="#f4f4f4"/>
+      <rect class="paintable" id="roadline4" x="480" y="455" width="60" height="10" fill="#f4f4f4"/>
+      <rect class="paintable" id="roadline5" x="620" y="455" width="60" height="10" fill="#f4f4f4"/>
+      <rect class="paintable" id="roadline6" x="760" y="455" width="60" height="10" fill="#f4f4f4"/>
+
+      <!-- 木 1 -->
+      <rect class="paintable" id="tree1trunk" x="55" y="330" width="14" height="40" fill="#8b5a2b"/>
+      <circle class="paintable" id="tree1leaf" cx="62" cy="310" r="32" fill="#5fae52"/>
+
+      <!-- 木 2 -->
+      <rect class="paintable" id="tree2trunk" x="830" y="335" width="12" height="35" fill="#8b5a2b"/>
+      <circle class="paintable" id="tree2leaf" cx="836" cy="315" r="28" fill="#6bbf5c"/>
+
+      <!-- 建物 1 -->
+      <rect class="paintable" id="b1wall" x="90" y="230" width="120" height="130" fill="#f2b880"/>
+      <polygon class="paintable" id="b1roof" points="80,230 220,230 150,175" fill="#c1543c"/>
+      <rect class="paintable" id="b1door" x="135" y="300" width="30" height="60" fill="#7a4a2b"/>
+      <rect class="paintable" id="b1win1" x="102" y="255" width="24" height="24" fill="#bfe8ff"/>
+      <rect class="paintable" id="b1win2" x="174" y="255" width="24" height="24" fill="#bfe8ff"/>
+
+      <!-- 建物 2 (背が高い) -->
+      <rect class="paintable" id="b2wall" x="240" y="150" width="110" height="210" fill="#e3e3e3"/>
+      <rect class="paintable" id="b2roof" x="235" y="135" width="120" height="20" fill="#9a9a9a"/>
+      <rect class="paintable" id="b2win1" x="255" y="175" width="22" height="22" fill="#bfe8ff"/>
+      <rect class="paintable" id="b2win2" x="300" y="175" width="22" height="22" fill="#bfe8ff"/>
+      <rect class="paintable" id="b2win3" x="255" y="215" width="22" height="22" fill="#bfe8ff"/>
+      <rect class="paintable" id="b2win4" x="300" y="215" width="22" height="22" fill="#bfe8ff"/>
+      <rect class="paintable" id="b2win5" x="255" y="255" width="22" height="22" fill="#bfe8ff"/>
+      <rect class="paintable" id="b2win6" x="300" y="255" width="22" height="22" fill="#bfe8ff"/>
+      <rect class="paintable" id="b2door" x="275" y="310" width="26" height="50" fill="#5b4636"/>
+
+      <!-- 建物 3 (お店) -->
+      <rect class="paintable" id="b3wall" x="380" y="260" width="130" height="100" fill="#ffe1a8"/>
+      <rect class="paintable" id="b3awning" x="372" y="245" width="146" height="24" fill="#ff8a80"/>
+      <rect class="paintable" id="b3win1" x="398" y="285" width="34" height="34" fill="#bfe8ff"/>
+      <rect class="paintable" id="b3win2" x="450" y="285" width="34" height="34" fill="#bfe8ff"/>
+      <rect class="paintable" id="b3door" x="0" y="0" width="0" height="0" fill="none"/>
+
+      <!-- 時計塔 -->
+      <rect class="paintable" id="towerwall" x="540" y="120" width="70" height="240" fill="#d9c7a3"/>
+      <polygon class="paintable" id="towerroof" points="533,120 617,120 575,70" fill="#7b4b3a"/>
+      <circle class="paintable" id="towerclock" cx="575" cy="160" r="22" fill="#fffbe6"/>
+      <rect class="paintable" id="towerdoor" x="560" y="310" width="30" height="50" fill="#6b4a34"/>
+      <rect class="paintable" id="towerwin1" x="555" y="220" width="20" height="20" fill="#bfe8ff"/>
+      <rect class="paintable" id="towerwin2" x="595" y="220" width="20" height="20" fill="#bfe8ff"/>
+
+      <!-- 建物 4 -->
+      <rect class="paintable" id="b4wall" x="650" y="210" width="150" height="150" fill="#c9b7e0"/>
+      <polygon class="paintable" id="b4roof" points="640,210 810,210 725,160" fill="#5c4a72"/>
+      <rect class="paintable" id="b4win1" x="670" y="235" width="26" height="26" fill="#bfe8ff"/>
+      <rect class="paintable" id="b4win2" x="712" y="235" width="26" height="26" fill="#bfe8ff"/>
+      <rect class="paintable" id="b4win3" x="754" y="235" width="26" height="26" fill="#bfe8ff"/>
+      <rect class="paintable" id="b4win4" x="670" y="280" width="26" height="26" fill="#bfe8ff"/>
+      <rect class="paintable" id="b4win5" x="754" y="280" width="26" height="26" fill="#bfe8ff"/>
+      <rect class="paintable" id="b4door" x="710" y="310" width="30" height="50" fill="#3f3355"/>
+
+      <!-- ベンチ -->
+      <rect class="paintable" id="bench1" x="330" y="400" width="50" height="8" fill="#8b5a2b"/>
+      <rect class="paintable" id="bench2" x="600" y="400" width="50" height="8" fill="#8b5a2b"/>
+
+      <!-- 街灯 -->
+      <rect class="paintable" id="lamp1pole" x="497" y="370" width="6" height="50" fill="#444"/>
+      <circle class="paintable" id="lamp1head" cx="500" cy="365" r="10" fill="#ffe066"/>
+    </svg>
+  </div>
+
+  <div class="toolbar">
+    <div class="palette" id="palette"></div>
+    <input type="color" id="customColor" value="#ff6b6b" title="カスタムカラー">
+    <div class="actions">
+      <button class="btn" id="randomBtn">🎲 ランダムに塗る</button>
+      <button class="btn" id="resetBtn">↺ リセット</button>
+      <button class="btn primary" id="saveBtn">💾 画像として保存</button>
+    </div>
+  </div>
+</main>
+
+<footer>クリック(タップ)で塗りたい場所を選んでね。</footer>
+
+<script>
+(function () {
+  const colors = [
+    "#ff6b6b", "#ffa94d", "#ffe066", "#94d82d",
+    "#38d9a9", "#4dabf7", "#748ffc", "#e599f7",
+    "#f783ac", "#ffffff", "#adb5bd", "#343a40"
+  ];
+
+  const paletteEl = document.getElementById("palette");
+  const customColorEl = document.getElementById("customColor");
+  let currentColor = colors[0];
+
+  function selectColor(color, swatchEl) {
+    currentColor = color;
+    document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+    if (swatchEl) swatchEl.classList.add("selected");
+  }
+
+  colors.forEach((color, i) => {
+    const sw = document.createElement("div");
+    sw.className = "swatch";
+    sw.style.background = color;
+    sw.title = color;
+    if (i === 0) sw.classList.add("selected");
+    sw.addEventListener("click", () => selectColor(color, sw));
+    paletteEl.appendChild(sw);
+  });
+
+  customColorEl.addEventListener("input", (e) => {
+    selectColor(e.target.value, null);
+  });
+
+  const town = document.getElementById("town");
+  const paintables = () => Array.from(town.querySelectorAll(".paintable"));
+
+  town.addEventListener("click", (e) => {
+    const target = e.target.closest(".paintable");
+    if (!target) return;
+    target.setAttribute("fill", currentColor);
+  });
+
+  const originalFills = new Map();
+  paintables().forEach(el => originalFills.set(el, el.getAttribute("fill")));
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    originalFills.forEach((fill, el) => el.setAttribute("fill", fill));
+  });
+
+  document.getElementById("randomBtn").addEventListener("click", () => {
+    paintables().forEach(el => {
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      el.setAttribute("fill", c);
+    });
+  });
+
+  document.getElementById("saveBtn").addEventListener("click", () => {
+    const svgData = new XMLSerializer().serializeToString(town);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 900;
+      canvas.height = 500;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.download = "nuru-town.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = url;
+  });
+})();
+</script>
+
+</body>
+</html>

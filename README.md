@@ -1,5 +1,13 @@
-# Welcome to GitHub Desktop!
+# 塗るタウン (Nuru Town)
 
-This is your README. READMEs are where you can communicate what your project is and how to use it.
+街並みのイラストを自由な色でクリック塗りできるシンプルなWebアプリです。
 
-Write your name on line 6, save it, and then head back to GitHub Desktop.
+## 遊び方
+
+1. `index.html` をブラウザで開く
+2. パレットから好きな色を選ぶ(カスタムカラーも選択可)
+3. 街のパーツ(建物・屋根・窓・道路・木など)をクリックすると色が塗られる
+4. 「ランダムに塗る」で一気に彩色、「リセット」で元の配色に戻せる
+5. 「画像として保存」で塗った街をPNGとしてダウンロードできる
+
+外部ライブラリなしのHTML/CSS/JavaScriptのみで動作します。
