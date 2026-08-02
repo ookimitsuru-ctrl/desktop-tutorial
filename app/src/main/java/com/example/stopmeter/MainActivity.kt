@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -151,218 +150,38 @@ private fun StopMeterScreen(onOpen: (Screen) -> Unit) {
         }
     }
 
-    // ---- UI ----
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BgColor)
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp)
-    ) {
-        // ヘッダー（タイトル + 小型メニュー：右上）
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "停車時間加算アプリ",
-                color = TextColor, fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            Row(
-                modifier = Modifier
-                    .background(PanelColor, RoundedCornerShape(12.dp))
-                    .border(1.dp, PanelEdge, RoundedCornerShape(12.dp))
-                    .clickable { onOpen(Screen.MENU) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("☰", color = TextColor, fontSize = 15.sp)
-                Spacer(Modifier.width(6.dp))
-                Text("メニュー", color = TextColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // ---- メーターパネル（合計 + 状態 + 現在速度） ----
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(PanelColor, RoundedCornerShape(18.dp))
-                .padding(20.dp)
-        ) {
-            Text("停車加算時間", color = MutedColor, fontSize = 12.sp, letterSpacing = 2.sp)
-            Text(
-                fmtHMS(displayTotal),
-                color = if (displayTotal == 0L) IdleColor else AmberColor,
-                fontFamily = FontFamily.Monospace, fontSize = 52.sp, maxLines = 1,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-            Spacer(Modifier.height(14.dp))
-            Divider(color = PanelEdge)
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(12.dp).background(
-                        color = when (statusKind) {
-                            StatusKind.MOVING   -> GreenColor
-                            StatusKind.COUNTING -> AmberColor
-                            else                -> IdleColor
-                        },
-                        shape = RoundedCornerShape(50)
-                    )
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = when {
-                        manualStop && statusKind == StatusKind.PENDING && reserved -> "停車中（手動・予約中）"
-                        manualStop && statusKind == StatusKind.PENDING            -> "停車中（手動カウント）"
-                        manualStop && statusKind == StatusKind.COUNTING           -> "停車中（手動・加算中）"
-                        statusKind == StatusKind.PENDING && reserved -> "停車中（予約中・休憩スキップ）"
-                        statusKind == StatusKind.MOVING   -> "走行中"
-                        statusKind == StatusKind.COUNTING -> "停車中（加算中）"
-                        statusKind == StatusKind.PENDING  -> "停車中（カウント中）"
-                        else -> if (running) "計測中…" else "停止中"
-                    },
-                    color = TextColor, fontSize = 15.sp
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    displaySpeed?.let { "%.1f km/h".format(it) } ?: "-- km/h",
-                    color = MutedColor, fontFamily = FontFamily.Monospace, fontSize = 15.sp
-                )
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // ---- 大きな2指標: 連続運転時間 / 今回の停車時間 ----
-        val indBg = when (breakWarning) {
-            BreakWarning.DANGER -> DangerColor.copy(alpha = 0.12f)
-            BreakWarning.WARN   -> WarnColor.copy(alpha = 0.10f)
-            BreakWarning.NONE   -> PanelColor
-        }
-        val indBorder = when (breakWarning) {
-            BreakWarning.DANGER -> DangerColor.copy(alpha = if (running) pulseAlpha else 0.6f)
-            BreakWarning.WARN   -> WarnColor.copy(alpha = 0.6f)
-            BreakWarning.NONE   -> PanelEdge
-        }
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // 連続運転時間（大）
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(indBg, RoundedCornerShape(18.dp))
-                    .border(1.dp, indBorder, RoundedCornerShape(18.dp))
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .background(
-                                if (breakWarning == BreakWarning.DANGER && running)
-                                    warningColor.copy(alpha = pulseAlpha) else warningColor,
-                                RoundedCornerShape(50)
-                            )
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("連続運転時間", color = MutedColor, fontSize = 11.sp, letterSpacing = 2.sp)
-                }
-                Text(
-                    text = if (lastBreakEndMs != null || measurementStartMs != null) fmtHM(intervalMs) else "--:--",
-                    color = warningColor,
-                    fontFamily = FontFamily.Monospace, fontSize = 52.sp, maxLines = 1,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                Text(
-                    text = when (breakWarning) {
-                        BreakWarning.DANGER -> "⚠ 休憩が必要です"
-                        BreakWarning.WARN   -> "休憩を検討してください"
-                        BreakWarning.NONE   -> "　"
-                    },
-                    color = when (breakWarning) {
-                        BreakWarning.DANGER -> DangerColor
-                        BreakWarning.WARN   -> WarnColor
-                        BreakWarning.NONE   -> MutedColor
-                    },
-                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-
-            // 今回の停車時間（大）
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        if (reserved) ReserveColor.copy(alpha = 0.12f) else PanelColor,
-                        RoundedCornerShape(18.dp)
-                    )
-                    .border(
-                        1.dp,
-                        if (reserved) ReserveColor.copy(alpha = 0.6f) else PanelEdge,
-                        RoundedCornerShape(18.dp)
-                    )
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
-            ) {
-                Text(
-                    if (reserved) "停車時間（予約中）" else "今回の停車時間",
-                    color = if (reserved) ReserveColor.copy(alpha = 0.8f) else MutedColor,
-                    fontSize = 11.sp, letterSpacing = 2.sp
-                )
-                Text(
-                    fmtMS(currentStopMs),
-                    color = when {
-                        reserved                          -> ReserveColor
-                        statusKind == StatusKind.COUNTING -> AmberColor
-                        else                              -> TextColor
-                    },
-                    fontFamily = FontFamily.Monospace, fontSize = 52.sp, maxLines = 1,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                Text(
-                    text = when {
-                        reserved                          -> "加算しません"
-                        statusKind == StatusKind.COUNTING -> "加算中"
-                        else                              -> "　"
-                    },
-                    color = if (statusKind == StatusKind.COUNTING) AmberColor else MutedColor,
-                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        // ---- 計測 開始/停止 ----
-        ToggleRow(
-            title = if (running) "計測中" else "測定開始",
-            sub = "スライドして計測を開始/停止",
-            checked = running,
-            accent = GreenColor,
-            titleColor = if (running) GreenColor else TextColor,
-            onCheckedChange = { onMeasureToggle(it) }
-        )
-
-        if (message.isNotEmpty()) {
-            Text(message, color = DangerColor, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // ---- バージョン表示（右下） ----
-        Text(
-            APP_VERSION,
-            color = MutedColor, fontSize = 11.sp,
-            modifier = Modifier.align(Alignment.End)
-        )
+    // ---- UI（実際の画面構成はフレーバーごとの StopMeterLayout に委譲） ----
+    val indBg = when (breakWarning) {
+        BreakWarning.DANGER -> DangerColor.copy(alpha = 0.12f)
+        BreakWarning.WARN   -> WarnColor.copy(alpha = 0.10f)
+        BreakWarning.NONE   -> PanelColor
     }
+    val indBorder = when (breakWarning) {
+        BreakWarning.DANGER -> DangerColor.copy(alpha = if (running) pulseAlpha else 0.6f)
+        BreakWarning.WARN   -> WarnColor.copy(alpha = 0.6f)
+        BreakWarning.NONE   -> PanelEdge
+    }
+
+    StopMeterLayout(
+        displayTotal = displayTotal,
+        statusKind = statusKind,
+        displaySpeed = displaySpeed,
+        running = running,
+        reserved = reserved,
+        manualStop = manualStop,
+        breakWarning = breakWarning,
+        warningColor = warningColor,
+        pulseAlpha = pulseAlpha,
+        indicatorBackground = indBg,
+        indicatorBorder = indBorder,
+        intervalMs = intervalMs,
+        lastBreakEndMs = lastBreakEndMs,
+        measurementStartMs = measurementStartMs,
+        currentStopMs = currentStopMs,
+        message = message,
+        onOpenMenu = { onOpen(Screen.MENU) },
+        onMeasureToggle = { onMeasureToggle(it) }
+    )
 }
 
 // ==================================================================
@@ -497,7 +316,7 @@ private fun ToggleTile(
 
 /** 操作パネル内の横長トグル行（計測 / 全リセット） */
 @Composable
-private fun ToggleRow(
+internal fun ToggleRow(
     title: String,
     sub: String,
     checked: Boolean,
