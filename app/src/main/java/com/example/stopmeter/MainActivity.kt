@@ -316,7 +316,7 @@ private fun ToggleTile(
 
 /** 操作パネル内の横長トグル行（計測 / 全リセット） */
 @Composable
-private fun ToggleRow(
+internal fun ToggleRow(
     title: String,
     sub: String,
     checked: Boolean,
