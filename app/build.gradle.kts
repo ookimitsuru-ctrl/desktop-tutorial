@@ -21,6 +21,20 @@ android {
         }
     }
 
+    flavorDimensions += "display"
+    productFlavors {
+        // スマートフォン向け（既存の縦スクロールレイアウト）
+        create("phone") {
+            dimension = "display"
+        }
+        // タクシー車載スクエア型ディスプレイ（1080×1200）向け
+        create("square") {
+            dimension = "display"
+            applicationIdSuffix = ".square"
+            versionNameSuffix = "-square"
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
