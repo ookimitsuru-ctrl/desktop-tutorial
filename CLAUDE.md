@@ -1,15 +1,15 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、このリポジトリでコードを扱う際に Claude Code (claude.ai/code) が参照するガイダンスです。
 
-## Repository state
+## リポジトリの現状
 
-This repository is currently just the GitHub Desktop "Hello World" tutorial scaffold (see README.md). It contains no source code, build configuration, package manifest, or tests. There is no existing architecture, framework, or convention to follow.
+このリポジトリは現在、GitHub Desktop の「Hello World」チュートリアル用の雛形（README.md 参照）のみで構成されています。ソースコード、ビルド設定、パッケージ定義ファイル、テストは一切含まれていません。従うべき既存のアーキテクチャ、フレームワーク、規約も存在しません。
 
-There are no build, lint, or test commands to run because no such tooling exists in this repo.
+このリポジトリにはビルド・lint・テスト用のツールが存在しないため、実行できるコマンドはありません。
 
-## Working here
+## 作業を進める上での方針
 
-Since there is no established structure yet, when the user asks you to add code:
-- Ask what kind of project this should become if it isn't clear from the request (language, framework, purpose).
-- Set up whatever build/lint/test tooling is idiomatic for the chosen language/framework, and update this file with the real commands and architecture once that scaffolding exists.
+まだ確立された構成がないため、ユーザーからコードの追加を依頼された場合は次のようにしてください。
+- 依頼内容だけでは不明な場合、このプロジェクトをどのようなものにしたいか（言語、フレームワーク、用途）を確認する。
+- 選定した言語・フレームワークに適したビルド／lint／テストツールを整備し、その構成ができた時点で、このファイルに実際のコマンドとアーキテクチャを反映する。
