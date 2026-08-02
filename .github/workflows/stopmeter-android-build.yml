@@ -1,0 +1,42 @@
+name: StopMeter Android Build
+
+on:
+  push:
+    branches: [main]
+    paths: ['StopMeter/**']
+  pull_request:
+    paths: ['StopMeter/**']
+
+defaults:
+  run:
+    working-directory: StopMeter
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build phone flavor (debug)
+        run: ./gradlew assemblePhoneDebug --stacktrace
+
+      - name: Build square flavor (debug)
+        run: ./gradlew assembleSquareDebug --stacktrace
+
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apks
+          path: StopMeter/app/build/outputs/apk/**/*.apk

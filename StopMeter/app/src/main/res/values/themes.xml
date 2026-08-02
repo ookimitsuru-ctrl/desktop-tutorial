@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.StopMeter" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0C1016</item>
+        <item name="android:navigationBarColor">#0C1016</item>
+        <item name="android:windowBackground">#0C1016</item>
+    </style>
+</resources>

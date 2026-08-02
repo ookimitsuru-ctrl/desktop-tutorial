@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- CSV出力用: cacheDir/csv を共有可能にする -->
+    <cache-path name="csv" path="csv/" />
+</paths>
