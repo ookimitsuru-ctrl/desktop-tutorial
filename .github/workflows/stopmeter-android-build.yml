@@ -1,9 +1,15 @@
-name: Android Build
+name: StopMeter Android Build
 
 on:
   push:
     branches: [main]
+    paths: ['StopMeter/**']
   pull_request:
+    paths: ['StopMeter/**']
+
+defaults:
+  run:
+    working-directory: StopMeter
 
 jobs:
   build:
@@ -33,4 +39,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-apks
-          path: app/build/outputs/apk/**/*.apk
+          path: StopMeter/app/build/outputs/apk/**/*.apk
