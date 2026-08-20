@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>町ガチャ（仮）</title>
+</head>
+<body>
+<!--
+  Placeholder only, for this backend-config pass: firebase.json configures
+  a hosting emulator (port 5050 per README), which needs a public/ dir to
+  serve. Real frontend UI is a separate task. This page just proves the
+  backend wiring (Anonymous Auth + firebase-config.js) works end to end.
+-->
+<p>バックエンド準備中。フロントエンドは別タスクで実装予定。</p>
+<div id="status">firebase-config.js を確認中…</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js" onerror="document.getElementById('status').textContent = 'firebase-config.js が見つかりません。firebase-config.sample.js からコピーしてください。'"></script>
+<script>
+  if (window.FIREBASE_CONFIG) {
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    firebase.auth().signInAnonymously()
+      .then(function () {
+        document.getElementById('status').textContent = '匿名認証 OK';
+      })
+      .catch(function (err) {
+        document.getElementById('status').textContent = '認証エラー: ' + err.message;
+      });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+node_modules/
+functions/node_modules/
+
+# Per-project, not meant to be shared across environments
+.firebaserc
+public/firebase-config.js
+muni.json
+
+# Credentials — never commit
+*service-account*.json
+serviceAccountKey.json
+.env
+.env.*
+
+# Firebase tooling output
+.firebase/
+.emulator-data/
+firebase-debug*.log
+ui-debug.log

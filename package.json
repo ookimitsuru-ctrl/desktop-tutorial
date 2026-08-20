@@ -1,0 +1,15 @@
+{
+  "name": "machi-gacha-backend",
+  "private": true,
+  "scripts": {
+    "seed": "node scripts/seed-municipalities.js",
+    "emulators": "firebase emulators:start --import=./.emulator-data --export-on-exit=./.emulator-data",
+    "deploy": "firebase deploy --only functions,firestore:rules,firestore:indexes,hosting"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
