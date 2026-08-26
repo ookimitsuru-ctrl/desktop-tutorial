@@ -6,14 +6,18 @@ Write your name on line 6, save it, and then head back to GitHub Desktop.
 
 ## Hermes エージェントのセットアップ
 
-Ollama でローカル実行する Hermes モデルを使ったシンプルなチャットボットです。
+Hermes モデルを使ったシンプルなチャットボットです。`--backend` で実行方式を切り替えられます。
+
+- `ollama`（デフォルト）: ローカルの Ollama サーバーで実行
+- `openrouter`: OpenRouter API 経由でクラウド上の Hermes モデルを呼び出す（GPUなし環境やこのようなクラウドセッションでも動作）
 
 ### 必要なもの
 
-- [Ollama](https://ollama.com/) がインストール済みであること
 - Python 3.9 以上（標準ライブラリのみ使用、追加インストール不要）
+- `ollama` バックエンド: [Ollama](https://ollama.com/) がインストール済みであること
+- `openrouter` バックエンド: [OpenRouter](https://openrouter.ai/) の API キー
 
-### セットアップ手順
+### Ollama で実行する場合
 
 1. Ollama サーバーを起動する:
    ```bash
@@ -27,14 +31,27 @@ Ollama でローカル実行する Hermes モデルを使ったシンプルな�
    ```bash
    python3 hermes_agent.py
    ```
-4. プロンプトが出たらメッセージを入力して会話できます。`exit` または `quit` で終了します。
+
+### OpenRouter で実行する場合
+
+1. [OpenRouter](https://openrouter.ai/keys) で API キーを取得する。
+2. 環境変数にセットするか `--api-key` で渡す:
+   ```bash
+   export OPENROUTER_API_KEY=sk-or-...
+   python3 hermes_agent.py --backend openrouter
+   ```
+
+いずれの場合もプロンプトが出たらメッセージを入力して会話できます。`exit` または `quit` で終了します。
 
 ### オプション
 
-- `--model` : 使用するモデル名を指定（デフォルト: `hermes3`）
-- `--host`  : Ollama サーバーの URL を指定（デフォルト: `http://localhost:11434`）
+- `--backend`  : `ollama`（デフォルト） または `openrouter`
+- `--model`    : 使用するモデル名を指定（デフォルトはバックエンドごとに異なる）
+- `--host`     : Ollama サーバーの URL を指定（デフォルト: `http://localhost:11434`、`ollama` バックエンドのみ）
+- `--api-key`  : OpenRouter API キー（未指定時は `OPENROUTER_API_KEY` 環境変数を使用、`openrouter` バックエンドのみ）
 
 例:
 ```bash
-python3 hermes_agent.py --model nous-hermes2 --host http://localhost:11434
+python3 hermes_agent.py --backend ollama --model nous-hermes2 --host http://localhost:11434
+python3 hermes_agent.py --backend openrouter --model nousresearch/hermes-3-llama-3.1-405b
 ```
