@@ -1,0 +1,13 @@
+{
+  "name": "AT ARENA CLASH",
+  "short_name": "AT ARENA",
+  "description": "3D face-to-face mech battle for Android — Votoms AT armor x Virtual On combat",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#05070a",
+  "theme_color": "#0a0e14",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

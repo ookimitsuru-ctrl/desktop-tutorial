@@ -1,0 +1,11 @@
+{
+  "appId": "com.atarena.clash",
+  "appName": "AT ARENA CLASH",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#05070a"
+  }
+}

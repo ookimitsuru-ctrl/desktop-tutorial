@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0e14" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <title>AT ARENA CLASH</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <!-- ===== HUD ===== -->
+      <div id="hud">
+        <div class="top-bar">
+          <div class="gauge player">
+            <div class="gauge-label">PLAYER</div>
+            <div class="hp-shell"><div id="hp-player" class="hp-fill"></div></div>
+          </div>
+          <div class="center-info">
+            <div id="timer">60</div>
+            <div id="round-label">ROUND 1</div>
+          </div>
+          <div class="gauge enemy">
+            <div class="gauge-label" id="enemy-name">ENEMY</div>
+            <div class="hp-shell"><div id="hp-enemy" class="hp-fill"></div></div>
+          </div>
+        </div>
+
+        <div id="lock-reticle"><div class="reticle-ring"></div><div class="reticle-cross"></div></div>
+        <div id="radar"><div id="radar-enemy-dot"></div><div id="radar-player-dot"></div></div>
+
+        <div class="bottom-bar">
+          <div class="boost-shell"><div class="boost-label">BOOST</div><div class="boost-track"><div id="boost-fill"></div></div></div>
+          <div class="ammo-shell"><div class="ammo-label">MISSILE</div><div id="ammo-count">4</div></div>
+        </div>
+
+        <div id="message-banner"></div>
+
+        <div id="result-screen" class="hidden">
+          <div id="result-title">WIN</div>
+          <button id="retry-btn">RETRY</button>
+        </div>
+
+        <div id="start-screen">
+          <div class="title-wrap">
+            <h1>AT ARENA CLASH</h1>
+            <p class="subtitle">装甲騎兵 × 対面式ロボット対戦</p>
+          </div>
+          <button id="start-btn">BATTLE START</button>
+          <p class="hint">左スティック：移動 / 右スティック：視点ダッシュ<br />SHOT・MISSILE・SABER・JUMPで攻撃</p>
+        </div>
+      </div>
+
+      <!-- ===== Touch Controls ===== -->
+      <div id="controls">
+        <div class="stick-zone" id="stick-left">
+          <div class="stick-base"><div class="stick-knob"></div></div>
+        </div>
+        <div class="action-cluster">
+          <button class="action-btn btn-jump" id="btn-jump">JUMP</button>
+          <button class="action-btn btn-dash" id="btn-dash">DASH</button>
+          <button class="action-btn btn-saber" id="btn-saber">SABER</button>
+          <button class="action-btn btn-missile" id="btn-missile">MSL</button>
+          <button class="action-btn btn-shot" id="btn-shot">SHOT</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
