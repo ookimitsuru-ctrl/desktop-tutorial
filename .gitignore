@@ -1,5 +1,18 @@
 node_modules/
 dist/
-android/
 .DS_Store
 *.log
+
+# Android native project (Capacitor) - keep the project, ignore local/build artifacts
+android/.gradle/
+android/.idea/
+android/local.properties
+android/captures/
+android/app/build/
+android/build/
+android/*/build/
+android/.cxx/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+*.iml

@@ -34,22 +34,44 @@ npm run preview    # ビルド結果をローカル確認
 
 ## Androidアプリ（APK）としてビルドする
 
-このコンテナにはAndroid SDK / Android Studio が無いため、実機用APKの生成はご自身の
-Android開発環境（Android Studio導入済みのPC）で行ってください。[Capacitor](https://capacitorjs.com/)
-でこのWebゲームをそのままネイティブAndroidプロジェクトにラップできます。
+[Capacitor](https://capacitorjs.com/) でラップしたネイティブAndroidプロジェクトを
+**`android/` ディレクトリにコミット済み**です。`npx cap add android` は不要で、
+Android SDKが使える環境であればそのままビルドできます。
 
 ```bash
 npm install
-npm run build
-npm install @capacitor/core @capacitor/android
-npx cap add android
-npx cap copy android
-npx cap open android   # Android Studio が開くので Build > Build APK
+npm run android:sync    # vite build + Web資産を android/ に反映
+cd android
+./gradlew assembleDebug # -> android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-`capacitor.config.json` に appId / appName / webDir を設定済みです。アイコンや
-スプラッシュ画面は `npx cap` 実行後に生成される `android/` プロジェクト内の
-リソースを差し替えてください。
+または Android Studio で `android/` フォルダを開いて `Build > Build Bundle(s) / APK(s) > Build APK(s)`
+でも生成できます（`npm run android:open` でも開けます）。
+
+ソースコード（`src/`）を変更した場合は、必ず `npm run android:sync` を実行してから
+Gradleビルド／Android Studioでのビルドを行ってください（`android/app/src/main/assets/public`
+配下のWeb資産を同期し直す必要があるため）。
+
+> **注記**：このリポジトリを作成した開発コンテナはネットワークポリシーにより
+> `dl.google.com`（Android Gradle PluginやAndroidXライブラリの配布元）への
+> アクセスがブロックされており、コンテナ内では実際の `.apk` ファイルを
+> コンパイルできませんでした。プロジェクト自体はGradleの依存解決の直前まで
+> 正しく構成できていることを確認済みです。実際のAPK生成は、通常のインターネット
+> アクセスがあるご自身のPC（Android Studio導入済み）か、GitHub Actions等のCI環境で
+> 上記コマンドを実行してください。
+
+`capacitor.config.json` に appId（`com.atarena.clash`）/ appName / webDir を設定済みです。
+アプリアイコンやスプラッシュ画面は `android/app/src/main/res/` 配下の
+`mipmap-*` / `drawable-*` リソースを差し替えてください。
+
+### CIで自動ビルドする（自分のPCが無くてもAPKを取得できます）
+
+`.github/workflows/android-build.yml` を追加済みです。GitHubリポジトリの
+**Actions** タブから「Build Android APK」を手動実行（`workflow_dispatch`）するか、
+このブランチに `src/` や `android/` の変更をpushすると自動でビルドが走り、
+実行結果の Artifacts から `at-arena-clash-debug-apk`（`app-debug.apk`）を
+ダウンロードできます。GitHub Actionsのランナーは通常のインターネットアクセスを
+持つため、このコンテナ内では出来なかったAPKのコンパイルが可能です。
 
 ## 実装構成
 
