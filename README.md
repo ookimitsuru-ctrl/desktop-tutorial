@@ -20,7 +20,13 @@ Android Studio（Ladybug 以降）でこのディレクトリを開くか、コ�
 ./gradlew :app:assembleDebug          # APK を作る
 ./gradlew installDebug                # 接続中の実機に入れる
 ./gradlew :core:test                  # 戦闘シミュレーションのユニットテスト
+
+tools/run_on_device.sh                # ビルド→インストール→起動→ログとフレーム統計を収集
 ```
+
+`tools/run_on_device.sh` は実機を繋いだ状態で 1 回叩けば、クラッシュ・GL エラー・
+実測フレームタイム（`dumpsys gfxinfo`）を `device-report.txt` にまとめます。
+不具合報告はこのファイルを渡すのが一番早いです。
 
 * 必要環境: Android SDK（compileSdk 35）、JDK 17 以上、minSdk 26、OpenGL ES 3.0 対応端末
 * 依存ライブラリは **なし**（`:app` は `:core` にのみ依存）
@@ -105,7 +111,8 @@ AI の反応速度・射撃精度・攻め気だけが変わり、性能面の�
 ```
 core/   純 Kotlin の戦闘シミュレーション（Android 非依存 → JVM でテスト可能）
         MathUtil / Arena / MechSpec / Mech / Projectile / Battle / AiPilot / Input
-tools/  check_shaders.py（実 GLES3 コンテキストでシェーダを検証する開発用スクリプト）
+tools/  check_shaders.py（実 GLES3 コンテキストでシェーダを検証）
+        run_on_device.sh（実機での起動確認とログ・フレーム統計の収集）
 app/    Android + OpenGL ES 3.0 の表示・入力・音
         gl/      シェーダ、メッシュ、動的クアッドバッチ、行列スタック
         render/  AT モデル生成、カメラ、パーティクル、HUD、フォント生成、レンダラ
