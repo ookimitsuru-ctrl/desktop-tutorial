@@ -1,5 +1,7 @@
 # ROLLERDASH ARENA
 
+[![Android](https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/workflows/android.yml/badge.svg)](https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/workflows/android.yml)
+
 Android 向けの 3D ロボット対戦ゲーム。
 機体デザインは『装甲騎兵ボトムズ』の AT（アーマードトルーパー）——ずんぐりした円筒胴、
 スライドする単眼のターレットレンズ、脚部ローラーによるローラーダッシュ——をモチーフに、
@@ -12,7 +14,14 @@ Android 向けの 3D ロボット対戦ゲーム。
 
 ---
 
-## ビルドと実行
+## ビルド済み APK を入れる（ローカル環境が不要な方法）
+
+GitHub Actions が push のたびに debug APK をビルドして成果物に添付します。
+Actions のページから `rollerdash-arena-debug-apk` をダウンロードし、
+zip を展開して `app-debug.apk` を端末にインストールしてください
+（提供元不明のアプリの許可が必要です）。PC 経由なら `adb install -r app-debug.apk`。
+
+## ソースからビルドする
 
 Android Studio（Ladybug 以降）でこのディレクトリを開くか、コマンドラインから:
 
@@ -152,15 +161,12 @@ app/    Android + OpenGL ES 3.0 の表示・入力・音
   砲戦型の強化などを行いました。ミラーマッチはほぼ五分に収束しています。
   **STANDING TORTOISE は AI に持たせると依然として最弱**で、距離を維持できる
   人間向けの上級機という位置づけです。
-* **APK は未ビルド（この環境では不可）**。`:app` のビルドには Android Gradle Plugin と
-  Android SDK が要りますが、どちらも配布元が `dl.google.com` で、この作業環境の
-  egress ポリシーによりブロックされています（`maven.google.com` も同ホストへの 301
-  リダイレクタなので同じく不可）。第三者ミラーでの迂回はポリシー回避になるため行っていません。
-  手元では下記がそのまま通るはずです:
-
-  ```bash
-  ./gradlew :app:assembleDebug
-  ```
+* **APK のビルドは GitHub Actions 上で成功**（`.github/workflows/android.yml`）。
+  `:core:test`、シェーダ検証、`:app:assembleDebug` が全て通り、949KB の
+  `app-debug.apk` が成果物として出ています。`processDebugResources`（aapt2）も
+  通っているので、マニフェスト・テーマ・アダプティブアイコンも実物の AGP に受理済みです。
+  なお開発を行ったサンドボックス自体からは `dl.google.com` が egress ポリシーで
+  ブロックされているためビルドできず、CI 側で担保しています。
 
 * したがって **実機での描画・音・タッチ操作は未確認**です。ここまでで潰してあるのは
   「ロジックの正しさ（テスト・耐久シミュレーション）」「Android API の使い方（型チェック）」
