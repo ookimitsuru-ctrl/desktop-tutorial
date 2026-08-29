@@ -3,11 +3,6 @@ package com.rollerdash.arena.render
 /** Every GLSL source in the game lives here so the pipeline reads top to bottom. */
 object Shaders {
 
-    private const val FOG_UNIFORMS = """
-        uniform vec3 uFogColor;
-        uniform float uFogDensity;
-    """
-
     /** Hard-surface shader for mechs, cover and walls. */
     const val SOLID_VS = """#version 300 es
         precision highp float;
