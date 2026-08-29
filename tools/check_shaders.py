@@ -168,6 +168,97 @@ for path, programs in (("gl/Mesh.kt", ["solid", "floor", "sky"]),
         for program in programs:
             expect(program, attribute, path)
 
+
+# --- would the 2D overlay actually reach the screen? --------------------------
+#
+# HUD quads are wound clockwise in screen space (y grows downward), so with
+# GL_CULL_FACE left on they are silently discarded as back faces and the entire
+# HUD, the menus and the on-screen controls vanish. This renders one quad the
+# way QuadBatch.addRect builds it and checks the renderer turns culling off.
+
+def hud_quad_probe():
+    prog = gl.glCreateProgram()
+    vs = compile_shader(GL_VERTEX_SHADER, consts["HUD_VS"], "probe.vert")
+    fs = compile_shader(GL_FRAGMENT_SHADER, consts["HUD_FS"], "probe.frag")
+    gl.glAttachShader(prog, vs)
+    gl.glAttachShader(prog, fs)
+    gl.glLinkProgram(prog)
+    gl.glUseProgram(prog)
+
+    size = 128
+    tex = ctypes.c_uint()
+    gl.glGenTextures(1, ctypes.byref(tex))
+    gl.glBindTexture(0x0DE1, tex)
+    gl.glTexImage2D(0x0DE1, 0, 0x8058, size, size, 0, 0x1908, 0x1401, None)
+    gl.glTexParameteri(0x0DE1, 0x2801, 0x2601)
+    gl.glTexParameteri(0x0DE1, 0x2800, 0x2601)
+    fbo = ctypes.c_uint()
+    gl.glGenFramebuffers(1, ctypes.byref(fbo))
+    gl.glBindFramebuffer(0x8D40, fbo)
+    gl.glFramebufferTexture2D(0x8D40, 0x8CE0, 0x0DE1, tex, 0)
+    gl.glViewport(0, 0, size, size)
+
+    # Matrix.orthoM(0, width, height, 0, -1, 1): y grows downward, as on screen.
+    proj = (ctypes.c_float * 16)(2.0 / size, 0, 0, 0, 0, -2.0 / size, 0, 0,
+                                 0, 0, -1, 0, -1, 1, 0, 1)
+    gl.glUniformMatrix4fv(gl.glGetUniformLocation(prog, b"uProj"), 1, False, proj)
+    gl.glUniform1i(gl.glGetUniformLocation(prog, b"uMode"), 0)
+
+    x = y = 16.0
+    w = h = 96.0
+    verts = []
+    for px, py, u, v in ((x, y, 0, 1), (x + w, y, 1, 1), (x + w, y + h, 1, 0), (x, y + h, 0, 0)):
+        verts += [px, py, 0.0, u, v, 1.0, 1.0, 1.0, 1.0]
+    vbo = ctypes.c_uint()
+    gl.glGenBuffers(1, ctypes.byref(vbo))
+    gl.glBindBuffer(0x8892, vbo)
+    gl.glBufferData(0x8892, len(verts) * 4, (ctypes.c_float * len(verts))(*verts), 0x88E4)
+    ibo = ctypes.c_uint()
+    gl.glGenBuffers(1, ctypes.byref(ibo))
+    gl.glBindBuffer(0x8893, ibo)
+    gl.glBufferData(0x8893, 12, (ctypes.c_ushort * 6)(0, 1, 2, 0, 2, 3), 0x88E4)
+    for attr, count, offset in (("aPos", 3, 0), ("aUV", 2, 12), ("aColor", 4, 20)):
+        loc = gl.glGetAttribLocation(prog, attr.encode())
+        gl.glEnableVertexAttribArray(loc)
+        gl.glVertexAttribPointer(loc, count, 0x1406, False, 36, ctypes.c_void_p(offset))
+
+    gl.glClearColor.argtypes = [ctypes.c_float] * 4
+
+    def lit_pixels(cull):
+        if cull:
+            gl.glEnable(0x0B44)
+            gl.glCullFace(0x0405)
+        else:
+            gl.glDisable(0x0B44)
+        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
+        gl.glClear(0x4000)
+        gl.glDrawElements(0x0004, 6, 0x1403, ctypes.c_void_p(0))
+        buf = (ctypes.c_ubyte * (size * size * 4))()
+        gl.glReadPixels(0, 0, size, size, 0x1908, 0x1401, buf)
+        return sum(1 for i in range(0, len(buf), 4) if buf[i] > 10)
+
+    return lit_pixels(True), lit_pixels(False)
+
+culled, uncSulled = hud_quad_probe()
+print()
+print("HUD quad with GL_CULL_FACE on: %d lit pixels, off: %d" % (culled, uncSulled))
+if uncSulled == 0:
+    mismatches.append("the HUD quad renders nothing even with culling off - the "
+                      "overlay path is broken")
+elif culled == 0:
+    # Winding is clockwise on screen, so the renderer has to turn culling off.
+    unguarded = []
+    for func in ("drawShadows", "drawOverlay"):
+        body = renderer.split("private fun %s(" % func, 1)[-1].split("private fun ", 1)[0]
+        if "glDisable(GLES30.GL_CULL_FACE)" not in body:
+            unguarded.append(func)
+    if unguarded:
+        mismatches.append("%s draw quads without disabling GL_CULL_FACE - they will be "
+                          "discarded as back faces, taking the HUD and the on-screen "
+                          "controls with them" % " and ".join(unguarded))
+    else:
+        print("renderer disables culling for the quad passes, as it must")
+
 print()
 if mismatches:
     print("NAME MISMATCHES:")

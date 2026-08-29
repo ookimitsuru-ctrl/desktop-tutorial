@@ -130,6 +130,9 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         GLES30.glEnable(GLES30.GL_DEPTH_TEST)
         GLES30.glDepthMask(true)
         GLES30.glDisable(GLES30.GL_BLEND)
+        // Culling is for closed solids only. Quads - shadows, sprites, the whole
+        // HUD - are built without a guaranteed winding, so they must not be culled.
+        GLES30.glEnable(GLES30.GL_CULL_FACE)
 
         drawSky()
         drawFloor()
@@ -268,6 +271,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     }
 
     private fun drawShadows() {
+        GLES30.glDisable(GLES30.GL_CULL_FACE)
         GLES30.glEnable(GLES30.GL_BLEND)
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
         GLES30.glDepthMask(false)
@@ -390,6 +394,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
 
     private fun drawOverlay() {
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        GLES30.glDisable(GLES30.GL_CULL_FACE)
         GLES30.glEnable(GLES30.GL_BLEND)
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
         hudProgram.use()
@@ -423,6 +428,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         painter.flush()
         GLES30.glDisable(GLES30.GL_BLEND)
         GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+        GLES30.glEnable(GLES30.GL_CULL_FACE)
     }
 
     private fun red(c: Int) = ((c shr 16) and 0xFF) / 255f

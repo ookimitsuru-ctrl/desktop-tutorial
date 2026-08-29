@@ -120,7 +120,7 @@ AI の反応速度・射撃精度・攻め気だけが変わり、性能面の�
 ```
 core/   純 Kotlin の戦闘シミュレーション（Android 非依存 → JVM でテスト可能）
         MathUtil / Arena / MechSpec / Mech / Projectile / Battle / AiPilot / Input
-tools/  check_shaders.py（実 GLES3 コンテキストでシェーダを検証）
+tools/  check_shaders.py（実 GLES3 でシェーダ検証 + HUD が実際に描画されるかの確認）
         run_on_device.sh（実機での起動確認とログ・フレーム統計の収集）
 app/    Android + OpenGL ES 3.0 の表示・入力・音
         gl/      シェーダ、メッシュ、動的クアッドバッチ、行列スタック
