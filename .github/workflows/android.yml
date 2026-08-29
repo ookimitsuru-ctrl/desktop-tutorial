@@ -1,0 +1,52 @@
+name: Android
+
+# Builds the game and publishes an installable debug APK as a run artifact, so
+# it can be downloaded straight onto a phone without a local Android SDK.
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Simulation unit tests
+        run: ./gradlew --no-daemon :core:test
+
+      - name: Shader compile and link check
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgles2 libgl1-mesa-dri
+          LIBGL_ALWAYS_SOFTWARE=1 python3 tools/check_shaders.py
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Report APK size
+        run: ls -lh app/build/outputs/apk/debug/*.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rollerdash-arena-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            core/build/reports/tests/**
+            app/build/reports/**
+          if-no-files-found: ignore
