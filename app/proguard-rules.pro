@@ -1,0 +1,1 @@
+-keep class com.bujo.app.data.model.** { *; }
