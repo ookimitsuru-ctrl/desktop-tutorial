@@ -59,8 +59,11 @@ fun yawOf(v: Vec3): Float = atan2(v.x, v.z)
 /** Unit forward vector for a heading. yaw = 0 looks down +Z. */
 fun forwardOf(yaw: Float) = Vec3(sin(yaw), 0f, cos(yaw))
 
-/** Unit right-hand vector for a heading. */
-fun rightOf(yaw: Float) = Vec3(cos(yaw), 0f, -sin(yaw))
+/**
+ * Unit right-hand vector for a heading, matching the camera's own right axis
+ * (forward x up) so that strafing right moves the mech right on screen.
+ */
+fun rightOf(yaw: Float) = Vec3(-cos(yaw), 0f, sin(yaw))
 
 fun clamp(v: Float, lo: Float, hi: Float) = if (v < lo) lo else if (v > hi) hi else v
 

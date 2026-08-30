@@ -48,7 +48,11 @@ class Camera {
         // Pull further out as the fight opens up, and lift with the player's jump.
         val range = 13.5f + clamp(dist * 0.14f, 0f, 7.5f)
         val height = 6.2f + player.pos.y * 0.85f + clamp(dist * 0.05f, 0f, 3f)
-        val desired = player.center - back * range + Vec3(0f, height, 0f)
+        val desired = clearedCameraSpot(
+            battle,
+            player.center - back * range + Vec3(0f, height, 0f),
+            player.center + Vec3(0f, 1.2f, 0f),
+        )
         val desiredLook = com.rollerdash.arena.core.lerp(
             player.center + Vec3(0f, 1.4f, 0f),
             enemy.center + Vec3(0f, 1.0f, 0f),
@@ -59,6 +63,29 @@ class Camera {
         lookAt = damp(lookAt, desiredLook, 9f, dt)
         applyShake(dt, shake)
         buildMatrices()
+    }
+
+    /**
+     * Keeps the camera inside the arena and out of the cover: it walks the line
+     * back towards the pilot until the view is clear, so a wall can never end up
+     * filling the screen.
+     */
+    private fun clearedCameraSpot(battle: Battle, desired: Vec3, eye: Vec3): Vec3 {
+        val arena = battle.arena
+        val limit = arena.halfSize - 2.5f
+        var fallback = desired
+        for (step in 0..6) {
+            val t = 1f - step * 0.13f
+            var candidate = com.rollerdash.arena.core.lerp(eye, desired, t)
+            candidate = Vec3(
+                clamp(candidate.x, -limit, limit),
+                maxOf(candidate.y, arena.groundHeightAt(candidate) + 1.6f),
+                clamp(candidate.z, -limit, limit),
+            )
+            fallback = candidate
+            if (!arena.blocked(candidate, eye)) return candidate
+        }
+        return fallback
     }
 
     /** Slow orbit used behind the menus. */

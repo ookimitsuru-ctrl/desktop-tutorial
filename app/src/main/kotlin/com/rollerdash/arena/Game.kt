@@ -12,7 +12,7 @@ import com.rollerdash.arena.core.forwardOf
 import com.rollerdash.arena.render.Effects
 import com.rollerdash.arena.render.Hud
 import com.rollerdash.arena.render.MechRenderState
-import com.rollerdash.arena.ui.ControlScheme
+import com.rollerdash.arena.core.ControlScheme
 import com.rollerdash.arena.ui.Controls
 import com.rollerdash.arena.ui.Menu
 import com.rollerdash.arena.ui.MenuRow
@@ -86,6 +86,10 @@ class Game(private val audio: Audio) {
                     "TWO LEVERS: BOTH FORWARD WALKS, APART TURNS, TURBO DASHES"
                 }
             }),
+            MenuRow("LAYOUT", { if (controls.mirrored) "LEFT HANDED" else "RIGHT HANDED" }, {
+                controls.mirrored = !controls.mirrored
+                audio.play(Sfx.UI)
+            }, detail = { "WHICH THUMB DRIVES AND WHICH ONE SHOOTS" }),
             MenuRow("SKILL", { difficulty.label }, { d ->
                 val all = Difficulty.entries
                 difficulty = all[(difficulty.ordinal + d + all.size) % all.size]

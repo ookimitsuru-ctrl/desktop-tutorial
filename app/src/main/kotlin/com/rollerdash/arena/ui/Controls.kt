@@ -1,6 +1,10 @@
 package com.rollerdash.arena.ui
 
 import android.view.MotionEvent
+import com.rollerdash.arena.core.ControlButton
+import com.rollerdash.arena.core.ControlLayout
+import com.rollerdash.arena.core.ControlScheme
+import com.rollerdash.arena.core.HudLayout
 import com.rollerdash.arena.core.PilotInput
 import com.rollerdash.arena.core.TwinStick
 import com.rollerdash.arena.core.clamp
@@ -8,19 +12,9 @@ import com.rollerdash.arena.render.HudPainter
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-enum class ControlScheme {
-    /** One stick to move, drag to turn, buttons on the right. */
-    MODERN,
-
-    /** The cabinet layout: two levers, two triggers, two turbo buttons. */
-    TWIN_STICK,
-}
-
-enum class ButtonId { FIRE_R, FIRE_L, FIRE_C, JUMP, DASH, GUARD, TURBO_L, TURBO_R, MENU }
-
 /** A round on-screen button that remembers which finger is holding it. */
 class TouchButton(
-    val id: ButtonId,
+    val id: ControlButton,
     val label: String,
     var cx: Float = 0f,
     var cy: Float = 0f,
@@ -97,27 +91,37 @@ class GamepadState {
     var dash = false
     var guard = false
     var connected = false
-
-    val anyActivity: Boolean
-        get() = connected && (abs(leftX) > 0.15f || abs(leftY) > 0.15f || abs(rightX) > 0.15f ||
-            fireR || fireL || fireC || jump || dash || guard)
 }
 
 /**
- * Owns the on-screen controls: layout, multi-touch tracking, drawing, and the
+ * Owns the on-screen controls: multi-touch tracking, drawing, and the
  * translation from fingers to a [PilotInput] the simulation understands.
+ * Where each control sits is decided by [ControlLayout], which is unit tested.
  */
-class Controls(var scheme: ControlScheme = ControlScheme.MODERN) {
+class Controls(scheme: ControlScheme = ControlScheme.MODERN) {
 
     private var width = 0f
     private var height = 0f
+
+    var scheme: ControlScheme = scheme
+        set(value) {
+            field = value
+            relayout()
+        }
+
+    /** Mirrors the two halves for left-handed players. */
+    var mirrored: Boolean = false
+        set(value) {
+            field = value
+            relayout()
+        }
 
     val leftStick = VirtualStick()
     val rightStick = VirtualStick()
     val buttons = ArrayList<TouchButton>()
     val gamepad = GamepadState()
 
-    /** Free drag on the right of the screen turns the machine. */
+    /** Free drag on the empty side of the screen turns the machine. */
     private var turnPointer = -1
     private var turnLastX = 0f
     private var turnValue = 0f
@@ -127,44 +131,33 @@ class Controls(var scheme: ControlScheme = ControlScheme.MODERN) {
     fun layout(w: Int, h: Int) {
         width = w.toFloat()
         height = h.toFloat()
-        buttons.clear()
-        val unit = minOf(width * 0.5f, height)
-        val stickR = unit * 0.20f
-        val margin = unit * 0.30f
-
-        leftStick.radius = stickR
-        leftStick.cx = margin
-        leftStick.cy = height - margin
-        rightStick.radius = stickR
-        rightStick.cx = width - margin
-        rightStick.cy = height - margin
-
-        val br = unit * 0.115f
-        when (scheme) {
-            ControlScheme.MODERN -> {
-                val bx = width - unit * 0.34f
-                val by = height - unit * 0.30f
-                buttons += TouchButton(ButtonId.FIRE_R, "RW", bx, by, br * 1.25f)
-                buttons += TouchButton(ButtonId.FIRE_L, "LW", bx - br * 2.6f, by - br * 0.6f, br)
-                buttons += TouchButton(ButtonId.FIRE_C, "CW", bx - br * 1.5f, by - br * 2.5f, br * 1.05f)
-                buttons += TouchButton(ButtonId.DASH, "DASH", bx + br * 0.4f, by - br * 2.9f, br)
-                buttons += TouchButton(ButtonId.JUMP, "JUMP", bx + br * 2.4f, by - br * 1.1f, br)
-                buttons += TouchButton(ButtonId.GUARD, "GUARD", width * 0.5f + br * 1.4f, height - br * 1.4f, br * 0.85f)
-            }
-            ControlScheme.TWIN_STICK -> {
-                buttons += TouchButton(ButtonId.FIRE_L, "LT", leftStick.cx + stickR * 1.05f, leftStick.cy - stickR * 1.5f, br)
-                buttons += TouchButton(ButtonId.TURBO_L, "L.TURBO", leftStick.cx + stickR * 2.3f, leftStick.cy - stickR * 0.1f, br)
-                buttons += TouchButton(ButtonId.FIRE_R, "RT", rightStick.cx - stickR * 1.05f, rightStick.cy - stickR * 1.5f, br)
-                buttons += TouchButton(ButtonId.TURBO_R, "R.TURBO", rightStick.cx - stickR * 2.3f, rightStick.cy - stickR * 0.1f, br)
-                buttons += TouchButton(ButtonId.GUARD, "GUARD", width * 0.5f, height - br * 1.5f, br * 0.85f)
-            }
-        }
-        buttons += TouchButton(ButtonId.MENU, "MENU", width - br * 0.9f, br * 0.9f, br * 0.62f)
+        relayout()
     }
 
-    fun button(id: ButtonId): TouchButton? = buttons.firstOrNull { it.id == id }
+    private fun relayout() {
+        if (width <= 0f || height <= 0f) return
+        val layout = ControlLayout(width, height, scheme, mirrored)
+        buttons.clear()
 
-    fun isPressed(id: ButtonId) = button(id)?.pressed == true
+        leftStick.cx = layout.moveStick.cx
+        leftStick.cy = layout.moveStick.cy
+        leftStick.radius = layout.moveStick.r
+        layout.aimStick?.let {
+            rightStick.cx = it.cx
+            rightStick.cy = it.cy
+            rightStick.radius = it.r
+        }
+        for (slot in layout.buttons) {
+            buttons += TouchButton(slot.id, slot.label, slot.disc.cx, slot.disc.cy, slot.disc.r)
+        }
+        // The pause button belongs to the HUD corner, not the thumb clusters.
+        val hud = HudLayout(width, height)
+        buttons += TouchButton(ControlButton.MENU, "II", hud.menu.cx, hud.menu.cy, hud.menu.r)
+    }
+
+    fun button(id: ControlButton): TouchButton? = buttons.firstOrNull { it.id == id }
+
+    fun isPressed(id: ControlButton) = button(id)?.pressed == true
 
     /** Consumes a touch event. Returns true when a control took it. */
     fun onTouch(event: MotionEvent): Boolean {
@@ -219,7 +212,9 @@ class Controls(var scheme: ControlScheme = ControlScheme.MODERN) {
                 return
             }
         }
-        if (scheme == ControlScheme.MODERN && x > width * 0.42f && turnPointer == -1) {
+        // Anything left over on the far side from the movement stick turns you.
+        val onTurnSide = if (mirrored) x < width * 0.58f else x > width * 0.42f
+        if (scheme == ControlScheme.MODERN && onTurnSide && turnPointer == -1) {
             turnPointer = id
             turnLastX = x
         }
@@ -235,9 +230,9 @@ class Controls(var scheme: ControlScheme = ControlScheme.MODERN) {
         }
     }
 
-    /** True on the frame the menu button goes down; consumes the press. */
+    /** True on the frame the pause button goes down; consumes the press. */
     fun consumeMenuPress(): Boolean {
-        val b = button(ButtonId.MENU) ?: return false
+        val b = button(ControlButton.MENU) ?: return false
         if (b.pressed) {
             b.pointerId = -1
             return true
@@ -258,22 +253,22 @@ class Controls(var scheme: ControlScheme = ControlScheme.MODERN) {
                 moveX = leftStick.x,
                 moveZ = -leftStick.y,
                 turn = turnValue,
-                dash = isPressed(ButtonId.DASH),
-                jump = isPressed(ButtonId.JUMP),
-                crouch = isPressed(ButtonId.GUARD),
-                fireRight = isPressed(ButtonId.FIRE_R) || isPressed(ButtonId.FIRE_C),
-                fireLeft = isPressed(ButtonId.FIRE_L) || isPressed(ButtonId.FIRE_C),
+                dash = isPressed(ControlButton.DASH),
+                jump = isPressed(ControlButton.JUMP),
+                crouch = isPressed(ControlButton.GUARD),
+                fireRight = isPressed(ControlButton.FIRE_R) || isPressed(ControlButton.FIRE_C),
+                fireLeft = isPressed(ControlButton.FIRE_L) || isPressed(ControlButton.FIRE_C),
             )
             ControlScheme.TWIN_STICK -> TwinStick(
                 leftX = leftStick.x,
                 leftY = -leftStick.y,
                 rightX = rightStick.x,
                 rightY = -rightStick.y,
-                turboLeft = isPressed(ButtonId.TURBO_L),
-                turboRight = isPressed(ButtonId.TURBO_R),
-                triggerLeft = isPressed(ButtonId.FIRE_L),
-                triggerRight = isPressed(ButtonId.FIRE_R),
-                guard = isPressed(ButtonId.GUARD),
+                turboLeft = isPressed(ControlButton.TURBO_L),
+                turboRight = isPressed(ControlButton.TURBO_R),
+                triggerLeft = isPressed(ControlButton.FIRE_L),
+                triggerRight = isPressed(ControlButton.FIRE_R),
+                guard = isPressed(ControlButton.GUARD),
             ).toPilotInput()
         }
         if (!pad.connected) return touch
@@ -301,28 +296,28 @@ class Controls(var scheme: ControlScheme = ControlScheme.MODERN) {
     }
 
     private fun drawStick(p: HudPainter, s: VirtualStick) {
-        p.ring(s.cx, s.cy, s.radius, 0.55f, 0.85f, 0.65f, if (s.active) 0.42f else 0.24f)
-        p.disc(s.cx, s.cy, s.radius * 0.16f, 0.6f, 0.9f, 0.7f, 0.25f)
+        p.ring(s.cx, s.cy, s.radius, 0.55f, 0.85f, 0.65f, if (s.active) 0.45f else 0.26f)
+        p.disc(s.cx, s.cy, s.radius * 0.14f, 0.6f, 0.9f, 0.7f, 0.25f)
         p.disc(
-            s.cx + s.knobX, s.cy + s.knobY, s.radius * 0.40f,
-            0.75f, 0.95f, 0.75f, if (s.active) 0.5f else 0.28f,
+            s.cx + s.knobX, s.cy + s.knobY, s.radius * 0.38f,
+            0.75f, 0.95f, 0.75f, if (s.active) 0.55f else 0.30f,
         )
     }
 
     private fun drawButton(p: HudPainter, b: TouchButton) {
-        val a = if (b.pressed) 0.6f else 0.24f + b.glow * 0.2f
+        val a = if (b.pressed) 0.62f else 0.26f + b.glow * 0.2f
         val tint = when (b.id) {
-            ButtonId.FIRE_R -> Triple(1.0f, 0.72f, 0.35f)
-            ButtonId.FIRE_L -> Triple(0.65f, 0.85f, 1.0f)
-            ButtonId.FIRE_C -> Triple(1.0f, 0.45f, 0.35f)
-            ButtonId.JUMP -> Triple(0.72f, 1.0f, 0.72f)
-            ButtonId.DASH -> Triple(1.0f, 0.95f, 0.5f)
-            ButtonId.GUARD -> Triple(0.8f, 0.8f, 0.9f)
+            ControlButton.FIRE_R -> Triple(1.0f, 0.72f, 0.35f)
+            ControlButton.FIRE_L -> Triple(0.65f, 0.85f, 1.0f)
+            ControlButton.FIRE_C -> Triple(1.0f, 0.45f, 0.35f)
+            ControlButton.JUMP -> Triple(0.72f, 1.0f, 0.72f)
+            ControlButton.DASH -> Triple(1.0f, 0.95f, 0.5f)
+            ControlButton.GUARD -> Triple(0.8f, 0.8f, 0.9f)
             else -> Triple(0.85f, 0.9f, 0.85f)
         }
         p.disc(b.cx, b.cy, b.radius, tint.first, tint.second, tint.third, a)
-        p.ring(b.cx, b.cy, b.radius, tint.first, tint.second, tint.third, a + 0.25f)
-        val size = b.radius * 0.46f
+        p.ring(b.cx, b.cy, b.radius, tint.first, tint.second, tint.third, minOf(1f, a + 0.3f))
+        val size = b.radius * 0.44f
         p.text(b.label, b.cx, b.cy - size * 0.5f, size, 1f, 1f, 1f, 0.95f, centered = true)
     }
 }

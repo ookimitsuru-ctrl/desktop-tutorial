@@ -7,6 +7,7 @@ import com.rollerdash.arena.AppState
 import com.rollerdash.arena.Game
 import com.rollerdash.arena.core.Mech
 import com.rollerdash.arena.core.Obstacle
+import com.rollerdash.arena.core.segmentT
 import com.rollerdash.arena.core.Projectile
 import com.rollerdash.arena.core.ProjectileKind
 import com.rollerdash.arena.core.Vec3
@@ -55,6 +56,8 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     private var elapsed = 0f
     private var lastMesh: Mesh? = null
     private var frameCount = 0L
+    /** Cover standing between the camera and the player, drawn see-through. */
+    private val occluders = ArrayList<Obstacle>()
 
     private var viewWidth = 1
     private var viewHeight = 1
@@ -138,6 +141,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         drawFloor()
         drawWorldGeometry()
         drawMechs()
+        drawOccluders()
         drawShadows()
         drawProjectiles()
         drawEffects()
@@ -195,11 +199,18 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         lastMesh = null
     }
 
-    private fun drawSolid(mesh: Mesh, model: FloatArray, color: Int, emissive: Float, flash: Float = 0f) {
+    private fun drawSolid(
+        mesh: Mesh,
+        model: FloatArray,
+        color: Int,
+        emissive: Float,
+        flash: Float = 0f,
+        alpha: Float = 1f,
+    ) {
         Matrix.multiplyMM(mvp, 0, camera.viewProj, 0, model, 0)
         solidProgram.setMat4("uMVP", mvp)
         solidProgram.setMat4("uModel", model)
-        solidProgram.setVec4("uColor", red(color), green(color), blue(color), 1f)
+        solidProgram.setVec4("uColor", red(color), green(color), blue(color), alpha)
         solidProgram.setFloat("uEmissive", emissive)
         solidProgram.setVec3("uFlash", flash * 0.9f, flash * 0.25f, flash * 0.2f)
         if (lastMesh !== mesh) {
@@ -231,7 +242,16 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         placeBox(0f, 0.6f, -h + 0.2f, h * 2f, 1.2f, 0.4f)
         drawSolid(boxMesh, modelScratch, 0xB8862B, 0.2f)
 
+        // Anything between the camera and the pilot is held back for the
+        // see-through pass, so cover can never hide your own machine.
+        occluders.clear()
+        val eye = camera.position
+        val target = game.battle.player.center
         for (o in arena.obstacles) {
+            if (o.segmentT(eye, target) != null) {
+                occluders += o
+                continue
+            }
             when (o) {
                 is Obstacle.Box -> {
                     placeBox(o.center.x, o.height * 0.5f, o.center.z, o.halfX * 2f, o.height, o.halfZ * 2f)
@@ -248,6 +268,32 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
                 }
             }
         }
+    }
+
+    /**
+     * Cover in the way of the shot is drawn as a ghost: blended, writing no
+     * depth, after the mechs, so the machine reads straight through it.
+     */
+    private fun drawOccluders() {
+        if (occluders.isEmpty()) return
+        GLES30.glEnable(GLES30.GL_BLEND)
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
+        GLES30.glDepthMask(false)
+        beginSolid()
+        for (o in occluders) {
+            when (o) {
+                is Obstacle.Box -> {
+                    placeBox(o.center.x, o.height * 0.5f, o.center.z, o.halfX * 2f, o.height, o.halfZ * 2f)
+                    drawSolid(boxMesh, modelScratch, 0x8FA0A8, 0.25f, alpha = 0.30f)
+                }
+                is Obstacle.Cylinder -> {
+                    placeBox(o.center.x, o.height * 0.5f, o.center.z, o.radius * 2f, o.height, o.radius * 2f)
+                    drawSolid(cylMesh, modelScratch, 0x8FA0A8, 0.25f, alpha = 0.30f)
+                }
+            }
+        }
+        GLES30.glDepthMask(true)
+        GLES30.glDisable(GLES30.GL_BLEND)
     }
 
     private fun placeBox(x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float) {

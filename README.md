@@ -51,6 +51,7 @@ tools/run_on_device.sh                # ビルド→インストール→起動�
 | --- | --- |
 | 移動 | 左スティック（前後左右。ロックオン中は自動で敵を向く） |
 | 旋回 | 画面右側を左右にドラッグ |
+| 左右反転 | タイトルの `LAYOUT` で左利き配置に切り替え |
 | RW（右武器） | `RW` ボタン |
 | LW（左武器） | `LW` ボタン |
 | CW（中央武器） | `CW` ボタン（= RW + LW 同時押し） |
@@ -120,6 +121,7 @@ AI の反応速度・射撃精度・攻め気だけが変わり、性能面の�
 ```
 core/   純 Kotlin の戦闘シミュレーション（Android 非依存 → JVM でテスト可能）
         MathUtil / Arena / MechSpec / Mech / Projectile / Battle / AiPilot / Input
+        Layout（HUD・ボタン・メニューの配置。実機で確認しづらいのでテストで担保）
 tools/  check_shaders.py（実 GLES3 でシェーダ検証 + HUD が実際に描画されるかの確認）
         run_on_device.sh（実機での起動確認とログ・フレーム統計の収集）
 app/    Android + OpenGL ES 3.0 の表示・入力・音

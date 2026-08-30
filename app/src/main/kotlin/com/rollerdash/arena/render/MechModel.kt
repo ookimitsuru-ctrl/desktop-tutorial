@@ -189,7 +189,9 @@ class MechModel(private val box: Mesh, private val cyl: Mesh) {
         trim: Int,
         flash: Float,
     ) {
-        val side = if (slot == WeaponSlot.RIGHT) 1f else -1f
+        // Model space +X is the machine's left (rotateY maps it opposite the
+        // camera's right axis), so the right-hand weapon hangs off -X.
+        val side = if (slot == WeaponSlot.RIGHT) -1f else 1f
         val firingThis = mech.action?.slot == slot || mech.action?.slot == WeaponSlot.CENTER
         val recoil = if (firingThis) st.armRecoil else 0f
         val melee = mech.action?.spec?.kind == ProjectileKind.MELEE && firingThis
