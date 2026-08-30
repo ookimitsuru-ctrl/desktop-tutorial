@@ -109,13 +109,14 @@ html, body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- radar ---------- */
+/* Tucked into the top-right corner (under the enemy gauge) instead of the
+   center column, so the center only carries the timer and stays uncluttered. */
 #radar {
   position: absolute;
-  top: 62px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90px;
-  height: 90px;
+  top: 54px;
+  right: 12px;
+  width: 76px;
+  height: 76px;
   border: 1px solid var(--panel-line);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(75,227,255,0.08), rgba(0,0,0,0.35));

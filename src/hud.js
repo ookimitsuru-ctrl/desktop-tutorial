@@ -26,12 +26,20 @@ export class HUD {
 
     this.timerEl.textContent = Math.max(0, Math.ceil(timer));
 
-    // radar: top-down relative position of enemy around player, clamped to radar radius
+    // radar: relative position of enemy around player, ROTATED to match the
+    // player's current facing (same convention as movement/camera: "forward"
+    // points up, "screen-right" points right) so it agrees with what's on
+    // screen instead of showing a fixed world-north-up map.
     const dx = enemy.position.x - player.position.x;
     const dz = enemy.position.z - player.position.z;
+    const facing = player.facing;
+    const forwardX = Math.sin(facing), forwardZ = Math.cos(facing);
+    const rightX = -forwardZ, rightZ = forwardX;
+    const radarRight = dx * rightX + dz * rightZ;
+    const radarForward = dx * forwardX + dz * forwardZ;
     const scale = 3.2; // world units per radar px
-    const rx = Math.max(-38, Math.min(38, dx / scale * 10));
-    const ry = Math.max(-38, Math.min(38, dz / scale * 10));
+    const rx = Math.max(-38, Math.min(38, (radarRight / scale) * 10));
+    const ry = Math.max(-38, Math.min(38, (-radarForward / scale) * 10));
     this.radarEnemyDot.style.transform = `translate(calc(-50% + ${rx}px), calc(-50% + ${ry}px))`;
 
     // lock reticle screen position (project enemy world pos)
