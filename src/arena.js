@@ -50,6 +50,8 @@ export function buildArena(scene) {
     side: THREE.DoubleSide,
     emissive: 0x1c4c66,
     emissiveIntensity: 0.4,
+    transparent: true,
+    opacity: 1,
   });
   const wall = new THREE.Mesh(wallGeo, wallMat);
   wall.position.y = 1.6;
@@ -74,9 +76,10 @@ export function buildArena(scene) {
     scene.add(box);
   }
 
-  // scattered cover obstacles inside the arena
+  // scattered cover obstacles inside the arena. Each gets its own material
+  // instance (not shared) so individual crates can fade independently when
+  // they block the view of the player.
   const obstacles = [];
-  const obstacleMat = new THREE.MeshStandardMaterial({ color: 0x3a4147, roughness: 0.8, metalness: 0.3 });
   const layout = [
     [10, 8],
     [-11, -6],
@@ -85,7 +88,15 @@ export function buildArena(scene) {
   ];
   layout.forEach(([x, z]) => {
     const size = rand(2.6, 3.6);
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size * 1.4, size), obstacleMat);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x3a4147,
+      roughness: 0.8,
+      metalness: 0.3,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 1,
+    });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size * 1.4, size), mat);
     mesh.position.set(x, (size * 1.4) / 2, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -93,5 +104,9 @@ export function buildArena(scene) {
     obstacles.push({ mesh, x, z, radius: size * 0.62 });
   });
 
-  return { radius: ARENA_RADIUS, obstacles };
+  // occluders: everything that can end up between the chase camera and the
+  // player, and should fade out rather than fill the screen when it does
+  const occluders = [{ mesh: wall, baseOpacity: 1 }, ...obstacles.map((o) => ({ mesh: o.mesh, baseOpacity: 1 }))];
+
+  return { radius: ARENA_RADIUS, obstacles, wall, occluders };
 }

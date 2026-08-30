@@ -7,6 +7,7 @@ import { CameraRig } from "./camera.js";
 import { EnemyAI } from "./ai.js";
 import { HUD } from "./hud.js";
 import { sfx } from "./audio.js";
+import { OcclusionFader } from "./occlusion.js";
 import { clamp, dist2D } from "./utils.js";
 
 const canvas = document.getElementById("scene");
@@ -62,6 +63,7 @@ const enemy = new Mech(
 );
 
 const cameraRig = new CameraRig(camera);
+const occlusionFader = new OcclusionFader(arena.occluders);
 const input = new InputController();
 const projectiles = new ProjectileSystem(scene);
 const ai = new EnemyAI();
@@ -308,6 +310,7 @@ function animate() {
 
   shake = Math.max(0, shake - dt * 1.4);
   cameraRig.update(dt, player, enemy, 0, shake);
+  occlusionFader.update(dt, camera, player.position);
   hud.update({ player, enemy, timer, camera });
 
   renderer.render(scene, camera);
