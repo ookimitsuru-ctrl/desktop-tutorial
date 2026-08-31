@@ -62,12 +62,16 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     private lateinit var brightProgram: ShaderProgram
     private lateinit var blurProgram: ShaderProgram
     private lateinit var compositeProgram: ShaderProgram
+    private lateinit var fxaaProgram: ShaderProgram
 
     private lateinit var boxMesh: Mesh
     private lateinit var cylMesh: Mesh
     private lateinit var groundMesh: Mesh
     private lateinit var skyMesh: Mesh
     private lateinit var ruinsMesh: Mesh
+    private lateinit var propConcreteMesh: Mesh
+    private lateinit var propMetalMesh: Mesh
+    private lateinit var propLampMesh: Mesh
 
     private lateinit var mechModel: MechModel
     private lateinit var font: FontAtlas
@@ -76,6 +80,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     private lateinit var painter: HudPainter
 
     private var scene: RenderTarget? = null
+    private var graded: RenderTarget? = null
     private var bloom: BloomChain? = null
     private lateinit var shadowMap: ShadowMap
 
@@ -120,12 +125,16 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         brightProgram = ShaderProgram(Shaders.POST_VS, Shaders.BRIGHT_FS, "bright")
         blurProgram = ShaderProgram(Shaders.POST_VS, Shaders.BLUR_FS, "blur")
         compositeProgram = ShaderProgram(Shaders.POST_VS, Shaders.COMPOSITE_FS, "composite")
+        fxaaProgram = ShaderProgram(Shaders.POST_VS, Shaders.FXAA_FS, "fxaa")
 
         boxMesh = MeshBuilder.box()
         cylMesh = MeshBuilder.cylinder(20)
         groundMesh = MeshBuilder.groundQuad()
         skyMesh = MeshBuilder.skyDome(12, 24)
         ruinsMesh = buildRuins()
+        propConcreteMesh = buildRubble()
+        propMetalMesh = buildMetalProps()
+        propLampMesh = buildLamps()
 
         mechModel = MechModel(boxMesh, cylMesh)
         font = FontAtlas()
@@ -149,8 +158,10 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         game.layout(width, height)
 
         scene?.release()
+        graded?.release()
         bloom?.release()
         scene = RenderTarget(width, height, GLES30.GL_R11F_G11F_B10F, withDepth = true)
+        graded = RenderTarget(width, height, GLES30.GL_RGBA8)
         bloom = BloomChain(width, height)
     }
 
@@ -172,7 +183,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
             mechModel.update(game.renderStates[i], battle.mechs[i], dt)
         }
         if (game.state == AppState.BATTLE || game.state == AppState.PAUSED) {
-            camera.updateBattle(dt, battle, game.cameraShake)
+            camera.updateBattle(dt, battle, game.cameraShake, game.dramaFocus)
         } else {
             camera.updateOrbit(dt, battle)
         }
@@ -181,6 +192,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         renderScene()
         renderBloom()
         composite()
+        antialias()
         drawOverlay()
     }
 
@@ -219,6 +231,9 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
                 }
             }
         }
+        Matrix.setIdentityM(modelScratch, 0)
+        drawDepth(propConcreteMesh, modelScratch)
+        drawDepth(propMetalMesh, modelScratch)
         for ((i, mech) in game.battle.mechs.withIndex()) {
             stack.identity()
             stack.translate(mech.pos.x, mech.pos.y, mech.pos.z)
@@ -291,7 +306,6 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         Matrix.scaleM(modelScratch, 0, 380f, 240f, 380f)
         Matrix.multiplyMM(mvp, 0, camera.viewProj, 0, modelScratch, 0)
         skyProgram.setMat4("uMVP", mvp)
-        skyProgram.setMat4("uModel", modelScratch)
         skyProgram.setVec3("uHorizon", 0.48f, 0.34f, 0.24f)
         skyProgram.setVec3("uZenith", 0.05f, 0.10f, 0.26f)
         skyMesh.bind(skyProgram)
@@ -391,6 +405,13 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
             placeBox(s * (h - 0.3f), 0.9f, 0f, 0.5f, 1.8f, h * 2f)
             drawSolid(boxMesh, modelScratch, 0xC08A22, 0.06f, material = MATERIAL_ARMOR, panelScale = 0.5f, wear = 0.9f)
         }
+
+        // Set dressing: rubble, drums, floodlight masts, and one machine that
+        // did not make it out of an earlier round.
+        Matrix.setIdentityM(modelScratch, 0)
+        drawSolid(propConcreteMesh, modelScratch, 0x5A5E60, 0f, material = MATERIAL_CONCRETE, panelScale = 1.0f)
+        drawSolid(propMetalMesh, modelScratch, 0x6B6257, 0f, material = MATERIAL_METAL, panelScale = 2.2f)
+        drawSolid(propLampMesh, modelScratch, 0xFFE2A8, 0.85f, material = MATERIAL_LENS)
 
         occluders.clear()
         val eye = camera.position
@@ -589,8 +610,11 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     private fun composite() {
         val target = scene ?: return
         val chain = bloom ?: return
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, outputFramebuffer)
-        GLES30.glViewport(0, 0, viewWidth, viewHeight)
+        val out = graded
+        if (out != null) out.bind() else {
+            GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, outputFramebuffer)
+            GLES30.glViewport(0, 0, viewWidth, viewHeight)
+        }
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         GLES30.glDisable(GLES30.GL_BLEND)
         compositeProgram.use()
@@ -613,6 +637,20 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         compositeProgram.setFloat("uDamage", damage)
         val aspect = viewWidth.toFloat() / maxOf(1, viewHeight).toFloat()
         compositeProgram.setVec2("uAspect", maxOf(1f, aspect), maxOf(1f, 1f / aspect))
+        fullscreen()
+    }
+
+    /** Resolves the graded image to the screen, smoothing the stair-steps. */
+    private fun antialias() {
+        val source = graded ?: return
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, outputFramebuffer)
+        GLES30.glViewport(0, 0, viewWidth, viewHeight)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        GLES30.glDisable(GLES30.GL_BLEND)
+        fxaaProgram.use()
+        source.bindTexture(0)
+        fxaaProgram.setInt("uImage", 0)
+        fxaaProgram.setVec2("uTexel", 1f / viewWidth, 1f / viewHeight)
         fullscreen()
     }
 
@@ -642,12 +680,22 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
                 game.hud.draw(painter, game.battle, { p -> camera.project(p) }, 0f)
                 game.pauseMenu.draw(painter, "PAUSED", "ROUND ${game.battle.roundNumber}", "TAP A LINE TO CHOOSE")
             }
-            AppState.TITLE -> game.titleMenu.draw(
-                painter,
-                "ROLLERDASH ARENA",
-                "ARMORED TROOPER DUEL",
-                "TAP A ROW TO CHANGE  -  TAP START TO DEPLOY",
-            )
+            AppState.TITLE -> {
+                game.titleMenu.draw(
+                    painter,
+                    "ROLLERDASH ARENA",
+                    "ARMORED TROOPER DUEL",
+                    "",
+                )
+                val unit = minOf(viewWidth * 0.55f, viewHeight.toFloat())
+                val cardW = unit * 0.46f
+                game.hud.drawSpecCard(
+                    painter, game.previewSpec,
+                    viewWidth - unit * 0.05f - cardW,
+                    viewHeight - unit * 0.05f - unit * 0.34f,
+                    cardW, unit,
+                )
+            }
             AppState.RESULT -> {
                 val lines = game.resultLines()
                 game.resultMenu.draw(painter, lines.first(), lines.drop(1).joinToString("   "), "TAP A LINE TO CHOOSE")
@@ -660,6 +708,81 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     }
 
     // ---- scenery -------------------------------------------------------------
+
+    /** Broken slabs and craters pushed against the walls of the pit. */
+    private fun buildRubble(): Mesh {
+        val b = MeshBuilder()
+        val rng = Rng(4242L)
+        repeat(46) {
+            val angle = rng.range(0f, 6.28318f)
+            val dist = rng.range(44f, 57f)
+            val x = sin(angle) * dist
+            val z = cos(angle) * dist
+            val chunks = 2 + rng.nextInt(4)
+            for (c in 0 until chunks) {
+                val w = rng.range(0.8f, 3.2f)
+                val hgt = rng.range(0.25f, 0.9f)
+                b.addBox(
+                    x + rng.range(-1.8f, 1.8f), hgt * 0.5f, z + rng.range(-1.8f, 1.8f),
+                    w, hgt, rng.range(0.8f, 3.0f), rng.range(0.8f, 1.05f),
+                )
+            }
+        }
+        return b.build()
+    }
+
+    /** Fuel drums, crates and a wrecked trooper against the north wall. */
+    private fun buildMetalProps(): Mesh {
+        val b = MeshBuilder()
+        val rng = Rng(777L)
+        repeat(22) {
+            val angle = rng.range(0f, 6.28318f)
+            val dist = rng.range(48f, 57f)
+            val x = sin(angle) * dist
+            val z = cos(angle) * dist
+            if (rng.chance(0.55f)) {
+                // Drum, mostly knocked over: nothing here should stand tall
+                // enough for a machine to look like it is walking through it.
+                if (rng.chance(0.35f)) {
+                    b.addBox(x, 0.55f, z, 1.0f, 1.1f, 1.0f, 0.95f)
+                    b.addBox(x, 1.12f, z, 1.1f, 0.10f, 1.1f, 1.05f)
+                } else {
+                    b.addBox(x, 0.45f, z, 1.4f, 0.9f, 1.0f, 0.9f)
+                }
+            } else {
+                b.addBox(x, 0.45f, z, rng.range(1.4f, 2.4f), 0.9f, rng.range(1.4f, 2.2f), 0.92f)
+            }
+        }
+        // Floodlight masts stand outside the pit and look in over the wall.
+        for (sx in intArrayOf(-1, 1)) {
+            for (sz in intArrayOf(-1, 1)) {
+                val x = sx * 68f
+                val z = sz * 68f
+                b.addBox(x, 11f, z, 1.4f, 22f, 1.4f, 0.9f)
+                b.addBox(x, 1.2f, z, 3.2f, 0.6f, 3.2f, 0.8f)
+                b.addBox(x - sx * 1.4f, 21.4f, z - sz * 1.4f, 3.6f, 1.1f, 3.6f, 1.0f)
+            }
+        }
+        // The wreck: a trooper that lost, face down in a corner.
+        val wx = -52f
+        val wz = 46f
+        b.addBox(wx, 1.1f, wz, 4.4f, 2.2f, 3.0f, 0.85f)
+        b.addBox(wx + 2.4f, 0.7f, wz + 1.2f, 3.2f, 1.4f, 1.6f, 0.8f)
+        b.addBox(wx - 2.6f, 0.6f, wz - 1.0f, 2.6f, 1.2f, 1.4f, 0.8f)
+        b.addBox(wx + 0.6f, 2.6f, wz - 1.6f, 1.8f, 1.0f, 1.6f, 0.9f)
+        return b.build()
+    }
+
+    /** The lamp heads themselves, drawn as emissive so they bloom at dusk. */
+    private fun buildLamps(): Mesh {
+        val b = MeshBuilder()
+        for (sx in intArrayOf(-1, 1)) {
+            for (sz in intArrayOf(-1, 1)) {
+                b.addBox(sx * 68f - sx * 1.8f, 21.0f, sz * 68f - sz * 1.8f, 2.6f, 0.6f, 2.6f, 1f)
+            }
+        }
+        return b.build()
+    }
 
     /** A ring of bombed-out blocks on the horizon, so the pit sits in a place. */
     private fun buildRuins(): Mesh {

@@ -376,6 +376,54 @@ class Hud {
         p.rect(w - t, 0f, t, h, 1f, 0.18f, 0.12f, a)
     }
 
+    /**
+     * The machine's card on the title screen: designation, name, and the four
+     * numbers that actually decide how it plays.
+     */
+    fun drawSpecCard(
+        p: HudPainter,
+        spec: com.rollerdash.arena.core.AtSpec,
+        x: Float,
+        y: Float,
+        w: Float,
+        unit: Float,
+    ) {
+        val pad = unit * 0.022f
+        val labelSize = unit * 0.030f
+        val barH = unit * 0.020f
+        val rowH = barH + labelSize * 1.5f
+        val h = pad * 2f + unit * 0.055f + unit * 0.075f + rowH * 4f
+
+        p.rect(x, y, w, h, 0.02f, 0.035f, 0.035f, 0.72f)
+        p.rect(x, y, w, unit * 0.004f, 0.95f, 0.7f, 0.3f, 0.7f)
+        p.text(spec.codeName, x + pad, y + pad, labelSize, 0.95f, 0.72f, 0.3f, 0.95f)
+        p.text(spec.displayName, x + pad, y + pad + labelSize * 1.5f, unit * 0.052f, 0.92f, 0.96f, 0.92f, 1f)
+
+        val rw = spec.weapon(
+            com.rollerdash.arena.core.WeaponSlot.RIGHT,
+            com.rollerdash.arena.core.Stance.GROUND,
+        )
+        val cw = spec.weapon(
+            com.rollerdash.arena.core.WeaponSlot.CENTER,
+            com.rollerdash.arena.core.Stance.GROUND,
+        )
+        val stats = listOf(
+            "ARMOR" to spec.armor / 1500f,
+            "SPEED" to spec.dashSpeed / 35f,
+            "BOOST" to spec.boostRegen / 0.34f,
+            "POWER" to (rw.damage * rw.shots + cw.damage) / 620f,
+        )
+        var barY = y + pad + unit * 0.055f + unit * 0.075f
+        for ((label, valueRaw) in stats) {
+            val value = clamp(valueRaw, 0.06f, 1f)
+            p.text(label, x + pad, barY, labelSize, 0.72f, 0.82f, 0.76f, 0.9f)
+            val barX = x + pad + unit * 0.13f
+            val barW = w - (barX - x) - pad
+            p.gauge(barX, barY, barW, barH, value, value, 5, 0.95f, 0.78f, 0.32f)
+            barY += rowH
+        }
+    }
+
     private fun drawBanner(p: HudPainter) {
         if (bannerTimer <= 0f) return
         val a = clamp(bannerTimer * 1.6f, 0f, 1f)

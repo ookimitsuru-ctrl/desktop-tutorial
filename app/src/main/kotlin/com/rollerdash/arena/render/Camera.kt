@@ -41,7 +41,7 @@ class Camera {
         Matrix.perspectiveM(proj, 0, fov, aspect, 0.35f, 520f)
     }
 
-    fun updateBattle(dt: Float, battle: Battle, shake: Float) {
+    fun updateBattle(dt: Float, battle: Battle, shake: Float, dramaFocus: Vec3? = null) {
         val player = battle.player
         val enemy = battle.enemy
         val toEnemy = Vec3(enemy.pos.x - player.pos.x, 0f, enemy.pos.z - player.pos.z)
@@ -64,6 +64,19 @@ class Camera {
             enemy.center + Vec3(0f, 1.4f, 0f),
             0.30f,
         )
+
+        if (dramaFocus != null) {
+            // Slow motion after a kill: push in on the wreck from where we are.
+            val toWreck = (dramaFocus - position).flatNormalized()
+            val close = dramaFocus - toWreck * 7.0f + Vec3(0f, 2.6f, 0f)
+            position = damp(position, close, 3.2f, dt)
+            lookAt = damp(lookAt, dramaFocus + Vec3(0f, 0.9f, 0f), 4.5f, dt)
+            fovKick = damp(fovKick, -6f, 3f, dt)
+            Matrix.perspectiveM(proj, 0, fov + fovKick, aspect, 0.35f, 520f)
+            applyShake(dt, shake)
+            buildMatrices()
+            return
+        }
 
         position = damp(position, desired, 7.5f, dt)
         lookAt = damp(lookAt, desiredLook, 10f, dt)
@@ -98,14 +111,25 @@ class Camera {
         return fallback
     }
 
-    /** Slow orbit used behind the menus. */
+    /**
+     * Attract camera: a slow, low three-quarter orbit of the machine on show.
+     * The aim point is pushed sideways so the mech sits to the right of the
+     * screen, clear of the menu column.
+     */
     fun updateOrbit(dt: Float, battle: Battle) {
-        orbit += dt * 0.22f
-        val center = battle.player.center
-        val r = 17f
-        val desired = center + Vec3(sin(orbit) * r, 7.5f, cos(orbit) * r)
-        position = damp(position, desired, 3.5f, dt)
-        lookAt = damp(lookAt, center + Vec3(0f, 0.8f, 0f), 4f, dt)
+        orbit += dt * 0.13f
+        val center = battle.player.center + Vec3(0f, 0.2f, 0f)
+        val r = 14.5f
+        val desired = center + Vec3(sin(orbit) * r, 3.4f + sin(orbit * 0.7f) * 0.7f, cos(orbit) * r)
+        position = damp(position, desired, 3.0f, dt)
+
+        // Shift the aim off to one side; the machine slides the other way.
+        val toCenter = (center - desired).flatNormalized()
+        val side = Vec3(-toCenter.z, 0f, toCenter.x)
+        lookAt = damp(lookAt, center - side * 4.6f + Vec3(0f, 0.4f, 0f), 3.5f, dt)
+
+        fovKick = damp(fovKick, 0f, 4f, dt)
+        Matrix.perspectiveM(proj, 0, fov + fovKick, aspect, 0.35f, 520f)
         shakeX = 0f
         shakeY = 0f
         buildMatrices()

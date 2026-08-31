@@ -108,7 +108,21 @@ def actives(prog):
     return names
 
 text = open(os.path.join(APP, "render/Shaders.kt")).read()
-consts = dict(re.findall(r'const val (\w+) = """(.*?)"""', text, re.S))
+consts = dict(re.findall(r'(?:private )?const val (\w+) = """(.*?)"""', text, re.S))
+
+def expand(src, depth=0):
+    """Kotlin interpolates $NAME into raw strings; GLSL needs the expansion."""
+    if depth > 4:
+        return src
+    def sub(match):
+        name = match.group(1)
+        return expand(consts[name], depth + 1) if name in consts else match.group(0)
+    return re.sub(r'\$(\w+)', sub, src)
+
+consts = {name: expand(body) for name, body in consts.items()}
+unexpanded = [n for n, b in consts.items() if re.search(r'\$\w+', b)]
+if unexpanded:
+    print("WARNING: unresolved interpolation in: " + ", ".join(unexpanded))
 print("found shader constants:", ", ".join(sorted(consts)), "\n")
 
 pairs = [("solid", "SOLID_VS", "SOLID_FS"), ("floor", "SOLID_VS", "FLOOR_FS"),

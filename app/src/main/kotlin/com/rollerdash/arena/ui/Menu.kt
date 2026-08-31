@@ -1,5 +1,6 @@
 package com.rollerdash.arena.ui
 
+import com.rollerdash.arena.core.MenuAlign
 import com.rollerdash.arena.core.MenuLayout
 import com.rollerdash.arena.render.HudPainter
 
@@ -21,14 +22,20 @@ class MenuRow(
  * Geometry comes from [MenuLayout], which shrinks the rows to fit rather than
  * letting them run into the title or the footer.
  */
-class Menu(private val rows: List<MenuRow>) {
+class Menu(private val rows: List<MenuRow>, private val align: MenuAlign = MenuAlign.CENTER) {
+
+    private companion object {
+        /** The blurb gets two lines; anything more collides with the footer. */
+        const val MAX_DETAIL_LINES = 2
+    }
+
     var cursor = 0
         private set
 
     private var layout: MenuLayout? = null
 
     fun layout(width: Int, height: Int) {
-        layout = MenuLayout(width.toFloat(), height.toFloat(), rows.size)
+        layout = MenuLayout(width.toFloat(), height.toFloat(), rows.size, align)
     }
 
     fun moveCursor(delta: Int) {
@@ -59,11 +66,44 @@ class Menu(private val rows: List<MenuRow>) {
         return true
     }
 
+    private fun wrap(text: String, maxWidth: Float, size: Float, p: HudPainter): List<String> {
+        val words = text.split(' ')
+        val lines = ArrayList<String>(2)
+        var current = StringBuilder()
+        for (word in words) {
+            val candidate = if (current.isEmpty()) word else "$current $word"
+            if (p.font.measure(candidate, size) > maxWidth && current.isNotEmpty()) {
+                lines += current.toString()
+                current = StringBuilder(word)
+                if (lines.size == MAX_DETAIL_LINES) {
+                    current = StringBuilder()
+                    break
+                }
+            } else {
+                current = StringBuilder(candidate)
+            }
+        }
+        if (lines.size < MAX_DETAIL_LINES && current.isNotEmpty()) lines += current.toString()
+        return lines
+    }
+
     fun draw(p: HudPainter, title: String, subtitle: String, footer: String) {
         val l = layout ?: return
-        p.rect(0f, 0f, l.width, l.height, 0.03f, 0.04f, 0.04f, 0.80f)
-        p.text(title, l.width * 0.5f, l.title.y, l.titleSize, 1f, 0.86f, 0.42f, 1f, centered = true)
-        p.text(subtitle, l.width * 0.5f, l.subtitle.y, l.subtitleSize, 0.8f, 0.9f, 0.8f, 0.9f, centered = true)
+        val panel = l.panel
+        if (panel != null) {
+            // Side panel: the machine stays on show next to the menu.
+            p.rect(panel.x, panel.y, panel.w, panel.h, 0.02f, 0.035f, 0.035f, 0.80f)
+            p.rect(panel.right - l.unit * 0.004f, panel.y, l.unit * 0.004f, panel.h, 0.95f, 0.7f, 0.3f, 0.55f)
+        } else {
+            p.rect(0f, 0f, l.width, l.height, 0.03f, 0.04f, 0.04f, 0.80f)
+        }
+        val centred = panel == null
+        val textX = if (centred) l.width * 0.5f else l.title.x
+        p.text(title, textX, l.title.y, l.titleSize, 1f, 0.86f, 0.42f, 1f, centered = centred)
+        p.text(subtitle, textX, l.subtitle.y, l.subtitleSize, 0.8f, 0.9f, 0.8f, 0.9f, centered = centred)
+        if (!centred) {
+            p.rect(l.title.x, l.subtitle.bottom + l.unit * 0.012f, l.rowWidth * 0.55f, l.unit * 0.004f, 0.95f, 0.7f, 0.3f, 0.7f)
+        }
 
         for ((i, row) in rows.withIndex()) {
             val rect = l.rows[i]
@@ -88,8 +128,17 @@ class Menu(private val rows: List<MenuRow>) {
 
         val detail = rows[cursor].detail()
         if (detail.isNotEmpty()) {
-            p.text(detail, l.width * 0.5f, l.detail.y, l.detailSize, 0.7f, 0.85f, 0.75f, 0.9f, centered = true)
+            // Wrap to the column: the blurbs are long enough to run off it.
+            val maxWidth = if (centred) l.width * 0.8f else l.rowWidth
+            var lineY = l.detail.y
+            for (line in wrap(detail, maxWidth, l.detailSize, p)) {
+                p.text(line, textX, lineY, l.detailSize, 0.7f, 0.85f, 0.75f, 0.9f, centered = centred)
+                lineY += l.detailSize * 1.35f
+            }
         }
-        p.text(footer, l.width * 0.5f, l.footer.y, l.footerSize, 0.65f, 0.8f, 0.65f, 0.85f, centered = true)
+        p.text(
+            footer, if (centred) l.width * 0.5f else l.footer.x, l.footer.y, l.footerSize,
+            0.65f, 0.8f, 0.65f, 0.85f, centered = centred,
+        )
     }
 }

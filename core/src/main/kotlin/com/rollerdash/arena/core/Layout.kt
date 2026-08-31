@@ -169,38 +169,64 @@ class ControlLayout(
         ) + buttons.map { it.id.name to it.disc }
 }
 
+/** Where a menu sits: filling the screen, or as a panel down one side. */
+enum class MenuAlign { CENTER, LEFT }
+
 /**
  * Menu screens. Rows shrink to fit rather than running into the title or the
  * footer, which is what went wrong on a real handset.
+ *
+ * [MenuAlign.LEFT] puts the whole menu in a column on the left, which is how
+ * the title screen keeps the machine you are choosing in view beside it.
  */
-class MenuLayout(val width: Float, val height: Float, val rowCount: Int) {
+class MenuLayout(
+    val width: Float,
+    val height: Float,
+    val rowCount: Int,
+    val align: MenuAlign = MenuAlign.CENTER,
+) {
     val unit = min(width * 0.55f, height)
+    private val left = align == MenuAlign.LEFT
 
-    val titleSize = unit * 0.105f
-    val subtitleSize = unit * 0.038f
-    val detailSize = unit * 0.034f
-    val footerSize = unit * 0.036f
+    val titleSize = unit * (if (left) 0.070f else 0.105f)
+    val subtitleSize = unit * 0.036f
+    val detailSize = unit * 0.032f
+    val footerSize = unit * 0.034f
     val rowTextSize: Float
 
-    val title = Rect(0f, height * 0.055f, width, titleSize)
-    val subtitle = Rect(0f, title.bottom + unit * 0.025f, width, subtitleSize)
-    val footer = Rect(0f, height - unit * 0.055f - footerSize, width, footerSize)
+    val rowWidth = if (left) min(width * 0.44f, unit * 0.92f) else min(width * 0.66f, unit * 0.98f)
+    private val columnX = if (left) unit * 0.06f else (width - rowWidth) * 0.5f
 
-    val rowWidth = min(width * 0.66f, unit * 0.98f)
+    val title = Rect(columnX, height * (if (left) 0.075f else 0.055f), rowWidth, titleSize)
+    val subtitle = Rect(columnX, title.bottom + unit * 0.022f, rowWidth, subtitleSize)
+    val footer = Rect(
+        if (left) columnX else 0f, height - unit * 0.05f - footerSize,
+        if (left) rowWidth else width, footerSize,
+    )
+
     val rowGap = unit * 0.013f
     val rows: List<Rect>
     val detail: Rect
 
+    /** Panel drawn behind the column, when there is one. */
+    val panel: Rect?
+
     init {
-        val top = subtitle.bottom + unit * 0.045f
-        val detailHeight = detailSize * 1.6f
+        val top = subtitle.bottom + unit * 0.04f
+        val detailHeight = detailSize * 1.8f
         val available = footer.y - unit * 0.03f - top - detailHeight
-        val rowHeight = min(unit * 0.098f, (available - rowGap * (rowCount - 1)) / rowCount)
-        val x = (width - rowWidth) * 0.5f
-        rows = (0 until rowCount).map { Rect(x, top + it * (rowHeight + rowGap), rowWidth, rowHeight) }
-        rowTextSize = rowHeight * 0.46f
+        val rowHeight = min(unit * 0.094f, (available - rowGap * (rowCount - 1)) / rowCount)
+        rows = (0 until rowCount).map {
+            Rect(columnX, top + it * (rowHeight + rowGap), rowWidth, rowHeight)
+        }
+        rowTextSize = rowHeight * 0.44f
         val lastBottom = rows.lastOrNull()?.bottom ?: top
-        detail = Rect(0f, lastBottom + unit * 0.020f, width, detailSize)
+        detail = Rect(columnX, lastBottom + unit * 0.018f, rowWidth, detailSize)
+        panel = if (left) {
+            Rect(0f, 0f, columnX + rowWidth + unit * 0.06f, height)
+        } else {
+            null
+        }
     }
 
     fun boxes(): List<Pair<String, Rect>> =

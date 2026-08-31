@@ -7,7 +7,10 @@ import com.rollerdash.arena.core.EventType
 import com.rollerdash.arena.core.Roster
 import com.rollerdash.arena.core.RoundPhase
 import com.rollerdash.arena.core.Vec3
+import com.rollerdash.arena.core.PI_F
 import com.rollerdash.arena.core.clamp
+import com.rollerdash.arena.core.lerp
+import com.rollerdash.arena.core.wrapAngle
 import com.rollerdash.arena.core.forwardOf
 import com.rollerdash.arena.core.rightOf
 import com.rollerdash.arena.render.Effects
@@ -62,9 +65,18 @@ class Game(private val audio: Audio) {
     private var dustTimer = 0f
     private var burnTimer = 0f
     private var smokeTimer = 0f
+    private val stepMarker = intArrayOf(-1, -1)
+
+    /** Seconds of slow motion left after a kill. */
+    private var slowMo = 0f
+
+    /** Where the camera should push in during the slow motion, if anywhere. */
+    var dramaFocus: Vec3? = null
+        private set
 
     val titleMenu = Menu(
-        listOf(
+        align = com.rollerdash.arena.core.MenuAlign.LEFT,
+        rows = listOf(
             MenuRow("MACHINE", { Roster.all[playerIndex].displayName }, { d ->
                 playerIndex = (playerIndex + d + Roster.all.size) % Roster.all.size
                 battle = newBattle()
@@ -102,6 +114,9 @@ class Game(private val audio: Audio) {
             MenuRow("START BATTLE", { "" }, isAction = true, onSelect = { startBattle() }),
         ),
     )
+
+    /** The machine the title screen is showing off. */
+    val previewSpec: com.rollerdash.arena.core.AtSpec get() = Roster.all[playerIndex]
 
     val pauseMenu = Menu(
         listOf(
@@ -144,6 +159,8 @@ class Game(private val audio: Audio) {
         battle = newBattle()
         effects.clear()
         lights.clear()
+        slowMo = 0f
+        dramaFocus = null
         cameraShake = 0f
         state = AppState.BATTLE
         hud.showBanner("ROUND 1", "READY", 2.0f)
@@ -172,15 +189,39 @@ class Game(private val audio: Audio) {
 
         when (state) {
             AppState.BATTLE -> updateBattle(dt)
-            AppState.PAUSED, AppState.TITLE, AppState.RESULT -> effects.update(dt * 0.35f)
+            AppState.TITLE -> {
+                // The machine on show stands on the middle platform, turning
+                // slowly, lit by a key light refreshed every frame.
+                val m = battle.player
+                val pedestal = arena.groundHeightAt(Vec3.ZERO)
+                m.pos = Vec3(0f, pedestal, 0f)
+                m.vel = Vec3.ZERO
+                m.yaw = wrapAngle(m.yaw + dt * 0.28f)
+                lights.add(
+                    m.center + forwardOf(m.yaw) * 4.5f + Vec3(2.5f, 3.2f, 0f),
+                    1f, 0.86f, 0.66f, 2.6f, 16f, 0.2f,
+                )
+                effects.update(dt * 0.35f)
+            }
+            AppState.PAUSED, AppState.RESULT -> effects.update(dt * 0.35f)
         }
     }
 
     private fun updateBattle(dt: Float) {
-        battle.update(dt, controls.input())
+        // A kill drops the world into slow motion for a beat and pushes the
+        // camera in on the wreck: the round should land, not just stop.
+        if (slowMo > 0f) slowMo -= dt
+        val scale = when {
+            slowMo <= 0f -> 1f
+            slowMo > 0.6f -> 0.30f
+            else -> lerp(0.30f, 1f, 1f - slowMo / 0.6f)
+        }
+        val step = dt * scale
+        battle.update(step, controls.input())
         consumeEvents()
-        emitContinuousEffects(dt)
-        effects.update(dt)
+        emitContinuousEffects(step)
+        effects.update(step)
+        dramaFocus = if (slowMo > 0f) battle.mechs.firstOrNull { !it.alive }?.center else null
         // Cosmetic mech state is smoothed by the renderer, which owns the model.
         if (battle.phase == RoundPhase.MATCH_OVER) {
             state = AppState.RESULT
@@ -229,6 +270,7 @@ class Game(private val audio: Audio) {
                 EventType.DESTROYED -> {
                     audio.play(Sfx.KO, 1f, 0.85f)
                     cameraShake = 1.4f
+                    slowMo = 1.9f
                     hud.showBanner(if (e.actor == 0) "DESTROYED" else "K.O.", "", 2.6f)
                 }
                 EventType.LOCK_ON -> audio.play(Sfx.LOCK, 0.35f, 1.2f)
@@ -266,6 +308,15 @@ class Game(private val audio: Audio) {
                     )
                 }
             }
+            // Grit kicked up as each foot comes down.
+            if (!m.airborne && m.vel.flatLength > 2.2f && !m.dashing) {
+                val stride = kotlin.math.floor(m.walkPhase * 2f / PI_F).toInt()
+                if (stride != stepMarker[m.index]) {
+                    stepMarker[m.index] = stride
+                    effects.landingDust(m.pos, 0.35f)
+                }
+            }
+
             // A machine below half armour starts trailing smoke.
             if (smokeTimer <= 0f && m.alive) {
                 val hurt = 1f - m.armorFraction

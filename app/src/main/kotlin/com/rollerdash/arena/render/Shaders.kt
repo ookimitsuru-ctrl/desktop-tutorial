@@ -225,8 +225,14 @@ object Shaders {
             float spec = pow(max(dot(n, h), 0.0), specPower) * mix(0.25, 1.4, metal) * shadow;
             float fresnel = pow(1.0 - max(dot(n, v), 0.0), 4.0);
 
+            // Rim: sky wraps the silhouette, the sun catches the far edge. This
+            // is what lifts a machine off a background of the same grey.
+            float ndv = max(dot(n, v), 0.0);
+            vec3 rim = uSkyColor * pow(1.0 - ndv, 3.0) * 1.5;
+            rim += uSunColor * pow(1.0 - ndv, 4.0) * max(dot(n, l), 0.0) * 0.35 * shadow;
+
             vec3 color = base * (ambient + diffuse + pointLights(vWorld, n)) +
-                uSunColor * spec + hemisphere(reflect(-v, n)) * fresnel * 0.35;
+                uSunColor * spec + hemisphere(reflect(-v, n)) * fresnel * 0.25 + rim * base;
             color = mix(color, uColor.rgb * 2.4, uEmissive);
             color += uFlash;
             fragColor = vec4(applyFog(color, vWorld), uColor.a);
@@ -490,6 +496,59 @@ object Shaders {
         }
     """
 
+    /**
+     * FXAA, on the finished picture. Hard-edged machinery against flat concrete
+     * is exactly the case that stair-steps worst without it.
+     */
+    const val FXAA_FS = """#version 300 es
+        precision highp float;
+        in vec2 vUV;
+        out vec4 fragColor;
+        uniform sampler2D uImage;
+        uniform vec2 uTexel;
+
+        float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+
+        void main() {
+            vec3 rgbM = texture(uImage, vUV).rgb;
+            vec3 rgbNW = texture(uImage, vUV + vec2(-1.0, -1.0) * uTexel).rgb;
+            vec3 rgbNE = texture(uImage, vUV + vec2( 1.0, -1.0) * uTexel).rgb;
+            vec3 rgbSW = texture(uImage, vUV + vec2(-1.0,  1.0) * uTexel).rgb;
+            vec3 rgbSE = texture(uImage, vUV + vec2( 1.0,  1.0) * uTexel).rgb;
+
+            float lM = luma(rgbM);
+            float lNW = luma(rgbNW);
+            float lNE = luma(rgbNE);
+            float lSW = luma(rgbSW);
+            float lSE = luma(rgbSE);
+            float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
+            float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+            if (lMax - lMin < 0.045) {
+                fragColor = vec4(rgbM, 1.0);
+                return;
+            }
+
+            vec2 dir = vec2(
+                -((lNW + lNE) - (lSW + lSE)),
+                  ((lNW + lSW) - (lNE + lSE))
+            );
+            float reduce = max((lNW + lNE + lSW + lSE) * 0.03125, 0.0078125);
+            float rcpMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+            dir = clamp(dir * rcpMin, -8.0, 8.0) * uTexel;
+
+            vec3 rgbA = 0.5 * (
+                texture(uImage, vUV + dir * (1.0 / 3.0 - 0.5)).rgb +
+                texture(uImage, vUV + dir * (2.0 / 3.0 - 0.5)).rgb
+            );
+            vec3 rgbB = rgbA * 0.5 + 0.25 * (
+                texture(uImage, vUV - dir * 0.5).rgb +
+                texture(uImage, vUV + dir * 0.5).rgb
+            );
+            float lB = luma(rgbB);
+            fragColor = vec4((lB < lMin || lB > lMax) ? rgbA : rgbB, 1.0);
+        }
+    """
+
     /** Bright pass: what is allowed to bloom. */
     const val BRIGHT_FS = """#version 300 es
         precision highp float;
@@ -594,6 +653,14 @@ object Shaders {
 
             color *= uExposure;
             color = tonemapACES(color);
+
+            // Split tone: cool shadows, warm highlights, and a little more
+            // saturation than the raw render has. This is the grade.
+            float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
+            vec3 shadowTint = vec3(0.84, 0.93, 1.14);
+            vec3 highlightTint = vec3(1.10, 1.01, 0.88);
+            color *= mix(shadowTint, highlightTint, smoothstep(0.12, 0.72, lum));
+            color = mix(vec3(lum), color, 1.14);
 
             // Damage haze: the picture goes hot and red as your armour runs out.
             color = mix(color, vec3(dot(color, vec3(0.33)) * 1.05, color.g * 0.55, color.b * 0.5), uDamage * 0.5);
