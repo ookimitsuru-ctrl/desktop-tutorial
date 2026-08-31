@@ -135,7 +135,8 @@ class Game(private val audio: Audio) {
     )
 
     val resultMenu = Menu(
-        listOf(
+        align = com.rollerdash.arena.core.MenuAlign.LEFT,
+        rows = listOf(
             MenuRow("REMATCH", { "" }, isAction = true, onSelect = { startBattle() }),
             MenuRow("CHANGE MACHINE", { "" }, isAction = true, onSelect = { toTitle() }),
         ),

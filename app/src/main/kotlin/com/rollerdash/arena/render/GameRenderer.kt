@@ -699,7 +699,15 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
             }
             AppState.RESULT -> {
                 val lines = game.resultLines()
-                game.resultMenu.draw(painter, lines.first(), lines.drop(1).joinToString("   "), "TAP A LINE TO CHOOSE")
+                game.resultMenu.draw(painter, lines.first(), lines.drop(1).joinToString("   "), "")
+                val unit = minOf(viewWidth * 0.55f, viewHeight.toFloat())
+                val cardW = unit * 0.46f
+                game.hud.drawSpecCard(
+                    painter, game.previewSpec,
+                    viewWidth - unit * 0.05f - cardW,
+                    viewHeight - unit * 0.05f - unit * 0.34f,
+                    cardW, unit,
+                )
             }
         }
         painter.flush()
