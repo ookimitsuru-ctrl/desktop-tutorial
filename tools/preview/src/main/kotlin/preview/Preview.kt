@@ -132,6 +132,14 @@ object Preview {
             pad.dash = i % 50 == 0
         }
 
+        // Drive the fight to an end so the kill and the result screen can be seen.
+        repeat(2) { round ->
+            game.battle.player.applyDamage(9999f, 1.2f, com.rollerdash.arena.core.Vec3(0f, 0f, 1f))
+            step(40, if (round == 0) mapOf(6 to "09-kill", 26 to "09b-kill-slowmo") else emptyMap()) { clearPad() }
+            step(360) { clearPad() }
+        }
+        step(90, mapOf(89 to "10-result")) { clearPad() }
+
         println("wrote ${outDir.listFiles()?.size ?: 0} images to ${outDir.absolutePath}")
     }
 
