@@ -63,19 +63,22 @@ app/src/main/java/com/bujo/app/
 - 必要環境: JDK 17、Android SDK 35（`local.properties` の `sdk.dir`、または `ANDROID_HOME`）
 - minSdk 26 / targetSdk 35（`java.time` をそのまま使うため minSdk は 26）
 
-## 検証状況
+## ビルド状況
 
-開発コンテナからは `dl.google.com`（Android Gradle Plugin と androidx の唯一の配布元、および Android SDK の配信元）へ
-到達できないため、`assembleDebug` によるフルビルドはこの環境では実行できていません。
-代わりに、依存関係なしで確認できる範囲を検証してあります。
+GitHub Actions（`.github/workflows/android.yml`）でビルドとテストを実行しています。
+[初回の実行](https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/33357060014)が
+そのままグリーンになり、UI 層を含む全ソースのコンパイル、Room のコード生成、
+APK のパッケージングまで通ることが確認できています。
 
 | 項目 | 結果 |
 | --- | --- |
-| Gradle ラッパー（8.11.1）の取得と起動 | OK |
-| `./gradlew assembleDebug` | 失敗（AGP 8.7.3 を解決できない。ネットワーク制約であってコードの問題ではない） |
-| 全 Kotlin ソースの構文チェック（kotlinc 2.0.21） | 構文エラー 0 件（残る診断はすべて androidx 不在による未解決参照） |
-| データ層（モデル / DAO / リポジトリ / 日付整形）の型チェック | OK（Room 注釈はスタブ、コルーチンは実物） |
-| ユニットテスト 10 件（記号の対応、移動、フューチャー→マンスリーの引き継ぎ、並び順） | 10 件すべて成功 |
+| `./gradlew testDebugUnitTest`（＝全ソースのコンパイル＋ユニットテスト10件） | 成功 |
+| `./gradlew assembleDebug` | 成功 |
+| デバッグ APK | 生成・アーティファクトとして保存 |
 
-UI 層（Compose）はコンパイル未検証です。手元の Android Studio / SDK のある環境で
-`./gradlew assembleDebug` を実行してください。
+APK は Actions の実行ページ下部「Artifacts」の `app-debug-apk` からダウンロードできます。
+端末の「提供元不明のアプリ」を許可すればそのままインストールできます。
+
+なお、この開発コンテナ自体からは `dl.google.com`（Android Gradle Plugin・androidx・
+Android SDK の唯一の配布元）へ到達できないため、ローカルでのビルドはできません。
+そのため CI 上でビルドしています。
