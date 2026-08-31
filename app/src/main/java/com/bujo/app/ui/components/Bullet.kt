@@ -13,23 +13,8 @@ import com.bujo.app.data.model.Entry
 import com.bujo.app.data.model.EntryType
 import com.bujo.app.data.model.Signifier
 import com.bujo.app.data.model.TaskState
+import com.bujo.app.data.model.bulletGlyph
 import com.bujo.app.ui.theme.BulletTextStyle
-
-/** バレット記号（紙のジャーナルと同じ記号体系） */
-fun bulletGlyph(entry: Entry): String = when (entry.type) {
-    EntryType.EVENT -> "○"
-    EntryType.NOTE -> "—"
-    EntryType.TASK -> when (entry.state) {
-        TaskState.OPEN -> "•"
-        TaskState.DONE -> "✕"
-        TaskState.MIGRATED -> "＞"
-        TaskState.SCHEDULED -> "＜"
-        TaskState.CANCELLED -> "〜"
-    }
-}
-
-fun bulletGlyphOf(type: EntryType, state: TaskState = TaskState.OPEN): String =
-    bulletGlyph(Entry(content = "", type = type, state = state))
 
 @Composable
 fun BulletMark(entry: Entry, modifier: Modifier = Modifier) {
@@ -41,7 +26,7 @@ fun BulletMark(entry: Entry, modifier: Modifier = Modifier) {
         else -> MaterialTheme.colorScheme.onSurface
     }
     Box(modifier = modifier.size(28.dp), contentAlignment = Alignment.Center) {
-        Text(text = bulletGlyph(entry), style = BulletTextStyle, color = color)
+        Text(text = bulletGlyph(entry.type, entry.state), style = BulletTextStyle, color = color)
     }
 }
 

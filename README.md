@@ -63,5 +63,19 @@ app/src/main/java/com/bujo/app/
 - 必要環境: JDK 17、Android SDK 35（`local.properties` の `sdk.dir`、または `ANDROID_HOME`）
 - minSdk 26 / targetSdk 35（`java.time` をそのまま使うため minSdk は 26）
 
-> このリポジトリを書いた開発コンテナからは Google の Maven リポジトリと Android SDK の配信元へ接続できないため、
-> 上記コマンドによるコンパイルは未実行です。手元の Android Studio / SDK が入った環境でビルドしてください。
+## 検証状況
+
+開発コンテナからは `dl.google.com`（Android Gradle Plugin と androidx の唯一の配布元、および Android SDK の配信元）へ
+到達できないため、`assembleDebug` によるフルビルドはこの環境では実行できていません。
+代わりに、依存関係なしで確認できる範囲を検証してあります。
+
+| 項目 | 結果 |
+| --- | --- |
+| Gradle ラッパー（8.11.1）の取得と起動 | OK |
+| `./gradlew assembleDebug` | 失敗（AGP 8.7.3 を解決できない。ネットワーク制約であってコードの問題ではない） |
+| 全 Kotlin ソースの構文チェック（kotlinc 2.0.21） | 構文エラー 0 件（残る診断はすべて androidx 不在による未解決参照） |
+| データ層（モデル / DAO / リポジトリ / 日付整形）の型チェック | OK（Room 注釈はスタブ、コルーチンは実物） |
+| ユニットテスト 10 件（記号の対応、移動、フューチャー→マンスリーの引き継ぎ、並び順） | 10 件すべて成功 |
+
+UI 層（Compose）はコンパイル未検証です。手元の Android Studio / SDK のある環境で
+`./gradlew assembleDebug` を実行してください。

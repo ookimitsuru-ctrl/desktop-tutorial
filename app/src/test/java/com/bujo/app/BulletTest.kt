@@ -3,7 +3,7 @@ package com.bujo.app
 import com.bujo.app.data.model.Entry
 import com.bujo.app.data.model.EntryType
 import com.bujo.app.data.model.TaskState
-import com.bujo.app.ui.components.bulletGlyph
+import com.bujo.app.data.model.bulletGlyph
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -12,24 +12,21 @@ import java.time.LocalDate
 
 class BulletTest {
 
-    private fun task(state: TaskState) =
-        Entry(content = "テスト", type = EntryType.TASK, state = state)
+    private fun task(state: TaskState) = bulletGlyph(EntryType.TASK, state)
 
     @Test
     fun `タスクの状態がバレット記号に対応する`() {
-        assertEquals("•", bulletGlyph(task(TaskState.OPEN)))
-        assertEquals("✕", bulletGlyph(task(TaskState.DONE)))
-        assertEquals("＞", bulletGlyph(task(TaskState.MIGRATED)))
-        assertEquals("＜", bulletGlyph(task(TaskState.SCHEDULED)))
-        assertEquals("〜", bulletGlyph(task(TaskState.CANCELLED)))
+        assertEquals("•", task(TaskState.OPEN))
+        assertEquals("✕", task(TaskState.DONE))
+        assertEquals("＞", task(TaskState.MIGRATED))
+        assertEquals("＜", task(TaskState.SCHEDULED))
+        assertEquals("〜", task(TaskState.CANCELLED))
     }
 
     @Test
     fun `イベントとメモは状態によらず記号が変わらない`() {
-        val event = Entry(content = "打ち合わせ", type = EntryType.EVENT, state = TaskState.DONE)
-        val note = Entry(content = "気づき", type = EntryType.NOTE, state = TaskState.OPEN)
-        assertEquals("○", bulletGlyph(event))
-        assertEquals("—", bulletGlyph(note))
+        assertEquals("○", bulletGlyph(EntryType.EVENT, TaskState.DONE))
+        assertEquals("—", bulletGlyph(EntryType.NOTE, TaskState.OPEN))
     }
 
     @Test

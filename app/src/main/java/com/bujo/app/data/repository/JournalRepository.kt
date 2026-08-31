@@ -202,15 +202,12 @@ class JournalRepository(private val dao: JournalDao) {
      * マンスリーログへ書き写す。すでに引き継ぎ済みのものは対象外。
      */
     suspend fun pullFutureLogInto(month: YearMonth): Int {
+        // 引き継ぎ済み（＞ の印がついたもの）は二度と対象にしない
         val pending = dao.futureEntriesForMonth(month.toString())
-            .filter { it.type != EntryType.TASK || it.state == TaskState.OPEN }
+            .filter { it.state == TaskState.OPEN }
         var order = dao.nextOrderForMonth(LogType.MONTHLY.name, month.toString())
         pending.forEach { entry ->
-            dao.update(
-                entry.copy(
-                    state = if (entry.type == EntryType.TASK) TaskState.MIGRATED else entry.state
-                ).touched()
-            )
+            dao.update(entry.copy(state = TaskState.MIGRATED).touched())
             dao.insert(
                 entry.copyForMove(
                     logType = LogType.MONTHLY,

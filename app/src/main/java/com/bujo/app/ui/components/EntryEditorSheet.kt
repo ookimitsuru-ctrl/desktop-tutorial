@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.bujo.app.data.model.Entry
 import com.bujo.app.data.model.EntryType
 import com.bujo.app.data.model.Signifier
+import com.bujo.app.data.model.bulletGlyph
 
 /** 新規追加・編集で使う入力シート */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,7 +77,7 @@ fun EntryEditorSheet(
                     FilterChip(
                         selected = type == option,
                         onClick = { type = option },
-                        label = { Text("${bulletGlyphOf(option)} ${option.label}") }
+                        label = { Text("${bulletGlyph(option)} ${option.label}") }
                     )
                 }
             }

@@ -44,3 +44,19 @@ enum class LogType(val label: String) {
     FUTURE("フューチャーログ"),
     COLLECTION("コレクション")
 }
+
+/**
+ * バレット記号（紙のジャーナルと同じ記号体系）。
+ * 表示層から切り離してあるので、UI なしでも単体テストできる。
+ */
+fun bulletGlyph(type: EntryType, state: TaskState = TaskState.OPEN): String = when (type) {
+    EntryType.EVENT -> "○"
+    EntryType.NOTE -> "—"
+    EntryType.TASK -> when (state) {
+        TaskState.OPEN -> "•"
+        TaskState.DONE -> "✕"
+        TaskState.MIGRATED -> "＞"
+        TaskState.SCHEDULED -> "＜"
+        TaskState.CANCELLED -> "〜"
+    }
+}
