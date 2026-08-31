@@ -26,6 +26,36 @@ class MeshBuilder {
 
     fun build() = Mesh(verts.toFloatArray(), idx.toShortArray())
 
+    /** Adds an axis-aligned box in world units - used to assemble scenery. */
+    fun addBox(cx: Float, cy: Float, cz: Float, sx: Float, sy: Float, sz: Float, shade: Float = 1f) {
+        val hx = sx * 0.5f
+        val hy = sy * 0.5f
+        val hz = sz * 0.5f
+        val faces = arrayOf(
+            Triple(floatArrayOf(0f, 1f, 0f), 1.00f, arrayOf(
+                floatArrayOf(-hx, hy, -hz), floatArrayOf(-hx, hy, hz),
+                floatArrayOf(hx, hy, hz), floatArrayOf(hx, hy, -hz))),
+            Triple(floatArrayOf(0f, 0f, 1f), 0.86f, arrayOf(
+                floatArrayOf(-hx, -hy, hz), floatArrayOf(hx, -hy, hz),
+                floatArrayOf(hx, hy, hz), floatArrayOf(-hx, hy, hz))),
+            Triple(floatArrayOf(0f, 0f, -1f), 0.70f, arrayOf(
+                floatArrayOf(hx, -hy, -hz), floatArrayOf(-hx, -hy, -hz),
+                floatArrayOf(-hx, hy, -hz), floatArrayOf(hx, hy, -hz))),
+            Triple(floatArrayOf(1f, 0f, 0f), 0.80f, arrayOf(
+                floatArrayOf(hx, -hy, hz), floatArrayOf(hx, -hy, -hz),
+                floatArrayOf(hx, hy, -hz), floatArrayOf(hx, hy, hz))),
+            Triple(floatArrayOf(-1f, 0f, 0f), 0.76f, arrayOf(
+                floatArrayOf(-hx, -hy, -hz), floatArrayOf(-hx, -hy, hz),
+                floatArrayOf(-hx, hy, hz), floatArrayOf(-hx, hy, -hz))),
+        )
+        for ((n, faceShade, corners) in faces) {
+            val ids = corners.map {
+                vertex(cx + it[0], cy + it[1], cz + it[2], n[0], n[1], n[2], faceShade * shade)
+            }
+            quad(ids[0], ids[1], ids[2], ids[3])
+        }
+    }
+
     companion object {
         /** Unit cube, half extent 0.5, so a scale of (w,h,d) gives exactly that size. */
         fun box(): Mesh {

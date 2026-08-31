@@ -28,6 +28,8 @@ class Camera {
     private var shakeY = 0f
 
     private var aspect = 1.6f
+    private var fov = 62f
+    private var fovKick = 0f
     private var viewportW = 1f
     private var viewportH = 1f
 
@@ -35,7 +37,8 @@ class Camera {
         viewportW = width.toFloat()
         viewportH = height.toFloat()
         aspect = if (height == 0) 1.6f else width.toFloat() / height.toFloat()
-        Matrix.perspectiveM(proj, 0, 58f, aspect, 0.35f, 460f)
+        fov = 62f
+        Matrix.perspectiveM(proj, 0, fov, aspect, 0.35f, 520f)
     }
 
     fun updateBattle(dt: Float, battle: Battle, shake: Float) {
@@ -45,22 +48,29 @@ class Camera {
         val dist = toEnemy.flatLength
         val back = if (dist > 1.5f) toEnemy.flatNormalized() else forwardOf(player.yaw)
 
-        // Pull further out as the fight opens up, and lift with the player's jump.
-        val range = 13.5f + clamp(dist * 0.14f, 0f, 7.5f)
-        val height = 6.2f + player.pos.y * 0.85f + clamp(dist * 0.05f, 0f, 3f)
+        // Close and low: the machine has to fill enough of the frame to read as
+        // a machine. It only backs off as the two of them open the distance.
+        val range = 9.0f + clamp(dist * 0.105f, 0f, 5.5f)
+        val height = 4.3f + player.pos.y * 0.80f + clamp(dist * 0.035f, 0f, 2.2f)
         val desired = clearedCameraSpot(
             battle,
             player.center - back * range + Vec3(0f, height, 0f),
             player.center + Vec3(0f, 1.2f, 0f),
         )
+        // Aim above the pilot so the machine sits low in frame, the way a chase
+        // camera in a fighting game does.
         val desiredLook = com.rollerdash.arena.core.lerp(
-            player.center + Vec3(0f, 1.4f, 0f),
-            enemy.center + Vec3(0f, 1.0f, 0f),
-            0.34f,
+            player.center + Vec3(0f, 1.95f, 0f),
+            enemy.center + Vec3(0f, 1.4f, 0f),
+            0.30f,
         )
 
-        position = damp(position, desired, 6.5f, dt)
-        lookAt = damp(lookAt, desiredLook, 9f, dt)
+        position = damp(position, desired, 7.5f, dt)
+        lookAt = damp(lookAt, desiredLook, 10f, dt)
+        // Boosting widens the lens - the cheapest way to make speed feel like speed.
+        val wanted = if (player.dashing) 7.5f else 0f
+        fovKick = damp(fovKick, wanted, if (player.dashing) 9f else 4f, dt)
+        Matrix.perspectiveM(proj, 0, fov + fovKick, aspect, 0.35f, 520f)
         applyShake(dt, shake)
         buildMatrices()
     }

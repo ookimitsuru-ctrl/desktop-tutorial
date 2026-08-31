@@ -42,6 +42,7 @@ class ShaderProgram(vertexSrc: String, fragmentSrc: String, val name: String = "
     fun attrib(n: String): Int = attribs.getOrPut(n) { GLES30.glGetAttribLocation(id, n) }
 
     fun setMat4(n: String, m: FloatArray) = GLES30.glUniformMatrix4fv(uniform(n), 1, false, m, 0)
+    fun setVec2(n: String, x: Float, y: Float) = GLES30.glUniform2f(uniform(n), x, y)
     fun setVec3(n: String, x: Float, y: Float, z: Float) = GLES30.glUniform3f(uniform(n), x, y, z)
     fun setVec4(n: String, x: Float, y: Float, z: Float, w: Float) = GLES30.glUniform4f(uniform(n), x, y, z, w)
     fun setFloat(n: String, v: Float) = GLES30.glUniform1f(uniform(n), v)

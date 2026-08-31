@@ -9,8 +9,10 @@ import com.rollerdash.arena.core.RoundPhase
 import com.rollerdash.arena.core.Vec3
 import com.rollerdash.arena.core.clamp
 import com.rollerdash.arena.core.forwardOf
+import com.rollerdash.arena.core.rightOf
 import com.rollerdash.arena.render.Effects
 import com.rollerdash.arena.render.Hud
+import com.rollerdash.arena.render.Lights
 import com.rollerdash.arena.render.MechRenderState
 import com.rollerdash.arena.core.ControlScheme
 import com.rollerdash.arena.ui.Controls
@@ -36,6 +38,7 @@ class Game(private val audio: Audio) {
 
     val arena: Arena = Arena.standard()
     val effects = Effects()
+    val lights = Lights()
     val controls = Controls()
     val hud = Hud()
     val renderStates = arrayOf(MechRenderState(), MechRenderState())
@@ -58,6 +61,7 @@ class Game(private val audio: Audio) {
 
     private var dustTimer = 0f
     private var burnTimer = 0f
+    private var smokeTimer = 0f
 
     val titleMenu = Menu(
         listOf(
@@ -139,6 +143,7 @@ class Game(private val audio: Audio) {
     fun startBattle() {
         battle = newBattle()
         effects.clear()
+        lights.clear()
         cameraShake = 0f
         state = AppState.BATTLE
         hud.showBanner("ROUND 1", "READY", 2.0f)
@@ -162,6 +167,7 @@ class Game(private val audio: Audio) {
     fun update(dt: Float) {
         controls.update(dt)
         hud.update(dt)
+        lights.update(dt)
         cameraShake = maxOf(0f, cameraShake - dt * 2.6f)
 
         when (state) {
@@ -188,6 +194,7 @@ class Game(private val audio: Audio) {
             when (e.type) {
                 EventType.MUZZLE -> {
                     effects.muzzleFlash(e.pos, e.dir, clamp(e.magnitude, 0.2f, 2f))
+                    lights.add(e.pos, 1f, 0.78f, 0.42f, 2.2f + e.magnitude * 2f, 11f, 0.07f)
                     if (e.magnitude > 1.2f) {
                         audio.play(Sfx.CANNON, gain * 0.9f, 0.9f + e.magnitude * 0.05f)
                         if (e.actor == 0) cameraShake = maxOf(cameraShake, 0.35f)
@@ -197,15 +204,18 @@ class Game(private val audio: Audio) {
                 }
                 EventType.IMPACT -> {
                     effects.impact(e.pos, e.dir, clamp(e.magnitude, 0.2f, 2f))
+                    lights.add(e.pos, 1f, 0.7f, 0.35f, 1.6f, 8f, 0.10f)
                     audio.play(Sfx.HIT, gain * 0.7f, 0.8f + e.magnitude * 0.3f)
                 }
                 EventType.EXPLOSION -> {
                     effects.explosion(e.pos, e.magnitude)
+                    lights.add(e.pos, 1f, 0.62f, 0.26f, 6f + e.magnitude * 0.8f, e.magnitude * 4.5f, 0.45f)
                     audio.play(Sfx.EXPLOSION, gain, clamp(1.4f - e.magnitude * 0.06f, 0.6f, 1.6f))
                     cameraShake = maxOf(cameraShake, clamp(e.magnitude * 0.09f * gain, 0f, 1.2f))
                 }
                 EventType.MELEE_HIT -> {
                     effects.meleeSpark(e.pos, e.dir)
+                    lights.add(e.pos, 1f, 0.9f, 0.7f, 4f, 14f, 0.16f)
                     audio.play(Sfx.MELEE, gain)
                     cameraShake = maxOf(cameraShake, 0.9f * gain)
                 }
@@ -230,24 +240,42 @@ class Game(private val audio: Audio) {
         }
     }
 
-    /** Dust, thruster wash and burning ground - things that stream rather than fire once. */
+    /** Dust, thruster jets, smoke and burning ground - the streaming effects. */
     private fun emitContinuousEffects(dt: Float) {
         dustTimer -= dt
+        smokeTimer -= dt
         for (m in battle.mechs) {
-            if (m.dashing && dustTimer <= 0f) {
-                effects.rollerDust(m.pos, m.vel.flatNormalized(), 1f)
+            val forward = forwardOf(m.yaw)
+            val right = rightOf(m.yaw)
+            // Backpack nozzles, in world space.
+            val nozzle = m.center - forward * 1.35f + Vec3(0f, 0.25f, 0f)
+
+            if (m.dashing) {
+                if (dustTimer <= 0f) effects.rollerDust(m.pos, m.vel.flatNormalized(), 1f)
+                val back = -m.vel.flatNormalized()
+                for (s in intArrayOf(-1, 1)) {
+                    effects.thrusterJet(nozzle + right * (s * 0.55f), back, 1.25f)
+                }
             }
             if (m.airborne && m.vel.y > 0.5f) {
-                effects.boosterWash(m.center + Vec3(0f, -0.8f, 0f), Vec3(0f, -1f, 0f))
+                for (s in intArrayOf(-1, 1)) {
+                    effects.thrusterJet(
+                        nozzle + right * (s * 0.55f) + Vec3(0f, -0.35f, 0f),
+                        Vec3(0f, -1f, 0f),
+                        1.0f,
+                    )
+                }
             }
-            if (m.dashing) {
-                effects.boosterWash(
-                    m.center - forwardOf(m.yaw) * 1.4f,
-                    -m.vel.flatNormalized(),
-                )
+            // A machine below half armour starts trailing smoke.
+            if (smokeTimer <= 0f && m.alive) {
+                val hurt = 1f - m.armorFraction
+                if (hurt > 0.5f) {
+                    effects.damageSmoke(m.center + Vec3(0f, 0.6f, 0f), (hurt - 0.5f) * 2f)
+                }
             }
         }
         if (dustTimer <= 0f) dustTimer = 0.03f
+        if (smokeTimer <= 0f) smokeTimer = 0.10f
 
         burnTimer -= dt
         if (burnTimer <= 0f) {

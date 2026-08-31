@@ -112,8 +112,10 @@ consts = dict(re.findall(r'const val (\w+) = """(.*?)"""', text, re.S))
 print("found shader constants:", ", ".join(sorted(consts)), "\n")
 
 pairs = [("solid", "SOLID_VS", "SOLID_FS"), ("floor", "SOLID_VS", "FLOOR_FS"),
-         ("sky", "SOLID_VS", "SKY_FS"), ("sprite", "SPRITE_VS", "SPRITE_FS"),
-         ("hud", "HUD_VS", "HUD_FS")]
+         ("sky", "SOLID_VS", "SKY_FS"), ("backdrop", "SOLID_VS", "BACKDROP_FS"),
+         ("depth", "DEPTH_VS", "DEPTH_FS"), ("sprite", "SPRITE_VS", "SPRITE_FS"),
+         ("hud", "HUD_VS", "HUD_FS"), ("bright", "POST_VS", "BRIGHT_FS"),
+         ("blur", "POST_VS", "BLUR_FS"), ("composite", "POST_VS", "COMPOSITE_FS")]
 
 failed = 0
 program_actives = {}
@@ -248,10 +250,15 @@ if uncSulled == 0:
 elif culled == 0:
     # Winding is clockwise on screen, so the renderer has to turn culling off.
     unguarded = []
-    for func in ("drawShadows", "drawOverlay"):
-        body = renderer.split("private fun %s(" % func, 1)[-1].split("private fun ", 1)[0]
+    for func in ("drawProjectiles", "drawOccluders", "drawOverlay"):
+        marker = "fun %s(" % func
+        if marker not in renderer:
+            continue  # pass has been renamed or removed
+        body = renderer.split(marker, 1)[1].split("\n    private fun ", 1)[0]
         if "glDisable(GLES30.GL_CULL_FACE)" not in body:
             unguarded.append(func)
+    if not unguarded and "drawOverlay" not in renderer:
+        unguarded.append("drawOverlay (missing entirely)")
     if unguarded:
         mismatches.append("%s draw quads without disabling GL_CULL_FACE - they will be "
                           "discarded as back faces, taking the HUD and the on-screen "

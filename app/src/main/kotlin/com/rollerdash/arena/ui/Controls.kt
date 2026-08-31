@@ -296,28 +296,43 @@ class Controls(scheme: ControlScheme = ControlScheme.MODERN) {
     }
 
     private fun drawStick(p: HudPainter, s: VirtualStick) {
-        p.ring(s.cx, s.cy, s.radius, 0.55f, 0.85f, 0.65f, if (s.active) 0.45f else 0.26f)
-        p.disc(s.cx, s.cy, s.radius * 0.14f, 0.6f, 0.9f, 0.7f, 0.25f)
-        p.disc(
-            s.cx + s.knobX, s.cy + s.knobY, s.radius * 0.38f,
-            0.75f, 0.95f, 0.75f, if (s.active) 0.55f else 0.30f,
+        // Well, guide ring, and a knob that lights up under the thumb.
+        p.disc(s.cx, s.cy, s.radius * 0.98f, 0.03f, 0.05f, 0.04f, if (s.active) 0.24f else 0.14f)
+        p.ring(s.cx, s.cy, s.radius, 0.55f, 0.85f, 0.65f, if (s.active) 0.45f else 0.24f)
+        p.ring(s.cx, s.cy, s.radius * 0.45f, 0.5f, 0.8f, 0.6f, 0.22f)
+        for (i in 0 until 4) {
+            val a = i * 1.5708f
+            val tx = s.cx + kotlin.math.sin(a) * s.radius * 0.86f
+            val ty = s.cy - kotlin.math.cos(a) * s.radius * 0.86f
+            val t = s.radius * 0.05f
+            p.rect(tx - t, ty - t, t * 2f, t * 2f, 0.6f, 0.9f, 0.7f, 0.4f)
+        }
+        p.plate(
+            s.cx + s.knobX, s.cy + s.knobY, s.radius * 0.34f,
+            0.62f, 0.90f, 0.70f, if (s.active) 0.70f else 0.38f,
         )
     }
 
     private fun drawButton(p: HudPainter, b: TouchButton) {
-        val a = if (b.pressed) 0.62f else 0.26f + b.glow * 0.2f
+        val pressed = b.pressed
+        val a = if (pressed) 0.95f else 0.34f + b.glow * 0.28f
         val tint = when (b.id) {
-            ControlButton.FIRE_R -> Triple(1.0f, 0.72f, 0.35f)
-            ControlButton.FIRE_L -> Triple(0.65f, 0.85f, 1.0f)
-            ControlButton.FIRE_C -> Triple(1.0f, 0.45f, 0.35f)
-            ControlButton.JUMP -> Triple(0.72f, 1.0f, 0.72f)
-            ControlButton.DASH -> Triple(1.0f, 0.95f, 0.5f)
-            ControlButton.GUARD -> Triple(0.8f, 0.8f, 0.9f)
-            else -> Triple(0.85f, 0.9f, 0.85f)
+            ControlButton.FIRE_R -> Triple(1.0f, 0.66f, 0.26f)
+            ControlButton.FIRE_L -> Triple(0.48f, 0.80f, 1.0f)
+            ControlButton.FIRE_C -> Triple(1.0f, 0.34f, 0.28f)
+            ControlButton.JUMP -> Triple(0.55f, 1.0f, 0.62f)
+            ControlButton.DASH -> Triple(1.0f, 0.92f, 0.35f)
+            ControlButton.GUARD -> Triple(0.72f, 0.76f, 0.92f)
+            else -> Triple(0.80f, 0.88f, 0.82f)
         }
-        p.disc(b.cx, b.cy, b.radius, tint.first, tint.second, tint.third, a)
-        p.ring(b.cx, b.cy, b.radius, tint.first, tint.second, tint.third, minOf(1f, a + 0.3f))
+        // Dark well first so the plate reads against a bright arena.
+        p.disc(b.cx, b.cy, b.radius * 1.0f, 0.02f, 0.03f, 0.03f, if (pressed) 0.42f else 0.26f)
+        p.plate(b.cx, b.cy, b.radius, tint.first, tint.second, tint.third, a)
+        if (pressed) p.disc(b.cx, b.cy, b.radius * 0.70f, tint.first, tint.second, tint.third, 0.30f)
         val size = b.radius * 0.44f
-        p.text(b.label, b.cx, b.cy - size * 0.5f, size, 1f, 1f, 1f, 0.95f, centered = true)
+        p.text(
+            b.label, b.cx, b.cy - size * 0.5f, size,
+            tint.first, tint.second, tint.third, if (pressed) 1f else 0.95f, centered = true,
+        )
     }
 }

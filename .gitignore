@@ -10,3 +10,4 @@ captures/
 *.apk
 device-report.txt
 *.aab
+tools/preview/shots/

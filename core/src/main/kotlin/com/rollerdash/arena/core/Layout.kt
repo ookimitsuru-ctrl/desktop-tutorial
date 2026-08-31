@@ -82,8 +82,12 @@ class HudLayout(val width: Float, val height: Float) {
     val playerPipX = timer.x - unit * 0.045f
     val enemyPipX = timer.right + unit * 0.045f
 
-    /** Radar sits bottom centre, between the two thumbs and clear of both. */
-    val radar = Disc(width * 0.5f, height - pad - unit * 0.115f, unit * 0.115f)
+    /**
+     * Small radar, tucked between the movement thumb and the centre of the
+     * screen. The middle belongs to the machine you are driving - the old
+     * bottom-centre radar sat right on top of it.
+     */
+    val radar = Disc(width * 0.34f, height - pad - unit * 0.075f, unit * 0.075f)
 
     /** Everything that must not collide, for the layout test. */
     fun boxes(): List<Pair<String, Rect>> = listOf(
@@ -115,7 +119,7 @@ class ControlLayout(
     private fun flip(x: Float) = if (mirrored) width - x else x
     private fun disc(x: Float, y: Float, r: Float) = Disc(flip(x), y, r)
 
-    private val stickRadius = unit * 0.185f
+    private val stickRadius = unit * 0.165f
     private val stickY = height - unit * 0.255f
 
     /** Movement lever. */
@@ -129,8 +133,8 @@ class ControlLayout(
         ControlScheme.MODERN -> {
             // Two triggers under the thumb, the rest stepping up and to the left,
             // spaced so no two circles touch on any handset in the layout test.
-            val rMain = unit * 0.105f
-            val rSub = unit * 0.088f
+            val rMain = unit * 0.092f
+            val rSub = unit * 0.078f
             val rowOne = height - unit * 0.200f
             val rowTwo = height - unit * 0.425f
             val rightX = width - unit * 0.155f
@@ -140,7 +144,7 @@ class ControlLayout(
                 ButtonSlot(ControlButton.DASH, "DASH", disc(width - unit * 0.145f, rowTwo, rSub)),
                 ButtonSlot(ControlButton.FIRE_C, "CW", disc(width - unit * 0.345f, rowTwo, rSub)),
                 ButtonSlot(ControlButton.JUMP, "JUMP", disc(width - unit * 0.245f, height - unit * 0.630f, rSub)),
-                ButtonSlot(ControlButton.GUARD, "GUARD", disc(width - unit * 0.580f, height - unit * 0.300f, unit * 0.080f)),
+                ButtonSlot(ControlButton.GUARD, "GUARD", disc(width - unit * 0.560f, height - unit * 0.300f, unit * 0.070f)),
             )
         }
         ControlScheme.TWIN_STICK -> {
