@@ -150,6 +150,9 @@ class MechModel(private val box: Mesh, private val cyl: Mesh) {
         // Chest plate, hatch and the collar ring the head sits in.
         armor(sink, box, stack.boxAt(0f, 0.72f, 0.94f, 1.50f, 1.00f, 0.40f, m), body)
         armor(sink, box, stack.boxAt(0f, 0.74f, 1.10f, 1.05f, 0.72f, 0.12f, m), shade(body, 1.1f))
+        // Hatch handles and a warning plate on the chest.
+        metalPart(sink, box, stack.boxAt(0f, 1.02f, 1.18f, 0.62f, 0.07f, 0.07f, m), METAL)
+        armor(sink, box, stack.boxAt(-0.44f, 0.52f, 1.18f, 0.28f, 0.20f, 0.05f, m), trim)
         metalPart(sink, box, stack.boxAt(0f, 0.24f, 1.14f, 1.18f, 0.16f, 0.10f, m), trim)
         metalPart(sink, cyl, stack.boxAt(0f, 1.36f, 0f, 1.50f, 0.24f, 1.42f, m), DARK)
         // Side intake vents.
@@ -236,6 +239,15 @@ class MechModel(private val box: Mesh, private val cyl: Mesh) {
         armor(sink, cyl, stack.partAt(side * 0.12f, 0.10f, 0f, 90f, 0f, 0f, 1f, 1.32f, 0.80f, 1.22f, m), body)
         metalPart(sink, cyl, stack.partAt(side * 0.52f, 0.10f, 0f, 90f, 0f, 0f, 1f, 0.52f, 0.14f, 0.52f, m), DARK)
         armor(sink, box, stack.boxAt(side * 0.10f, 0.62f, 0f, 0.90f, 0.24f, 1.10f, m), shade(body, 1.06f))
+        // Unit markings stencilled on the pauldron: a band and three blocks.
+        armor(sink, box, stack.boxAt(side * 0.30f, 0.18f, 0.52f, 0.52f, 0.30f, 0.06f, m), trim)
+        for (i in 0 until 3) {
+            armor(
+                sink, box,
+                stack.boxAt(side * 0.30f, -0.16f, 0.40f - i * 0.26f, 0.34f, 0.10f, 0.14f, m),
+                if (i == 1) trim else DARK,
+            )
+        }
 
         stack.rotateRad(-swing - recoil * 0.22f, 1f, 0f, 0f)
         metalPart(sink, box, stack.boxAt(0f, -0.55f, 0f, 0.56f, 0.86f, 0.58f, m), DARK)

@@ -26,6 +26,8 @@ object Shaders {
         uniform mat4 uLightViewProj;
         uniform highp sampler2DShadow uShadowMap;
         uniform float uShadowTexel;
+        /** 0 turns the shadow map off entirely, for the performance tier. */
+        uniform float uShadowStrength;
 
         /** Muzzle flashes and blasts: xyz position, w radius. */
         uniform vec4 uPointPos[4];
@@ -50,6 +52,7 @@ object Shaders {
         // Percentage-closer filtering: four taps is enough for a soft contact edge
         // without costing a mobile GPU too much.
         float shadowFactor(vec3 world, float ndl) {
+            if (uShadowStrength < 0.5) return 1.0;
             vec4 lightPos = uLightViewProj * vec4(world, 1.0);
             vec3 proj = lightPos.xyz / lightPos.w;
             proj = proj * 0.5 + 0.5;
@@ -278,9 +281,16 @@ object Shaders {
             float ring = smoothstep(1.2, 0.0, abs(length(p) - 26.0) - 0.6);
             base = mix(base, vec3(0.26, 0.21, 0.11), ring * 0.45 * wear);
 
-            // Scorch and rubber worn into the centre of the pit.
+            // Scorch and rubber worn into the centre of the pit, and the arcs
+            // where machines have been dashing round it for years.
             float traffic = smoothstep(38.0, 6.0, length(p));
             base *= mix(1.0, 0.72, traffic * (0.4 + 0.6 * fbm(p * 1.7)));
+            float arcs = smoothstep(0.62, 0.98, fbm(vec2(length(p) * 0.55, atan(p.y, p.x) * 3.0)));
+            base *= mix(1.0, 0.78, arcs * smoothstep(52.0, 12.0, length(p)));
+
+            // Spilled fuel: darker, and glossy enough to catch the sun.
+            float oil = smoothstep(0.72, 0.88, fbm(p * 0.22 + 11.0));
+            base = mix(base, base * 0.35, oil);
 
             // Hazard band around the rim.
             float edge = smoothstep(uHalfSize - 5.0, uHalfSize - 1.0, max(abs(p.x), abs(p.y)));
@@ -288,13 +298,18 @@ object Shaders {
             base = mix(base, mix(vec3(0.30, 0.22, 0.05), vec3(0.05, 0.045, 0.04), stripe), edge * 0.8);
 
             vec3 n = normalize(vNormal);
-            float ndl = max(dot(n, normalize(uLightDir)), 0.0);
+            vec3 l = normalize(uLightDir);
+            float ndl = max(dot(n, l), 0.0);
             float shadow = shadowFactor(vWorld, ndl);
             vec3 color = base * (hemisphere(n) + uSunColor * ndl * shadow + pointLights(vWorld, n));
 
             vec3 v = normalize(uCameraPos - vWorld);
+            vec3 h = normalize(l + v);
+            // Only the fuel patches are shiny; dry concrete stays matte.
+            float gloss = mix(0.0, 1.0, oil);
+            color += uSunColor * pow(max(dot(n, h), 0.0), 90.0) * gloss * 0.9 * shadow;
             float fres = pow(1.0 - max(dot(n, v), 0.0), 5.0);
-            color += uSkyColor * fres * 0.18;
+            color += uSkyColor * fres * (0.18 + gloss * 0.4);
 
             fragColor = vec4(applyFog(color, vWorld), 1.0);
         }

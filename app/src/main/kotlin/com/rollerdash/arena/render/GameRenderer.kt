@@ -47,7 +47,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     private val skyAmbient = floatArrayOf(0.24f, 0.31f, 0.48f)
     private val groundAmbient = floatArrayOf(0.20f, 0.15f, 0.10f)
     private val fogColor = floatArrayOf(0.26f, 0.25f, 0.24f)
-    private val fogDensity = 0.0048f
+    private val fogDensity = 0.0038f
     private val exposure = 0.55f
 
     // ---- gl objects ----------------------------------------------------------
@@ -188,11 +188,11 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
             camera.updateOrbit(dt, battle)
         }
 
-        renderShadowMap()
+        if (game.quality.shadows) renderShadowMap()
         renderScene()
-        renderBloom()
+        if (game.quality.bloom) renderBloom()
         composite()
-        antialias()
+        if (game.quality.antialias) antialias()
         drawOverlay()
     }
 
@@ -291,6 +291,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         p.setMat4("uLightViewProj", lightViewProj)
         p.setInt("uShadowMap", 1)
         p.setFloat("uShadowTexel", shadowMap.texelSize)
+        p.setFloat("uShadowStrength", if (game.quality.shadows) 1f else 0f)
         GLES30.glUniform4fv(p.uniform("uPointPos"), 4, game.lights.positions, 0)
         GLES30.glUniform3fv(p.uniform("uPointColor"), 4, game.lights.colors, 0)
     }
@@ -510,11 +511,11 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
 
     private fun projectileQuad(p: Projectile) {
         val (r, g, b, size) = when (p.kind) {
-            ProjectileKind.BULLET -> Quad(1f, 0.80f, 0.38f, 0.5f)
-            ProjectileKind.PLASMA -> Quad(0.45f, 0.90f, 1f, 0.9f)
-            ProjectileKind.MISSILE -> Quad(1f, 0.62f, 0.30f, 0.75f)
-            ProjectileKind.MORTAR -> Quad(1f, 0.52f, 0.24f, 0.85f)
-            ProjectileKind.NAPALM -> Quad(1f, 0.42f, 0.16f, 1.2f)
+            ProjectileKind.BULLET -> Quad(1f, 0.78f, 0.34f, 0.46f)
+            ProjectileKind.PLASMA -> Quad(0.45f, 0.90f, 1f, 0.85f)
+            ProjectileKind.MISSILE -> Quad(1f, 0.60f, 0.28f, 0.90f)
+            ProjectileKind.MORTAR -> Quad(1f, 0.50f, 0.22f, 1.00f)
+            ProjectileKind.NAPALM -> Quad(1f, 0.40f, 0.14f, 1.35f)
             ProjectileKind.MELEE -> return
         }
         val rx = camera.rightX(); val ry = camera.rightY(); val rz = camera.rightZ()
@@ -528,7 +529,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         if (len > 0.001f) {
             val dx = ax / len
             val dy = ay / len
-            val stretch = half * (1.6f + minOf(p.vel.length * 0.045f, 9f))
+            val stretch = half * (1.4f + minOf(p.vel.length * 0.028f, 5.5f))
             axX = (rx * dx + ux * dy) * stretch
             axY = (ry * dx + uy * dy) * stretch
             axZ = (rz * dx + uz * dy) * stretch
@@ -610,7 +611,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
     private fun composite() {
         val target = scene ?: return
         val chain = bloom ?: return
-        val out = graded
+        val out = if (game.quality.antialias) graded else null
         if (out != null) out.bind() else {
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, outputFramebuffer)
             GLES30.glViewport(0, 0, viewWidth, viewHeight)
@@ -622,7 +623,7 @@ class GameRenderer(private val game: Game) : GLSurfaceView.Renderer {
         compositeProgram.setInt("uScene", 0)
         chain.result.bindTexture(1)
         compositeProgram.setInt("uBloom", 1)
-        compositeProgram.setFloat("uBloomStrength", 0.85f)
+        compositeProgram.setFloat("uBloomStrength", if (game.quality.bloom) 0.85f else 0f)
         compositeProgram.setFloat("uExposure", exposure)
         compositeProgram.setFloat("uTime", elapsed)
         val player = game.battle.player

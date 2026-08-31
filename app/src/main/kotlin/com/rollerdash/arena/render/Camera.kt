@@ -50,7 +50,7 @@ class Camera {
 
         // Close and low: the machine has to fill enough of the frame to read as
         // a machine. It only backs off as the two of them open the distance.
-        val range = 9.0f + clamp(dist * 0.105f, 0f, 5.5f)
+        val range = 9.8f + clamp(dist * 0.105f, 0f, 5.5f)
         val height = 4.3f + player.pos.y * 0.80f + clamp(dist * 0.035f, 0f, 2.2f)
         val desired = clearedCameraSpot(
             battle,
@@ -60,7 +60,7 @@ class Camera {
         // Aim above the pilot so the machine sits low in frame, the way a chase
         // camera in a fighting game does.
         val desiredLook = com.rollerdash.arena.core.lerp(
-            player.center + Vec3(0f, 1.95f, 0f),
+            player.center + Vec3(0f, 2.15f, 0f),
             enemy.center + Vec3(0f, 1.4f, 0f),
             0.30f,
         )

@@ -56,6 +56,9 @@ class Game(private val audio: Audio) {
     var difficulty = Difficulty.SOLDIER
         private set
 
+    var quality = com.rollerdash.arena.core.Quality.HIGH
+        private set
+
     var battle: Battle = newBattle()
         private set
 
@@ -106,6 +109,11 @@ class Game(private val audio: Audio) {
                 controls.mirrored = !controls.mirrored
                 audio.play(Sfx.UI)
             }, detail = { "WHICH THUMB DRIVES AND WHICH ONE SHOOTS" }),
+            MenuRow("GRAPHICS", { quality.label }, { d ->
+                val all = com.rollerdash.arena.core.Quality.entries
+                quality = all[(quality.ordinal + d + all.size) % all.size]
+                audio.play(Sfx.UI)
+            }, detail = { "DROP THIS IF THE FRAME RATE DIPS ON YOUR HANDSET" }),
             MenuRow("SKILL", { difficulty.label }, { d ->
                 val all = Difficulty.entries
                 difficulty = all[(difficulty.ordinal + d + all.size) % all.size]

@@ -33,6 +33,17 @@ data class Disc(val cx: Float, val cy: Float, val r: Float) {
 
 enum class ControlButton { FIRE_R, FIRE_L, FIRE_C, JUMP, DASH, GUARD, TURBO_L, TURBO_R, MENU }
 
+/**
+ * How much of the picture the device is asked to draw. The pipeline is a real
+ * one - shadow map, floating point scene, bloom, FXAA - and an older handset
+ * should be able to drop the expensive parts rather than the frame rate.
+ */
+enum class Quality(val label: String, val shadows: Boolean, val bloom: Boolean, val antialias: Boolean) {
+    HIGH("HIGH", true, true, true),
+    BALANCED("BALANCED", true, true, false),
+    PERFORMANCE("PERFORMANCE", false, false, false),
+}
+
 enum class ControlScheme {
     /** One stick to move, drag to turn, weapon buttons under the other thumb. */
     MODERN,

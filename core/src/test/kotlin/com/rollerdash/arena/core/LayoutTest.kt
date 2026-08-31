@@ -101,7 +101,7 @@ class LayoutTest {
 
     @Test
     fun menuRowsNeverRunIntoTheTitleOrTheFooter() {
-        for (align in MenuAlign.entries) for (rowCount in 2..6) {
+        for (align in MenuAlign.entries) for (rowCount in 2..9) {
             eachScreen { w, h, name0 ->
                 val name = "$name0 $align"
                 val menu = MenuLayout(w, h, rowCount, align)
