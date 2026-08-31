@@ -1,0 +1,50 @@
+name: Android CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ビルドとユニットテスト
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 を用意する
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle を用意する
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: gradlew に実行権限を付ける
+        run: chmod +x ./gradlew
+
+      - name: ユニットテスト
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: デバッグ APK をビルドする
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: APK を保存する
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: テスト結果を保存する
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
