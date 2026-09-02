@@ -116,6 +116,19 @@ fun predictIntercept(origin: Vec3, target: Vec3, targetVel: Vec3, speed: Float):
     return target + targetVel * t
 }
 
+/**
+ * Launch angle for a lobbed shot that has to travel `distance` across and
+ * `heightDelta` up. Returns the flatter of the two arcs, or null when the shot
+ * simply cannot reach that far.
+ */
+fun ballisticPitch(distance: Float, heightDelta: Float, speed: Float, gravity: Float): Float? {
+    if (gravity <= 0f || distance < 0.01f || speed <= 0.01f) return null
+    val v2 = speed * speed
+    val disc = v2 * v2 - gravity * (gravity * distance * distance + 2f * heightDelta * v2)
+    if (disc < 0f) return null
+    return kotlin.math.atan((v2 - sqrt(disc)) / (gravity * distance))
+}
+
 /** Deterministic xorshift RNG so battles can be replayed and unit tested. */
 class Rng(seed: Long = 0x5DEECE66DL) {
     private var state: Long = if (seed == 0L) 1L else seed

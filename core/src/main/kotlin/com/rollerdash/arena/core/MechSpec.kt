@@ -109,7 +109,7 @@ object Roster {
         id = "scope_hound",
         displayName = "SCOPE HOUND",
         codeName = "ATM-09-ST",
-        blurb = "Mass production trooper. No vice, no virtue - it does everything the manual says.",
+        blurb = "Mass production trooper. No vice, no virtue, no surprises.",
         armor = 1000f,
         bodyColor = 0x6E7F5E, trimColor = 0xD8C455,
         weapons = mapOf(
@@ -285,7 +285,7 @@ object Roster {
         id = "berserk",
         displayName = "BERSERK HOUND",
         codeName = "ATH-Q1-EX",
-        blurb = "Prototype duel frame. Paper thin, absurdly fast, and all of it points forward.",
+        blurb = "Prototype duel frame. Paper thin, absurdly fast, all forward.",
         armor = 900f, radius = 1.4f, height = 4.3f,
         walkSpeed = 10.5f, strafeScale = 0.95f, backScale = 0.8f,
         dashSpeed = 33f, dashDuration = 0.85f, dashCost = 0.26f, dashTailCost = 0.18f,

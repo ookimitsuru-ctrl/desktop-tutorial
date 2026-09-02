@@ -76,6 +76,13 @@ class Menu(private val rows: List<MenuRow>, private val align: MenuAlign = MenuA
                 lines += current.toString()
                 current = StringBuilder(word)
                 if (lines.size == MAX_DETAIL_LINES) {
+                    // Out of room: say so rather than stopping mid-sentence,
+                    // giving back a word if the dots no longer fit the column.
+                    var last = lines.last()
+                    while (last.contains(' ') && p.font.measure("$last...", size) > maxWidth) {
+                        last = last.substringBeforeLast(' ')
+                    }
+                    lines[lines.lastIndex] = "$last..."
                     current = StringBuilder()
                     break
                 }

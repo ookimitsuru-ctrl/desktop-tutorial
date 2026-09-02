@@ -24,6 +24,12 @@ data class BattleConfig(
     val roundsToWin: Int = 2,
     val seed: Long = 0x2B07705AL,
     val aiSkill: Float = 0.6f,
+    /**
+     * Arcade lock-on for the player: shots lead the target and lobbed weapons
+     * get a real launch angle. Off means the machine simply fires where its
+     * nose is pointing, which is what the enemy pilot has to do.
+     */
+    val aimAssist: Boolean = true,
 )
 
 /**
@@ -154,7 +160,8 @@ class Battle(
         for (req in m.consumeShots()) resolveShot(req)
     }
 
-    private fun resolveShot(req: ShotRequest) {
+    private fun resolveShot(rawRequest: ShotRequest) {
+        val req = aimAssisted(rawRequest)
         if (req.spec.kind == ProjectileKind.MELEE) {
             resolveMelee(req)
             return
@@ -164,6 +171,49 @@ class Battle(
         events += GameEvent(
             EventType.MUZZLE, req.origin, forwardOf(req.yaw),
             magnitude = req.spec.damage / 100f, actor = req.shooter,
+        )
+    }
+
+    /**
+     * Lock-on aiming for the player, the way the cabinet did it: the shot is
+     * sent where the target is going to be, not where it is, and it is angled
+     * up or down to reach a machine that has left the ground. A lobbed weapon
+     * gets a real launch angle for the range instead of a fixed one.
+     *
+     * The enemy pilot does not get this - it leads its shots by turning, and
+     * how well it does that is what the difficulty setting controls.
+     */
+    private fun aimAssisted(req: ShotRequest): ShotRequest {
+        if (!config.aimAssist || req.shooter != PLAYER_INDEX) return req
+        val spec = req.spec
+        if (spec.kind == ProjectileKind.MELEE || spec.speed <= 1f) return req
+        val target = mechs.firstOrNull { it.index != req.shooter && it.alive } ?: return req
+
+        var aim = target.center
+        var pitch = req.pitch
+        repeat(2) {
+            val flat = Vec3(aim.x - req.origin.x, 0f, aim.z - req.origin.z)
+            val distance = flat.flatLength
+            if (distance < 0.5f) return req
+            val heightDelta = aim.y - req.origin.y
+            val solved = if (spec.gravity > 0f) {
+                ballisticPitch(distance, heightDelta, spec.speed, spec.gravity) ?: return req
+            } else {
+                kotlin.math.atan2(heightDelta, distance)
+            }
+            pitch = solved
+            val flightTime = distance / maxOf(0.001f, spec.speed * kotlin.math.cos(pitch))
+            aim = target.center + target.vel * flightTime
+        }
+
+        val wantYaw = yawOf(Vec3(aim.x - req.origin.x, 0f, aim.z - req.origin.z))
+        // Bounded correction: the assist helps you lead, it does not turn you round.
+        val correction = clamp(angleDelta(req.yaw, wantYaw), -MAX_AIM_ASSIST, MAX_AIM_ASSIST)
+        return req.copy(
+            yaw = wrapAngle(req.yaw + correction),
+            pitch = clamp(pitch, -1.0f, 1.0f),
+            // A targeting computer also tightens the group.
+            spec = spec.copy(spread = spec.spread * ASSIST_SPREAD),
         )
     }
 
@@ -197,7 +247,7 @@ class Battle(
             // Mech hits first, then cover, then the floor.
             for (m in mechs) {
                 if (m.index == p.owner || !m.alive || m.invuln > 0f) continue
-                val t = segmentHitsMech(p.prevPos, p.pos, m, p.spec.radius)
+                val t = segmentHitsMech(p.prevPos, p.pos, m, p.spec.radius + hitAssist(p.owner))
                 if (t != null) {
                     hitMech = m
                     hitPoint = lerp(p.prevPos, p.pos, t)
@@ -377,9 +427,24 @@ class Battle(
         events += GameEvent(EventType.ROUND_END, magnitude = winner.toFloat())
     }
 
+    /** A little slack on the player's rounds, so a near miss counts as a hit. */
+    private fun hitAssist(owner: Int) =
+        if (config.aimAssist && owner == PLAYER_INDEX) PLAYER_HIT_SLACK else 0f
+
     private companion object {
         /** 60 Hz, matching how often a player's finger can actually change anything. */
         const val AI_THINK_INTERVAL = 1f / 60f
+
+        const val PLAYER_INDEX = 0
+
+        /** How far off its facing an assisted shot may be sent, in radians. */
+        const val MAX_AIM_ASSIST = 0.40f
+
+        /** Extra metres of forgiveness on the player's shots - a near miss counts. */
+        const val PLAYER_HIT_SLACK = 0.9f
+
+        /** How much of a weapon's scatter survives the targeting computer. */
+        const val ASSIST_SPREAD = 0.45f
     }
 
     private fun placeForRound() {

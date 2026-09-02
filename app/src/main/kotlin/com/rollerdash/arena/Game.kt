@@ -59,6 +59,10 @@ class Game(private val audio: Audio) {
     var quality = com.rollerdash.arena.core.Quality.HIGH
         private set
 
+    /** Arcade lock-on: your shots lead the target and arc onto it. */
+    var aimAssist = true
+        private set
+
     var battle: Battle = newBattle()
         private set
 
@@ -109,6 +113,11 @@ class Game(private val audio: Audio) {
                 controls.mirrored = !controls.mirrored
                 audio.play(Sfx.UI)
             }, detail = { "WHICH THUMB DRIVES AND WHICH ONE SHOOTS" }),
+            MenuRow("LOCK-ON", { if (aimAssist) "ASSIST" else "MANUAL" }, {
+                aimAssist = !aimAssist
+                battle = newBattle()
+                audio.play(Sfx.UI)
+            }, detail = { "ASSIST LEADS YOUR SHOTS ONTO A MOVING TARGET" }),
             MenuRow("GRAPHICS", { quality.label }, { d ->
                 val all = com.rollerdash.arena.core.Quality.entries
                 quality = all[(quality.ordinal + d + all.size) % all.size]
@@ -161,7 +170,12 @@ class Game(private val audio: Audio) {
         arena,
         Roster.all[playerIndex],
         Roster.all[enemyIndex],
-        BattleConfig(roundTime = 90f, roundsToWin = difficulty.rounds, aiSkill = difficulty.skill),
+        BattleConfig(
+            roundTime = 90f,
+            roundsToWin = difficulty.rounds,
+            aiSkill = difficulty.skill,
+            aimAssist = aimAssist,
+        ),
     )
 
     fun startBattle() {
