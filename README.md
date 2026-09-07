@@ -76,8 +76,32 @@ APK のパッケージングまで通ることが確認できています。
 | `./gradlew assembleDebug` | 成功 |
 | デバッグ APK | 生成・アーティファクトとして保存 |
 
-APK は Actions の実行ページ下部「Artifacts」の `app-debug-apk` からダウンロードできます。
-端末の「提供元不明のアプリ」を許可すればそのままインストールできます。
+### APK の入手とインストール
+
+ビルド済みの APK は Actions の実行ページ下部「Artifacts」の `app-debug-apk` から
+ダウンロードできます（GitHub にログインした状態で開いてください）。
+
+- 直リンク: https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/33357060014/artifacts/9745521261
+- 実行ページ: https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/33357060014
+
+GitHub CLI があれば一行です。
+
+```bash
+gh run download 33357060014 -R ookimitsuru-ctrl/desktop-tutorial -n app-debug-apk
+adb install -r app-debug.apk        # USB 接続した端末へ
+```
+
+スマホに直接ダウンロードした場合は、ファイルアプリから APK をタップし、
+「提供元不明のアプリのインストール」を許可してください。
+
+### 手元に持ってくる
+
+```bash
+git clone -b claude/android-bullet-journal-go0o5z \
+  https://github.com/ookimitsuru-ctrl/desktop-tutorial.git bullet-journal
+```
+
+Android Studio でそのフォルダを開けばビルドできます（JDK 17 と Android SDK 35 が必要）。
 
 なお、この開発コンテナ自体からは `dl.google.com`（Android Gradle Plugin・androidx・
 Android SDK の唯一の配布元）へ到達できないため、ローカルでのビルドはできません。
