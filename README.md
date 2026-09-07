@@ -30,6 +30,37 @@ Kotlin + Jetpack Compose + Room で書かれた、オフライン完結・単一
 - **検索** — 本文と補足メモの全文検索。結果には「どこに書いたか」を表示
 - **移動** — マイグレーション専用画面。一件ずつ、またはまとめて移動
 
+## 正方形に近い画面と物理キーボード（Unihertz Titan など）
+
+別 APK は作らず、同じアプリが画面の形を見てレイアウトを切り替えます。判定は dp で
+行うので画面密度に依存しません（`ui/layout/WindowSpec.kt`）。
+
+| 条件 | 変わること |
+| --- | --- |
+| 縦横比が 1.45 未満（1080×1200 など、横向きのスマホも該当） | 下部ナビをやめて左のナビゲーションレールへ。縦を約 80dp 取り戻す |
+| 上に加えて幅 520dp 以上 | マンスリーログを紙の見開きどおり左にカレンダー・右に一覧の2ペインに |
+| 高さ 700dp 未満 | 行間・バレット・トップバーを詰め、日付を1行に収める |
+| 横に広い | カレンダーのマスに上限を設けて間延びを防ぐ |
+
+物理キーボードのある端末では次のキーが使えます（インデックス画面にも同じ表が出ます）。
+
+| キー | 操作 |
+| --- | --- |
+| `N` | 新しいバレットを書く |
+| `J` / `K`（矢印も可） | 一覧の選択を上下に動かす |
+| `Space` | 選択中のタスクの完了を切り替える |
+| `E` / `Enter` | 選択中のバレットの操作メニュー |
+| `H` / `L`（矢印も可） | 前の日 / 次の日 |
+| `T` | 今日へ戻る |
+| `/` | 検索 |
+| `M` | 移動（マイグレーション） |
+| `1`〜`5` | デイリー / マンスリー / フューチャー / コレクション / インデックス |
+| `Ctrl+Enter` | 入力中の内容を保存 |
+| `Esc` | 選択を外す / 閉じる |
+
+キー処理は子要素を先に通す `onKeyEvent` なので、文字入力中に横取りされません
+（入力シートだけは `Ctrl+Enter` と `Esc` を先回りして拾います）。
+
 ## 構成
 
 ```
@@ -66,13 +97,13 @@ app/src/main/java/com/bujo/app/
 ## ビルド状況
 
 GitHub Actions（`.github/workflows/android.yml`）でビルドとテストを実行しています。
-[初回の実行](https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/33357060014)が
-そのままグリーンになり、UI 層を含む全ソースのコンパイル、Room のコード生成、
+[最新の実行](https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/34109981250)まで
+グリーンで、UI 層を含む全ソースのコンパイル、Room のコード生成、
 APK のパッケージングまで通ることが確認できています。
 
 | 項目 | 結果 |
 | --- | --- |
-| `./gradlew testDebugUnitTest`（＝全ソースのコンパイル＋ユニットテスト10件） | 成功 |
+| `./gradlew testDebugUnitTest`（＝全ソースのコンパイル＋ユニットテスト20件） | 成功 |
 | `./gradlew assembleDebug` | 成功 |
 | デバッグ APK | 生成・アーティファクトとして保存 |
 
@@ -81,13 +112,13 @@ APK のパッケージングまで通ることが確認できています。
 ビルド済みの APK は Actions の実行ページ下部「Artifacts」の `app-debug-apk` から
 ダウンロードできます（GitHub にログインした状態で開いてください）。
 
-- 直リンク: https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/33357060014/artifacts/9745521261
-- 実行ページ: https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/33357060014
+- 直リンク: https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/34109981250/artifacts/10014058531
+- 実行ページ: https://github.com/ookimitsuru-ctrl/desktop-tutorial/actions/runs/34109981250
 
 GitHub CLI があれば一行です。
 
 ```bash
-gh run download 33357060014 -R ookimitsuru-ctrl/desktop-tutorial -n app-debug-apk
+gh run download 34109981250 -R ookimitsuru-ctrl/desktop-tutorial -n app-debug-apk
 adb install -r app-debug.apk        # USB 接続した端末へ
 ```
 
