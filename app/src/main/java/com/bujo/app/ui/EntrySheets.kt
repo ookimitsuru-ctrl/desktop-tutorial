@@ -19,6 +19,9 @@ class EntrySheetController {
     var editTarget by mutableStateOf<Entry?>(null)
         private set
 
+    /** シートやダイアログが開いているか（開いている間はショートカットを止める） */
+    val isOpen: Boolean get() = actionTarget != null || editTarget != null
+
     fun openActions(entry: Entry) {
         actionTarget = entry
     }

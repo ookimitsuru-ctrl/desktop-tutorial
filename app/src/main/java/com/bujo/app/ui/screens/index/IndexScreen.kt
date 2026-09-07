@@ -25,6 +25,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bujo.app.ui.components.SectionHeader
@@ -47,6 +48,9 @@ fun IndexScreen(
 ) {
     val months by viewModel.months.collectAsStateWithLifecycle()
     val collections by viewModel.collections.collectAsStateWithLifecycle()
+    // Unihertz Titan のような物理キーボード付き端末でだけ操作表を出す
+    val hasHardwareKeyboard =
+        LocalConfiguration.current.keyboard == android.content.res.Configuration.KEYBOARD_QWERTY
 
     Scaffold(
         modifier = modifier,
@@ -71,6 +75,9 @@ fun IndexScreen(
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             item { KeyCard() }
+            if (hasHardwareKeyboard) {
+                item { ShortcutCard() }
+            }
             item { SectionHeader(title = "月ごとの記録") }
             if (months.isEmpty()) {
                 item {
@@ -155,6 +162,38 @@ private fun KeyCard() {
                 "○  イベント（できごと・予定）",
                 "—  メモ（覚えておきたいこと）",
                 "*  優先　!  ひらめき　?  要調査"
+            ).forEach {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/** 物理キーボードのショートカット一覧 */
+@Composable
+private fun ShortcutCard() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("キーボード操作", style = MaterialTheme.typography.titleSmall)
+            listOf(
+                "N  新しいバレットを書く",
+                "J / K  一覧の選択を上下に動かす",
+                "Space  選択中のタスクの完了を切り替える",
+                "E / Enter  選択中のバレットの操作メニュー",
+                "H / L  前の日 / 次の日",
+                "T  今日へ戻る",
+                "/  検索　M  移動（マイグレーション）",
+                "1〜5  デイリー / マンスリー / フューチャー / コレクション / インデックス",
+                "Ctrl+Enter  入力中の内容を保存　Esc  閉じる"
             ).forEach {
                 Text(
                     text = it,

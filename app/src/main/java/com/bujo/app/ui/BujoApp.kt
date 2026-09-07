@@ -1,5 +1,6 @@
 package com.bujo.app.ui
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -11,9 +12,12 @@ import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -27,6 +31,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.bujo.app.di.rememberRepository
+import com.bujo.app.ui.input.ShortcutAction
+import com.bujo.app.ui.input.ShortcutHost
+import com.bujo.app.ui.layout.LocalWindowSpec
+import com.bujo.app.ui.layout.rememberWindowSpec
 import com.bujo.app.ui.screens.collections.CollectionDetailScreen
 import com.bujo.app.ui.screens.collections.CollectionDetailViewModel
 import com.bujo.app.ui.screens.collections.CollectionsScreen
@@ -84,29 +92,49 @@ fun BujoApp() {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val windowSpec = rememberWindowSpec()
+    val showNavigation = currentRoute in tabs.map { it.route }
 
-    Scaffold(
-        bottomBar = {
-            if (currentRoute in tabs.map { it.route }) {
-                NavigationBar {
-                    tabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = currentRoute == tab.route,
-                            onClick = { navController.navigateToTab(tab.route) },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) }
-                        )
-                    }
-                }
+    // 画面をまたぐ操作だけをここで拾う。一覧の選択などは各画面が先に処理する
+    val onGlobalShortcut: (ShortcutAction) -> Boolean = { action ->
+        when (action) {
+            ShortcutAction.OPEN_SEARCH -> {
+                navController.navigate(Routes.SEARCH); true
             }
+
+            ShortcutAction.OPEN_MIGRATION -> {
+                navController.navigate(Routes.MIGRATION); true
+            }
+
+            ShortcutAction.TAB_DAILY -> {
+                navController.navigateToTab(Routes.DAILY); true
+            }
+
+            ShortcutAction.TAB_MONTHLY -> {
+                navController.navigateToTab(Routes.MONTHLY); true
+            }
+
+            ShortcutAction.TAB_FUTURE -> {
+                navController.navigateToTab(Routes.FUTURE); true
+            }
+
+            ShortcutAction.TAB_COLLECTIONS -> {
+                navController.navigateToTab(Routes.COLLECTIONS); true
+            }
+
+            ShortcutAction.TAB_INDEX -> {
+                navController.navigateToTab(Routes.INDEX); true
+            }
+
+            else -> false
         }
-    ) { padding ->
+    }
+
+    val destinations: @Composable (Modifier) -> Unit = { hostModifier ->
         NavHost(
             navController = navController,
             startDestination = Routes.DAILY,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier = hostModifier
         ) {
             composable(Routes.DAILY) {
                 DailyScreen(
@@ -174,6 +202,53 @@ fun BujoApp() {
                     viewModel = detailViewModel,
                     onBack = { navController.popBackStack() }
                 )
+            }
+        }
+    }
+
+    CompositionLocalProvider(LocalWindowSpec provides windowSpec) {
+        ShortcutHost(onAction = onGlobalShortcut, modifier = Modifier.fillMaxSize()) {
+            if (windowSpec.useNavigationRail) {
+                // 正方形に近い画面（Unihertz Titan など）や横向き。
+                // 縦を食う下部ナビをやめ、余っている横幅にレールを置く
+                Row(modifier = Modifier.fillMaxSize()) {
+                    if (showNavigation) {
+                        NavigationRail {
+                            tabs.forEach { tab ->
+                                NavigationRailItem(
+                                    selected = currentRoute == tab.route,
+                                    onClick = { navController.navigateToTab(tab.route) },
+                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                    label = { Text(tab.label) }
+                                )
+                            }
+                        }
+                    }
+                    destinations(Modifier.fillMaxSize())
+                }
+            } else {
+                Scaffold(
+                    bottomBar = {
+                        if (showNavigation) {
+                            NavigationBar {
+                                tabs.forEach { tab ->
+                                    NavigationBarItem(
+                                        selected = currentRoute == tab.route,
+                                        onClick = { navController.navigateToTab(tab.route) },
+                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                        label = { Text(tab.label) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                ) { padding ->
+                    destinations(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                    )
+                }
             }
         }
     }

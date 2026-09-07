@@ -1,6 +1,7 @@
 package com.bujo.app.ui.components
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,7 @@ import com.bujo.app.data.model.Entry
 import com.bujo.app.data.model.EntryType
 import com.bujo.app.data.model.Signifier
 import com.bujo.app.data.model.bulletGlyph
+import com.bujo.app.ui.input.editorKeys
 
 /** 新規追加・編集で使う入力シート */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,10 +62,18 @@ fun EntryEditorSheet(
         runCatching { focusRequester.requestFocus() }
     }
 
+    val submit = {
+        if (content.isNotBlank()) {
+            onSave(content.trim(), type, signifier, note.trim().ifEmpty { null })
+        }
+    }
+
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .editorKeys(onSubmit = submit, onDismiss = onDismiss)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 20.dp)
                 .navigationBarsPadding()
@@ -122,10 +132,7 @@ fun EntryEditorSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = onDismiss) { Text("キャンセル") }
-                Button(
-                    onClick = { onSave(content.trim(), type, signifier, note.trim().ifEmpty { null }) },
-                    enabled = content.isNotBlank()
-                ) { Text("保存") }
+                Button(onClick = submit, enabled = content.isNotBlank()) { Text("保存") }
             }
         }
     }

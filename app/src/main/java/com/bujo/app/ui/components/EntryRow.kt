@@ -1,6 +1,7 @@
 package com.bujo.app.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
@@ -12,11 +13,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.bujo.app.data.model.Entry
 import com.bujo.app.data.model.EntryType
 import com.bujo.app.data.model.TaskState
+import com.bujo.app.ui.layout.LocalWindowSpec
 
 /**
  * ラピッドログの1行。
@@ -29,8 +32,11 @@ fun EntryRow(
     onToggle: () -> Unit,
     onOpenActions: () -> Unit,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
     trailing: (@Composable () -> Unit)? = null
 ) {
+    // 縦の狭い画面（Unihertz Titan など）では行間を詰める
+    val dense = LocalWindowSpec.current.isDense
     val struck = entry.type == EntryType.TASK &&
         entry.state in setOf(TaskState.DONE, TaskState.CANCELLED)
     val dimmed = entry.type == EntryType.TASK && entry.state != TaskState.OPEN
@@ -38,8 +44,11 @@ fun EntryRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(
+                if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+            )
             .combinedClickable(onClick = onOpenActions, onLongClick = onOpenActions)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = if (dense) 2.dp else 6.dp),
         verticalAlignment = Alignment.Top
     ) {
         SignifierMark(entry.signifier)

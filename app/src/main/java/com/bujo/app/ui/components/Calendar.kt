@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bujo.app.data.local.DayCount
+import com.bujo.app.ui.layout.LocalWindowSpec
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -48,42 +50,50 @@ fun MonthCalendar(
         while (size % 7 != 0) add(null)
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            weekHeaders.forEachIndexed { index, label ->
-                Text(
-                    text = label,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = when (index) {
-                        5 -> MaterialTheme.colorScheme.primary
-                        6 -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        }
-        cells.chunked(7).forEach { week ->
-            Row(modifier = Modifier.fillMaxWidth()) {
-                week.forEach { day ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .padding(2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (day != null) DayCell(
-                            day = day,
-                            isSelected = day == selected,
-                            isToday = day == today,
-                            count = counts[day.toString()],
-                            onClick = { onSelect(day) }
-                        )
-                    }
-                }
-            }
+    // 横に広い画面でマスが間延びしないよう幅に上限を設ける
+    val maxGridWidth = (7 * LocalWindowSpec.current.calendarCellMaxDp).dp
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Column(modifier = Modifier.widthIn(max = maxGridWidth)) {
+          Row(modifier = Modifier.fillMaxWidth()) {
+              weekHeaders.forEachIndexed { index, label ->
+                  Text(
+                      text = label,
+                      modifier = Modifier.weight(1f),
+                      style = MaterialTheme.typography.labelSmall,
+                      color = when (index) {
+                          5 -> MaterialTheme.colorScheme.primary
+                          6 -> MaterialTheme.colorScheme.error
+                          else -> MaterialTheme.colorScheme.onSurfaceVariant
+                      },
+                      textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                  )
+              }
+          }
+          cells.chunked(7).forEach { week ->
+              Row(modifier = Modifier.fillMaxWidth()) {
+                  week.forEach { day ->
+                      Box(
+                          modifier = Modifier
+                              .weight(1f)
+                              .aspectRatio(1f)
+                              .padding(2.dp),
+                          contentAlignment = Alignment.Center
+                      ) {
+                          if (day != null) DayCell(
+                              day = day,
+                              isSelected = day == selected,
+                              isToday = day == today,
+                              count = counts[day.toString()],
+                              onClick = { onSelect(day) }
+                          )
+                      }
+                  }
+              }
+          }
         }
     }
 }

@@ -14,6 +14,7 @@ import com.bujo.app.data.model.EntryType
 import com.bujo.app.data.model.Signifier
 import com.bujo.app.data.model.TaskState
 import com.bujo.app.data.model.bulletGlyph
+import com.bujo.app.ui.layout.LocalWindowSpec
 import com.bujo.app.ui.theme.BulletTextStyle
 
 @Composable
@@ -25,7 +26,8 @@ fun BulletMark(entry: Entry, modifier: Modifier = Modifier) {
         faded -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }
-    Box(modifier = modifier.size(28.dp), contentAlignment = Alignment.Center) {
+    val size = if (LocalWindowSpec.current.isDense) 24.dp else 28.dp
+    Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
         Text(text = bulletGlyph(entry.type, entry.state), style = BulletTextStyle, color = color)
     }
 }
@@ -33,7 +35,11 @@ fun BulletMark(entry: Entry, modifier: Modifier = Modifier) {
 /** サインファイア（* ! ?）をバレットの左に表示する */
 @Composable
 fun SignifierMark(signifier: Signifier, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.size(width = 14.dp, height = 28.dp), contentAlignment = Alignment.Center) {
+    val height = if (LocalWindowSpec.current.isDense) 24.dp else 28.dp
+    Box(
+        modifier = modifier.size(width = 14.dp, height = height),
+        contentAlignment = Alignment.Center
+    ) {
         if (signifier != Signifier.NONE) {
             Text(
                 text = signifier.glyph,
