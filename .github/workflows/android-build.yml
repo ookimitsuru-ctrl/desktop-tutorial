@@ -8,49 +8,57 @@ on:
 
 jobs:
   build:
+    name: デバッグ APK をビルドする
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: JDK 17 を用意する
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # Android SDK は GitHub のランナーに最初から入っているので追加の用意は不要
+      - name: Gradle を用意する
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: gradlew に実行権限を付ける
+        run: chmod +x ./gradlew
 
-      - name: Build debug APK
+      - name: デバッグ APK をビルドする
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload debug APK
+      - name: APK を保存する
         uses: actions/upload-artifact@v4
         with:
           name: planetgrow-debug-apk
-          path: app/build/outputs/apk/**/*.apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
 
   preview:
-    # Android SDK なしで動く描画プレビュー (惑星の絵が壊れていないかの確認)
+    name: 惑星のプレビュー画像を作る
+    # Android SDK 無しで動く描画プレビュー (絵が壊れていないかの確認用)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: JDK 17 を用意する
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Render preview images
+      - name: gradlew に実行権限を付ける
+        run: chmod +x ./gradlew
+
+      - name: プレビュー画像を描く
         working-directory: preview
         run: ../gradlew run --args="out 1 06:00 12:00 18:30 23:00"
 
-      - name: Upload preview images
+      - name: プレビュー画像を保存する
         uses: actions/upload-artifact@v4
         with:
           name: planet-preview
           path: preview/out/*.png
+          if-no-files-found: error

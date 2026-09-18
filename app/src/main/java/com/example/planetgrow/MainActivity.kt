@@ -118,6 +118,7 @@ fun PlanetScreen() {
         LaunchedEffect(Unit) {
             var startNanos = 0L
             var prevNanos = 0L
+            var frames = 0
             while (true) {
                 val now = withFrameNanos { it }
                 if (startNanos == 0L) startNanos = now
@@ -131,12 +132,15 @@ fun PlanetScreen() {
                 val sky = Sky(localDayFraction(zone, nowMs), nowMs)
                 world.update(dt, sky.sunDirX, sky.sunDirY)
 
-                // 分が変わったら時計表示と日付を見直す
-                val t = LocalTime.now(zone)
-                val minuteOfDay = t.hour * 60 + t.minute
-                if (minuteOfDay != clockMinute.intValue) {
-                    clockMinute.intValue = minuteOfDay
-                    realDay.intValue = prefs.dayNumber(zone)
+                // 1 秒に一度だけ、分が変わっていないか見る
+                frames++
+                if (frames % 60 == 0) {
+                    val t = LocalTime.now(zone)
+                    val minuteOfDay = t.hour * 60 + t.minute
+                    if (minuteOfDay != clockMinute.intValue) {
+                        clockMinute.intValue = minuteOfDay
+                        realDay.intValue = prefs.dayNumber(zone)
+                    }
                 }
                 frameTick.longValue = now
             }
