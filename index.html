@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>星の箱庭</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="sky" aria-label="すこしずつ育っていく小さな星"></canvas>
+
+  <p class="hint">画面を押さえると、引力の手で漂流物を引き寄せられる</p>
+
+  <section class="panel panel-star" aria-label="星のようす">
+    <p class="eyebrow">わたしの星</p>
+    <input id="starName" class="name" value="B-612" maxlength="14" spellcheck="false" autocomplete="off" aria-label="星の名前">
+
+    <dl class="readout">
+      <div><dt>半径</dt><dd id="valRadius">4.00 m</dd></div>
+      <div><dt>質量</dt><dd id="valMass">1,000 t</dd></div>
+      <div><dt>日の入り</dt><dd id="valSunsets">0 回</dd></div>
+    </dl>
+
+    <p class="eyebrow">できている材料</p>
+    <div class="comp">
+      <div class="comp-row"><span class="k">岩</span><span class="bar"><i id="barRock" class="f-rock"></i></span><b id="pctRock">100%</b></div>
+      <div class="comp-row"><span class="k">氷</span><span class="bar"><i id="barIce" class="f-ice"></i></span><b id="pctIce">0%</b></div>
+      <div class="comp-row"><span class="k">金属</span><span class="bar"><i id="barMetal" class="f-metal"></i></span><b id="pctMetal">0%</b></div>
+    </div>
+
+    <div class="next">
+      <p class="eyebrow">つぎのできごと</p>
+      <p class="next-title" id="nextTitle">地殻ができた</p>
+      <span class="bar"><i id="barNext" class="f-next"></i></span>
+      <p class="next-need" id="nextNeed">半径 4.7 m</p>
+    </div>
+  </section>
+
+  <section class="panel panel-log" aria-label="航星日誌">
+    <p class="eyebrow">航星日誌</p>
+    <ol id="logList"></ol>
+  </section>
+
+  <footer class="dock">
+    <ul class="catch">
+      <li><span class="dot d-meteor" aria-hidden="true"></span>隕石<b id="cMeteor">0</b></li>
+      <li><span class="dot d-dust" aria-hidden="true"></span>彗星のチリ<b id="cDust">0</b></li>
+      <li><span class="dot d-wreck" aria-hidden="true"></span>漂流物<b id="cWreck">0</b></li>
+      <li><span class="dot d-seed" aria-hidden="true"></span>星の種<b id="cSeed">0</b></li>
+    </ul>
+    <div class="dock-right">
+      <div class="speed" id="speedGroup" role="group" aria-label="時間の速さ">
+        <button type="button" data-speed="0" aria-pressed="false">休む</button>
+        <button type="button" data-speed="1" class="is-on" aria-pressed="true">×1</button>
+        <button type="button" data-speed="2" aria-pressed="false">×2</button>
+        <button type="button" data-speed="4" aria-pressed="false">×4</button>
+      </div>
+      <button type="button" id="resetBtn" class="ghost">最初から</button>
+    </div>
+  </footer>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/world.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
