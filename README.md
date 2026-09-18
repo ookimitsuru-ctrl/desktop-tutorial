@@ -1,68 +1,16 @@
 # 星の箱庭
 
-小さな星をひとつ、机の上で育てるブラウザアプリ。
+This branch has been cleared. The application code has been removed.
 
-宇宙から降ってくる**隕石**・**彗星のチリ**・**宇宙船の漂流物**・**星の種**が
-すこしずつ積もって、星は大きくなっていく。ある大きさを越えるたびに、
-地殻ができ、火山が噴き、海がたまり、木が芽を出し、街灯がともり、
-やがて誰かが住みつく。
+---
 
-## 遊びかた
+**Former project**: A browser-based garden app where a small star grows by collecting falling space debris (meteors, comet dust, ships' wreckage, seeds).
 
-`index.html` をブラウザで開くだけ。ビルドも依存パッケージもない。
+The app was built with vanilla HTML/CSS/JavaScript and featured:
+- Canvas-based 2D/3D planet rendering with material composition tracking
+- Gravity simulation with debris orbital mechanics
+- Progressive milestone system (11 stages of development)
+- Responsive layout adapting to desktop and mobile screens
+- Automatic browser-based save/load system
 
-```sh
-# そのまま開いてもよいし、簡易サーバー越しでも動く
-python3 -m http.server 8000   # → http://localhost:8000
-```
-
-| 操作 | できること |
-| --- | --- |
-| 画面を押さえる・ドラッグ | 「引力の手」で漂流物を引き寄せて、星にぶつける |
-| 休む / ×1 / ×2 / ×4 | 時間の速さ（スペースキーで一時停止の切り替え） |
-| 星の名前 | 書きかえられる（初期値は N-01） |
-| 最初から | 二度押しで、新しい星を最初から |
-
-進み具合は自動でブラウザに保存される。閉じて開きなおせば、育てた星の続きから。
-
-## 星の育ちかた
-
-- **質量**が増えると半径が伸びる（`r ∝ ∛m`）。落ちた場所にはクレーターや氷原、金属片が残り、
-  星が大きくなるほど昔の痕は相対的に小さく、やがて埋もれて消える。
-- 降ってくるものの**材料**（岩・氷・金属）の割合が星の色を決め、できごとの条件にもなる。
-- 星が大きいほど強く引きつけるので、降ってくる量も増えていく。
-  ×1 でひととおりのできごとが起きるまで、およそ 18 分。
-- 自転一周が一日。日が暮れるたびに街灯がともり、「日の入り」の回数が増える。
-
-### できごと
-
-| 半径 | できごと | 条件 |
-| --- | --- | --- |
-| 4.7 m | 地殻ができた | |
-| 6.2 m | 火山ができた | |
-| 8.2 m | うすい大気 | 氷 10% |
-| 10.8 m | 手のひらの海 | 氷 12% |
-| 13.2 m | はじめての木 | 星の種 |
-| 16.5 m | はじめての花 | 星の種 |
-| 20.0 m | 街灯がともる | 金属 12% |
-| 24.0 m | 小さな家 | 金属 16% |
-| 28.5 m | 見晴らしの椅子 | |
-| 34.5 m | 住人がやってきた | |
-| 42.0 m | 星に名前がついた | |
-
-## 中身
-
-```
-index.html        画面の骨組み
-css/style.css     配色・文字・パネルの配置
-js/config.js      定数、漂流物の種類、できごとの定義
-js/world.js       シミュレーション（重力・取りこみ・できごと・セーブ）
-js/render.js      描画（星空・球の陰影・地表の痕・地上のものたち）
-js/ui.js          HUD と航星日誌の更新
-js/main.js        起動・入力・保存
-```
-
-素の HTML/CSS/JavaScript だけで書いてある。フレームワークもビルド手順もない。
-
-画面の広さで置きかたが変わる。横長では星の左右にパネルを浮かべ、
-携帯のような縦長では上下に積んで、あいだの空いた帯に星を置く。
+The published version has been deleted and this branch content has been cleared as requested.
