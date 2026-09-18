@@ -43,10 +43,21 @@
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### GitHub Actions からできあがった APK を取る
+### できあがった APK をそのまま入れる
 
-`.github/workflows/android-build.yml` が push のたびに debug APK をビルドします。
-Actions の実行結果ページ下部 **Artifacts** の `planetgrow-debug-apk` からダウンロードできます。
+push のたびに CI が debug APK をビルドして、固定 URL の Release に置きます。
+スマホのブラウザで下のリンクを開けばそのままインストールできます
+(端末の設定で「提供元不明のアプリ」のインストールを許可してください)。
+
+**<https://github.com/ookimitsuru-ctrl/desktop-tutorial/releases/download/planetgrow-latest/planetgrow-debug.apk>**
+
+```bash
+# PC から入れる場合
+curl -LO https://github.com/ookimitsuru-ctrl/desktop-tutorial/releases/download/planetgrow-latest/planetgrow-debug.apk
+adb install -r planetgrow-debug.apk
+```
+
+Actions の実行結果ページ下部 **Artifacts** の `planetgrow-debug-apk` からも取れます。
 
 ## 画面の見かた
 

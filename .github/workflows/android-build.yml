@@ -10,6 +10,8 @@ jobs:
   build:
     name: デバッグ APK をビルドする
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +37,25 @@ jobs:
           name: planetgrow-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # スマホのブラウザから1タップで入れられるよう、固定 URL の Release に置く
+      - name: APK を Release に置く
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: planetgrow-latest
+        run: |
+          set -eu
+          cp app/build/outputs/apk/debug/app-debug.apk planetgrow-debug.apk
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "ほしそだて (最新デバッグビルド)" \
+              --notes "惑星育成アプリ「ほしそだて」の最新デバッグビルドです。Android 8.0 (API 26) 以上。端末の設定で提供元不明のアプリのインストールを許可してから planetgrow-debug.apk を開いてください。push のたびに更新されます。" \
+              --prerelease \
+              --target "$GITHUB_SHA"
+          fi
+          gh release upload "$TAG" planetgrow-debug.apk --clobber
+          echo "APK: https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/planetgrow-debug.apk"
 
   preview:
     name: 惑星のプレビュー画像を作る
