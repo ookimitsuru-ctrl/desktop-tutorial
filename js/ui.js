@@ -25,7 +25,7 @@ window.Hakoniwa = window.Hakoniwa || {};
       cur = world;
       el.starName.value = world.name;
       el.starName.addEventListener('input', function () {
-        cur.name = el.starName.value.slice(0, 14) || 'B-612';
+        cur.name = el.starName.value.slice(0, 14) || 'N-01';
         handlers.onChange();
       });
 

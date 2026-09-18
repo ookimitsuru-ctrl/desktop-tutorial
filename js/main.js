@@ -26,10 +26,30 @@
     } catch (e) { /* 保存できない環境では黙って続ける */ }
   }
 
+  /* パネルで隠れていない縦の帯を測る(携帯だと上下にパネルが積まれるため) */
+  function measure() {
+    var rect = canvas.getBoundingClientRect();
+    var top = 0, bottom = rect.height;
+    if (window.innerWidth <= 760) {
+      var ps = document.querySelector('.panel-star');
+      var pl = document.querySelector('.panel-log');
+      if (ps) top = ps.getBoundingClientRect().bottom - rect.top;
+      if (pl) bottom = pl.getBoundingClientRect().top - rect.top;
+      if (bottom - top < 140) { top = 0; bottom = rect.height; }
+    }
+    var cy = (top + bottom) / 2;
+    return {
+      w: rect.width, h: rect.height,
+      cx: rect.width / 2,
+      cy: Math.min(Math.max(cy, rect.height * 0.15), rect.height * 0.85),
+      band: Math.max(150, bottom - top)
+    };
+  }
+
   function fitCanvas() {
-    var size = renderer.resize();
-    world.bounds = size;
-    world.pixelRadius = H.pixelRadiusOf(world.radius, size);
+    renderer.resize();
+    world.bounds = measure();
+    world.pixelRadius = H.pixelRadiusOf(world.radius, world.bounds);
   }
 
   function pointerPos(ev) {
@@ -86,7 +106,7 @@
     renderer.draw(world, now / 1000, input);
 
     uiTimer -= dt;
-    if (uiTimer <= 0) { uiTimer = 0.2; H.ui.sync(world); }
+    if (uiTimer <= 0) { uiTimer = 0.2; H.ui.sync(world); world.bounds = measure(); }
     saveTimer -= dt;
     if (saveTimer <= 0) { saveTimer = H.SAVE_INTERVAL; save(); }
   }

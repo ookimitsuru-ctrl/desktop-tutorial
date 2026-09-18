@@ -298,32 +298,63 @@ body.is-pulling .hint { opacity: 0; transition: opacity 0.3s; }
 
 /* ---- 小さい画面 ---- */
 @media (max-width: 760px) {
-  .panel-star {
-    left: 12px;
-    right: 12px;
-    width: auto;
-    padding: 11px 13px 12px;
-  }
-  .name { font-size: 21px; margin-bottom: 9px; }
-  .readout { gap: 12px; margin-bottom: 12px; }
-  .readout dd { font-size: 15px; }
-  .comp { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 10px; margin-bottom: 12px; }
-  .comp-row { grid-template-columns: 22px 1fr; }
-  .comp-row b { display: none; }
-  .next { padding-top: 10px; }
-  .panel-log {
+  /* 重ねると星が隠れるので、上から順に積んで、あいだを星に空ける */
+  #stage { display: flex; flex-direction: column; }
+  /* canvas は absolute なので、重ね順を保つために relative にしておく
+     (static のままだと canvas の下に潜って見えなくなる) */
+  .panel, .dock {
+    position: relative;
+    z-index: 1;
     top: auto;
-    bottom: 88px;
-    left: 12px;
-    right: 12px;
+    right: auto;
+    bottom: auto;
+    left: auto;
+  }
+  .panel-star {
+    margin: 8px 12px 0;
     width: auto;
-    max-height: 26vh;
+    padding: 9px 13px 10px;
+  }
+  .panel-star > .eyebrow:first-child { margin-bottom: 3px; }
+  .name { font-size: 19px; margin-bottom: 7px; padding-bottom: 3px; }
+  .readout { gap: 12px; margin-bottom: 9px; }
+  .readout dd { font-size: 15px; }
+  .comp > .eyebrow, .panel-star > .eyebrow:nth-of-type(2) { display: none; }
+  .comp {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .comp-row { grid-template-columns: 30px 1fr; gap: 7px; }
+  .comp-row .k { white-space: nowrap; }
+  .comp-row b { display: none; }
+  .next {
+    padding-top: 9px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    column-gap: 10px;
+  }
+  .next > .eyebrow { grid-column: 1 / -1; grid-row: 1; margin-bottom: 3px; }
+  .next-title { grid-column: 1; grid-row: 2; margin: 0 0 6px; font-size: 14px; }
+  .next-need { grid-column: 2; grid-row: 2; margin: 0 0 6px; text-align: right; }
+  .next .bar { grid-column: 1 / -1; grid-row: 3; }
+  .panel-log {
+    margin: auto 12px 0;
+    width: auto;
+    max-height: 19vh;
+    min-height: 0;
     padding: 10px 4px 10px 13px;
   }
   .panel-log ol { gap: 10px; }
   .hint { display: none; }
-  .dock { left: 12px; right: 12px; gap: 8px 12px; }
-  .catch { gap: 11px; font-size: 10.5px; }
+  .dock {
+    margin: 0;
+    padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 8px 12px;
+  }
+  .catch { gap: 10px; font-size: 10.5px; }
   .catch b { font-size: 12.5px; }
 }
 

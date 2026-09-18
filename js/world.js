@@ -10,7 +10,8 @@ window.Hakoniwa = window.Hakoniwa || {};
   };
 
   H.pixelRadiusOf = function (radius, bounds) {
-    var fit = clamp(Math.min(bounds.w, bounds.h) / 620, 0.5, 1.15);
+    var band = bounds.band || bounds.h;
+    var fit = clamp(Math.min(bounds.w, band) / 520, 0.62, 1.15);
     return 46 * Math.pow(radius / H.BASE_RADIUS, 0.45) * fit;
   };
 
@@ -22,7 +23,7 @@ window.Hakoniwa = window.Hakoniwa || {};
 
   H.createWorld = function () {
     var w = {
-      name: 'B-612',
+      name: 'N-01',
       mass: H.START_MASS,
       comp: { rock: H.START_MASS, ice: 0, metal: 0 },
       life: 0,
@@ -69,9 +70,13 @@ window.Hakoniwa = window.Hakoniwa || {};
   }
 
   function spawnRadius(w, angle) {
-    if (angle == null) return Math.hypot(w.bounds.w, w.bounds.h) * 0.5 + 90;
-    var c = Math.abs(Math.cos(angle)), s = Math.abs(Math.sin(angle));
-    var edge = Math.min(c > 1e-4 ? w.bounds.w * 0.5 / c : 1e9, s > 1e-4 ? w.bounds.h * 0.5 / s : 1e9);
+    var b = w.bounds;
+    var cx = b.cx == null ? b.w * 0.5 : b.cx;
+    var cy = b.cy == null ? b.h * 0.5 : b.cy;
+    if (angle == null) return Math.hypot(Math.max(cx, b.w - cx), Math.max(cy, b.h - cy)) + 90;
+    var c = Math.cos(angle), s = Math.sin(angle);
+    var dx = c > 0 ? b.w - cx : cx, dy = s > 0 ? b.h - cy : cy;
+    var edge = Math.min(Math.abs(c) > 1e-4 ? dx / Math.abs(c) : 1e9, Math.abs(s) > 1e-4 ? dy / Math.abs(s) : 1e9);
     return edge + 70;
   }
 
@@ -213,17 +218,17 @@ window.Hakoniwa = window.Hakoniwa || {};
         }
         break;
       case 'sprout':
-        for (i = 0; i < 3; i++) place(w, 'baobab', { scale: rand(0.8, 1.2) });
+        for (i = 0; i < 3; i++) place(w, 'tree', { scale: rand(0.8, 1.2) });
         break;
       case 'rose': place(w, 'rose'); break;
       case 'lamp': place(w, 'lamp'); break;
       case 'house': place(w, 'house'); break;
       case 'bench': place(w, 'bench'); break;
-      case 'prince':
+      case 'keeper':
         base = null;
         for (i = 0; i < w.features.length; i++) if (w.features[i].type === 'bench') base = w.features[i];
-        if (base) w.features.push({ type: 'prince', lat: base.lat, lon: base.lon + 0.26, seed: rand(0, 1), scale: 1 });
-        else place(w, 'prince');
+        if (base) w.features.push({ type: 'keeper', lat: base.lat, lon: base.lon + 0.26, seed: rand(0, 1), scale: 1 });
+        else place(w, 'keeper');
         break;
       case 'named': place(w, 'signpost'); break;
     }
@@ -404,7 +409,7 @@ window.Hakoniwa = window.Hakoniwa || {};
 
   H.serialize = function (w) {
     return {
-      v: 1,
+      v: 2,
       name: w.name,
       mass: w.mass,
       comp: w.comp,
@@ -425,9 +430,32 @@ window.Hakoniwa = window.Hakoniwa || {};
     };
   };
 
+  /* v1 のセーブを読みかえる(呼び名を変えたので) */
+  function migrate(w) {
+    var TYPE = { baobab: 'tree', prince: 'keeper' };
+    var RETITLE = { 'バオバブの芽': 'sprout', '一輪のバラ': 'rose', '王子さまが来た': 'keeper',
+      '夕日を見る椅子': 'bench', '火山が三つ': 'volcano', '街灯と点灯夫': 'lamp' };
+    var i, m;
+    for (i = 0; i < w.features.length; i++) {
+      if (TYPE[w.features[i].type]) w.features[i].type = TYPE[w.features[i].type];
+    }
+    if (w.unlocked.prince) { delete w.unlocked.prince; w.unlocked.keeper = true; }
+    for (i = 0; i < w.log.length; i++) {
+      var id = RETITLE[w.log[i].title];
+      if (!id) continue;
+      for (var k = 0; k < H.MILESTONES.length; k++) {
+        m = H.MILESTONES[k];
+        if (m.id !== id) continue;
+        w.log[i].title = m.title;
+        w.log[i].text = m.log;
+      }
+    }
+    if (w.name === 'B-612') w.name = 'N-01';
+  }
+
   H.deserialize = function (data) {
     var w = H.createWorld();
-    if (!data || data.v !== 1) return w;
+    if (!data || (data.v !== 1 && data.v !== 2)) return w;
     w.fresh = false;
     w.name = typeof data.name === 'string' ? data.name.slice(0, 14) : w.name;
     w.mass = Math.max(H.START_MASS, +data.mass || H.START_MASS);
@@ -448,6 +476,7 @@ window.Hakoniwa = window.Hakoniwa || {};
       return { lat: +m[0], lon: +m[1], rm: +m[2], kind: m[3] };
     });
     w.radius = H.radiusOf(w.mass);
+    if (data.v === 1) migrate(w);
     return w;
   };
 })(window.Hakoniwa);
