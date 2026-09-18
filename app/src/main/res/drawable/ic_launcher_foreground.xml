@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ランチャーアイコン: 小さな惑星の上に家が一軒 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 惑星 (草) -->
+    <path
+        android:fillColor="#5BA33C"
+        android:pathData="M54,66 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0" />
+    <!-- 土 -->
+    <path
+        android:fillColor="#8A6141"
+        android:pathData="M54,66 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0" />
+    <!-- 石 -->
+    <path
+        android:fillColor="#7C7C7C"
+        android:pathData="M54,66 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0" />
+    <!-- マグマ -->
+    <path
+        android:fillColor="#FF8A1E"
+        android:pathData="M48,60 h12 v12 h-12 z" />
+
+    <!-- 家: 壁 -->
+    <path
+        android:fillColor="#B08A54"
+        android:pathData="M45,35 h18 v10 h-18 z" />
+    <!-- 家: 屋根 -->
+    <path
+        android:fillColor="#6B4326"
+        android:pathData="M41,35 h26 v-5 h-22 z M46,30 h16 v-5 h-16 z" />
+    <!-- 家: 窓 -->
+    <path
+        android:fillColor="#9FD6EA"
+        android:pathData="M48,38 h4 v4 h-4 z M56,38 h4 v4 h-4 z" />
+    <!-- 家: 扉 -->
+    <path
+        android:fillColor="#6E5233"
+        android:pathData="M52,40 h4 v5 h-4 z" />
+    <!-- 煙突 -->
+    <path
+        android:fillColor="#8A8A8A"
+        android:pathData="M58,25 h4 v-6 h-4 z" />
+</vector>
