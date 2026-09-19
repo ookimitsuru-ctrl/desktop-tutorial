@@ -572,30 +572,109 @@ object Art {
         Sprite(w, h, px)
     }
 
-    /** 遠くを飛んでいく UFO (演出用。ゲームには関係ない)。 */
-    val ufo: Sprite = Sprite.of(
-        listOf(
-            "..........................",
-            "...........GGGG...........",
-            ".........GGwwwwGG.........",
-            "........G.wwwwww.G........",
-            ".......GGGGGGGGGGG........",
-            ".....SSSSSSSSSSSSSSS......",
-            "....SSSssssssssssSSS......",
-            "...SSSSSSSSSSSSSSSSSS.....",
-            "....SSSSSSSSSSSSSSSS......",
-            "......o.....o.....o.......",
-            "..........................",
-            ".........................."
-        ),
-        mapOf(
-            'G' to rgbOf(0x8FE0D0),
-            'w' to rgbOf(0xEAFFFA),
-            'S' to rgbOf(0x9AA0AC),
-            's' to rgbOf(0xC4CAD4),
-            'o' to rgbOf(0x7CE0FF)
-        )
-    )
+    /**
+     * 遠くを飛んでいく UFO (演出用。ゲームには関係ない)。
+     * ドーム状の操縦席 (窓3つ) + 平たく広い円盤 (縁が光る) + 丸みを帯びた下部 +
+     * 着陸脚3本 (先端が光る) の、アダムスキー型とひと目で分かる形にしてある。
+     */
+    val ufo: Sprite = run {
+        val w = 56
+        val h = 40
+        val cx = w / 2f - 0.5f
+        val px = IntArray(w * h)
+        // 固定の光源 (左上) で陰影をつける。実際の太陽の向きとは連動しない
+        val lx = -0.55f
+        val ly = -0.65f
+
+        val domeGlass = rgbOf(0xCFF3EE)
+        val domeGlassDark = rgbOf(0x86C9BE)
+        val portRing = rgbOf(0x33393F)
+        val portGlow = rgbOf(0xFFF3B8)
+        val hullLight = rgbOf(0xC7CFD8)
+        val hullMid = rgbOf(0x969FAC)
+        val hullDark = rgbOf(0x5B6472)
+        val rimGlow = rgbOf(0x8FEBFF)
+        val legColor = rgbOf(0x6B7280)
+        val footGlow = rgbOf(0x9CFFEC)
+
+        val domeCy = 14f
+        val domeRx = 11f
+        val domeRy = 9f
+        for (y in 0 until h) for (x in 0 until w) {
+            val nx = (x - cx) / domeRx
+            val ny = (y - domeCy) / domeRy
+            if (ny > 0.12f) continue
+            val d2 = nx * nx + ny * ny
+            if (d2 > 1f) continue
+            val shade = (nx * lx + ny * ly + 0.55f).coerceIn(0f, 1f)
+            px[y * w + x] = Col.lerp(domeGlassDark, domeGlass, shade)
+        }
+        for (i in -1..1) {
+            val pcx = cx + i * 5.5f
+            val pcy = domeCy + 1f
+            for (dy in -2..2) for (dx in -2..2) {
+                val d2 = dx * dx + dy * dy
+                if (d2 > 4) continue
+                val x = (pcx + dx).roundToInt()
+                val y = (pcy + dy).roundToInt()
+                if (x !in 0 until w || y !in 0 until h) continue
+                px[y * w + x] = if (d2 <= 1) portGlow else portRing
+            }
+        }
+
+        val discCy = 20f
+        val discRx = 26f
+        val discRy = 6f
+        for (y in 0 until h) for (x in 0 until w) {
+            val nx = (x - cx) / discRx
+            val ny = (y - discCy) / discRy
+            val d2 = nx * nx + ny * ny
+            if (d2 > 1f) continue
+            val shade = (nx * lx + ny * ly + 0.55f).coerceIn(0f, 1f)
+            val base = Col.lerp(hullDark, hullLight, shade)
+            val onRim = d2 > 0.78f
+            px[y * w + x] = if (onRim && ((x + (y % 2)) % 5 == 0)) rimGlow else base
+        }
+
+        val underCy = 25f
+        val underRx = 14f
+        val underRy = 7f
+        for (y in 0 until h) for (x in 0 until w) {
+            val nx = (x - cx) / underRx
+            val ny = (y - underCy) / underRy
+            if (ny < -0.15f) continue
+            val d2 = nx * nx + ny * ny
+            if (d2 > 1f) continue
+            val shade = (nx * lx + ny * ly + 0.4f).coerceIn(0f, 1f)
+            px[y * w + x] = Col.lerp(hullDark, hullMid, shade)
+        }
+
+        val legTopY = 30f
+        val legBottomY = 38f
+        for (legX in floatArrayOf(cx - 9f, cx, cx + 9f)) {
+            for (t in 0..8) {
+                val ft = t / 8f
+                val lxAt = legX + (cx - legX) * 0.2f * ft
+                val y = (legTopY + (legBottomY - legTopY) * ft).roundToInt()
+                val x0 = lxAt.roundToInt()
+                for (x in x0..x0 + 1) {
+                    if (x !in 0 until w || y !in 0 until h) continue
+                    px[y * w + x] = legColor
+                }
+            }
+            val fx = legX.roundToInt()
+            val fy = legBottomY.roundToInt()
+            for (dy in -1..1) for (dx in -1..1) {
+                if (dx * dx + dy * dy > 2) continue
+                val x = fx + dx
+                val y = fy + dy
+                if (x !in 0 until w || y !in 0 until h) continue
+                px[y * w + x] = footGlow
+            }
+        }
+
+        Sprite(w, h, px)
+    }
 
     /**
      * 遠くを通り過ぎていく、よその惑星 (演出用)。自分の星と同じような作りだが、

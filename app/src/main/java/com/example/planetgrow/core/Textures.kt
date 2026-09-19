@@ -413,3 +413,21 @@ object Tex {
         return Sprite(SIZE, SIZE, px)
     }
 }
+
+/**
+ * ブロックのテクスチャを敷き詰めた正方形のタイル。
+ * オープニングタイトルの文字を「本物のブロックでできている」見た目にするのに使う。
+ * variantFor() で並びを崩してあるので、同じブロックが規則的に並んで見えない。
+ */
+fun tiledSwatch(variants: Array<Sprite>, tilesPerSide: Int = 6): Sprite {
+    val tile = Tex.SIZE
+    val n = tile * tilesPerSide
+    val buf = PixelBuffer(n, n)
+    for (ty in 0 until tilesPerSide) {
+        for (tx in 0 until tilesPerSide) {
+            val v = Tex.variantFor(tx, ty) % variants.size
+            buf.draw(variants[v], tx * tile, ty * tile)
+        }
+    }
+    return buf.toSprite()
+}

@@ -71,7 +71,12 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                PlanetScreen()
+                var showTitle by remember { mutableStateOf(true) }
+                if (showTitle) {
+                    TitleScreen(onEnter = { showTitle = false })
+                } else {
+                    PlanetScreen()
+                }
             }
         }
     }

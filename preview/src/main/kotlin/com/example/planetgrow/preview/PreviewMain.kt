@@ -8,8 +8,10 @@ import com.example.planetgrow.core.PlanetState
 import com.example.planetgrow.core.Recipes
 import com.example.planetgrow.core.Scene
 import com.example.planetgrow.core.Sky
+import com.example.planetgrow.core.Tex
 import com.example.planetgrow.core.World
 import com.example.planetgrow.core.rgbOf
+import com.example.planetgrow.core.tiledSwatch
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
@@ -23,8 +25,20 @@ import javax.imageio.ImageIO
  *                                   ^出力先 ^育ち具合(0-3) ^時刻...
  */
 fun main(args: Array<String>) {
+    if (args.isNotEmpty() && args[0] == "swatch") {
+        renderSwatches(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
     if (args.isNotEmpty() && args[0] == "fx") {
         renderFallEffects(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
+    if (args.isNotEmpty() && args[0] == "ufo") {
+        renderUfo(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
+    if (args.isNotEmpty() && args[0] == "ufosprite") {
+        renderUfoSprite(File(if (args.size > 1) args[1] else "out"))
         return
     }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
@@ -147,6 +161,74 @@ private fun demoState(level: Int, now: Long): PlanetState {
     return s
 }
 
+/** タイトル文字に使うブロックのタイルを確かめる。 */
+private fun renderSwatches(outDir: File) {
+    outDir.mkdirs()
+    val sets = listOf(
+        "grass" to Tex.grassTop,
+        "dirt" to Tex.dirt,
+        "stone" to Tex.stone,
+        "log" to Tex.log,
+        "plank" to Tex.plank
+    )
+    for ((name, variants) in sets) {
+        val sw = tiledSwatch(variants, 6)
+        val buf = PixelBuffer(sw.w, sw.h)
+        System.arraycopy(sw.px, 0, buf.px, 0, sw.px.size)
+        writePng(buf, File(outDir, "swatch_$name.png"))
+        writePng(zoom(buf, sw.w, 4), File(outDir, "swatch_${name}_big.png"))
+    }
+    println("-> ${outDir.absolutePath}")
+}
+
+/** UFO のドット絵そのものを拡大して確かめる (ドーム・窓・脚が分かるか)。 */
+private fun renderUfoSprite(outDir: File) {
+    outDir.mkdirs()
+    val sprite = com.example.planetgrow.core.Art.ufo
+    val buf = PixelBuffer(sprite.w, sprite.h)
+    buf.fill(rgbOf(0x0A0E1C))
+    buf.draw(sprite, 0, 0)
+    val factor = 8
+    val big = PixelBuffer(buf.width * factor, buf.height * factor)
+    for (y in 0 until big.height) {
+        for (x in 0 until big.width) {
+            big.px[y * big.width + x] = buf.px[(y / factor) * buf.width + (x / factor)]
+        }
+    }
+    writePng(big, File(outDir, "ufo_sprite_big.png"))
+    println("-> ${outDir.absolutePath}")
+}
+
+/** UFO の飛び方 (急加速・急停止・直角ターンなど) を確かめる。 */
+private fun renderUfo(outDir: File) {
+    outDir.mkdirs()
+    val now = System.currentTimeMillis()
+    val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+    val viewBlocks = Scene.viewBlocksFor(state, now)
+    val blockPx = Scene.blockPxFor(viewBlocks)
+    val size = Scene.bufferSize(1080, 2340, viewBlocks, blockPx)
+    val scene = Scene(size[0], size[1], blockPx)
+    val world = World(state)
+    world.syncFromState(now)
+    val sky = Sky(0.5f, now)
+    val dt = 1f / 30f
+    val shots = intArrayOf(50, 65, 80, 95, 115, 140, 170, 200)
+    var shotIdx = 0
+    var frameNo = 0
+    var t = 0f
+    while (shotIdx < shots.size) {
+        scene.render(world, sky, t, dt)
+        t += dt
+        frameNo++
+        if (frameNo == shots[shotIdx]) {
+            writePng(scene.frame, File(outDir, "ufo_%03d.png".format(frameNo)))
+            writePng(cropTop(scene.frame, 0.6f), File(outDir, "ufo_%03d_top.png".format(frameNo)))
+            shotIdx++
+        }
+    }
+    println("-> ${outDir.absolutePath}")
+}
+
 /** 飛来の演出 (隕石・たね・彗星) を、決まったコマ数まで進めて書き出す。 */
 private fun renderFallEffects(outDir: File) {
     outDir.mkdirs()
@@ -214,6 +296,14 @@ private fun 横に並べる(frames: List<PixelBuffer>): PixelBuffer {
         }
         x += f.width + gap
     }
+    return out
+}
+
+/** 上側だけ切り出す (画面の広い範囲を動き回る演出の確認用)。 */
+private fun cropTop(buf: PixelBuffer, fraction: Float): PixelBuffer {
+    val h = (buf.height * fraction).toInt().coerceIn(1, buf.height)
+    val out = PixelBuffer(buf.width, h)
+    System.arraycopy(buf.px, 0, out.px, 0, buf.width * h)
     return out
 }
 
