@@ -122,10 +122,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
     private var ufoX = 0f
     private var ufoY = 0f
     private var ufoVX = 0f
-    private var ufoVY = 0f
-    private var ufoTilt = 0f
-    private var ufoManeuverTimer = 0f
-    private var ufoSeed = 0
+    private var ufoBobPhase = 0f
 
     // 遠くを通り過ぎるよその惑星 (演出)。実時間のペースで、めったに現れない
     // ↓ デモ用に頻繁に出るようにしてある。本来の間隔は FAR_PLANET_WAIT_MIN/SPAN のコメント参照
@@ -405,7 +402,6 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
     /**
      * 遠くの UFO。ゲームには関係ない演出で、実時間のペースでたまに横切る
      * (GameTime を早回ししていても、これは普段どおりの速さで現れる)。
-     * 急停止・急加速・直角ターン・ジグザグを不規則に織り交ぜて、予測できない動きにしてある。
      *
      * いまはデモ用に 4〜10 秒おきと頻繁にしてある。
      * 本来の間隔 (リリース時はこちらに戻す) は 40〜115 秒おき。
@@ -415,80 +411,26 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
             ufoWait -= dt
             if (ufoWait <= 0f) {
                 val rnd = Rnd((ufoWait * 1000f).toInt() xor 0x2FA1)
-                ufoLife = rnd.range(5f, 7.5f)
+                ufoLife = rnd.range(4f, 6f)
                 val dir = if (rnd.int(2) == 0) 1f else -1f
                 ufoY = rnd.range(height * 0.08f, height * 0.5f)
                 ufoX = if (dir > 0f) -60f else width + 60f
                 ufoVX = dir * rnd.range(90f, 150f)
-                ufoVY = 0f
-                ufoTilt = 0f
-                ufoManeuverTimer = rnd.range(0.5f, 1.1f)
-                ufoSeed = rnd.next()
+                ufoBobPhase = rnd.float() * 10f
                 ufoWait = 4f + rnd.float() * 6f
             }
             return
         }
         ufoLife -= dt
-
-        // しばらくごとに次の一手を選び直すことで、予測できない飛び方にする
-        ufoManeuverTimer -= dt
-        if (ufoManeuverTimer <= 0f) {
-            val rnd = Rnd(ufoSeed)
-            ufoSeed = rnd.next()
-            val speed = kotlin.math.hypot(ufoVX, ufoVY).coerceAtLeast(60f)
-            val headingX = ufoVX / speed
-            val headingY = ufoVY / speed
-            when (rnd.int(5)) {
-                0 -> { // 急停止
-                    ufoVX = headingX * 10f
-                    ufoVY = headingY * 10f
-                    ufoManeuverTimer = rnd.range(0.3f, 0.5f)
-                }
-                1 -> { // 急加速
-                    val boosted = speed * rnd.range(2.2f, 3.2f)
-                    ufoVX = headingX * boosted
-                    ufoVY = headingY * boosted
-                    ufoManeuverTimer = rnd.range(0.25f, 0.45f)
-                }
-                2 -> { // 直角ターン
-                    val turn = if (rnd.int(2) == 0) 1f else -1f
-                    ufoVX = -headingY * speed * turn
-                    ufoVY = headingX * speed * turn
-                    ufoManeuverTimer = rnd.range(0.4f, 0.8f)
-                }
-                3 -> { // ジグザグ
-                    ufoVY = rnd.range(-140f, 140f)
-                    ufoManeuverTimer = rnd.range(0.3f, 0.6f)
-                }
-                else -> { // ふつうに進む
-                    ufoVY = rnd.range(-30f, 30f)
-                    ufoManeuverTimer = rnd.range(0.5f, 1.1f)
-                }
-            }
-        }
-
         ufoX += ufoVX * dt
-        ufoY += ufoVY * dt
-        // 上下には画面の帯の中に収まるよう跳ね返す (背景の演出が惑星と重ならないように)
-        val bandTop = height * 0.04f
-        val bandBottom = height * 0.58f
-        if (ufoY < bandTop) {
-            ufoY = bandTop
-            ufoVY = abs(ufoVY)
-        } else if (ufoY > bandBottom) {
-            ufoY = bandBottom
-            ufoVY = -abs(ufoVY)
-        }
-        val targetTilt = (-ufoVY / 260f).coerceIn(-0.7f, 0.7f)
-        ufoTilt += (targetTilt - ufoTilt) * (dt * 9f).coerceIn(0f, 1f)
-
-        if (ufoLife <= 0f || ufoX < -100f || ufoX > width + 100f) {
+        val bobY = ufoY + sin(ufoBobPhase + ufoX * 0.02f) * 10f
+        if (ufoLife <= 0f || ufoX < -80f || ufoX > width + 80f) {
             ufoLife = -1f
             return
         }
-        frame.glow(ufoX, ufoY, 24f * f, rgbOf(0x9BE8FF), 0.4f)
+        frame.glow(ufoX, bobY, 22f * f, rgbOf(0x9BE8FF), 0.4f)
         val sprite = sp(Art.ufo)
-        frame.drawRotated(sprite, ufoX, ufoY, sprite.w / 2f, sprite.h / 2f, ufoTilt)
+        frame.draw(sprite, (ufoX - sprite.w / 2f).roundToInt(), (bobY - sprite.h / 2f).roundToInt())
     }
 
     /**
