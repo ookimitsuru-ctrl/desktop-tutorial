@@ -15,17 +15,17 @@ const val DAY_MS = 24L * HOUR_MS
 const val WEEK_MS = 7L * DAY_MS
 
 /**
- * ゲーム内で使う「今」。実時間を早回しするデバッグ用の倍率をここに集約する。
+ * ゲーム内で使う「今」。実時間を早回しするデバッグ/デモ用の倍率をここに集約する。
  *
- * SCALE = 24 だと「1日 (24時間) がちょうど1時間」になる。太陽・月の動き、
+ * SCALE = 96 だと「1日 (24時間) がちょうど15分」になる。太陽・月の動き、
  * 地殻変動・農業・飛来・建設の進み方はすべてこの時刻を基準にしているので、
  * ここを直すだけで一括して速さが変わる。
  *
  * リリース時は SCALE = 1f に戻すこと (等倍 = 実時間どおり)。
  */
 object GameTime {
-    /** 1 = 実時間どおり。24 = 1日が1時間になる (デバッグ用)。 */
-    var SCALE: Float = 24f
+    /** 1 = 実時間どおり。96 = 1日が15分になる (デバッグ/デモ用)。 */
+    var SCALE: Float = 96f
 
     /**
      * 直近の固定日時を基準に、そこからの経過だけを早回しする。
@@ -318,11 +318,19 @@ class PlanetState(var birthMillis: Long) {
         val SATELLITE_INTERVAL = 3L * WEEK_MS
         const val MAX_SATELLITES = 3
 
-        /** 畑ひとつが作物を 1 つ作るのにかかる時間。 */
-        val CROP_PERIOD_MILLIS = 6L * HOUR_MS
+        /**
+         * 畑ひとつが作物を 1 つ作るのにかかる時間。実際の畑らしく、種まきから
+         * 収穫まで 1 週間ほどかける (この長さは cropStageFor() の見た目の
+         * 生育段階にもそのまま使われる)。
+         */
+        val CROP_PERIOD_MILLIS = WEEK_MS
 
-        /** 生きものひとりが作物を 1 つ食べるのにかかる時間。 */
-        val EAT_PERIOD_MILLIS = 12L * HOUR_MS
+        /**
+         * 生きものひとりが作物を 1 つ食べるのにかかる時間。
+         * 畑と同じ倍率で伸ばしてあるので、畑と生きものの必要な比率は前と変わらない
+         * (畑 1 つでだいたい生きもの 2 匹を養える)。
+         */
+        val EAT_PERIOD_MILLIS = 2L * WEEK_MS
 
         /** 生きものが食べはじめるまでの猶予 (惑星が生まれてから 1 週間)。 */
         val FEEDING_STARTS_AFTER = WEEK_MS
