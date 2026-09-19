@@ -278,8 +278,11 @@ class PlanetState(var birthMillis: Long) {
         /** 1 週間ごとに大きくなる量。 */
         const val RADIUS_PER_WEEK = 0.5f
 
-        /** 3 ヶ月で成長が止まる。 */
-        const val GROWTH_WEEKS = 12
+        /**
+         * 3 ヶ月 (13 週) で成長が止まる。
+         * 0.5 x 13 = 6.5 なので、そのとき直径はスタート時のちょうど 2 倍になる。
+         */
+        const val GROWTH_WEEKS = 13
 
         /** 成長が止まってから最初の衛星ができるまで。 */
         const val FIRST_SATELLITE_AFTER = 0L

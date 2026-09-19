@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -40,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -148,6 +150,8 @@ fun PlanetScreen() {
         }
         val image = remember(bitmap) { bitmap.asImageBitmap() }
         val frameTick = remember { mutableLongStateOf(0L) }
+        // いま見ている天体 (-1 = 惑星, 0.. = 衛星)。タップで移る。
+        val focusState = remember { mutableIntStateOf(Scene.FOCUS_PLANET) }
 
         // 1 フレームごとに時間を進める
         LaunchedEffect(Unit) {
@@ -203,8 +207,20 @@ fun PlanetScreen() {
             }
         }
 
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(
+            Modifier
+                .fillMaxSize()
+                .pointerInput(scene) {
+                    detectTapGestures { offset ->
+                        val fx = offset.x / size.width.toFloat()
+                        val fy = offset.y / size.height.toFloat()
+                        val hit = scene.bodyAtFraction(state, System.currentTimeMillis(), fx, fy)
+                        if (hit != Scene.FOCUS_NONE) focusState.intValue = hit
+                    }
+                }
+        ) {
             val tick = frameTick.longValue
+            scene.focus = focusState.intValue
             if (tick >= 0L) {
                 val nowMs = System.currentTimeMillis()
                 val sky = Sky(localDayFraction(zone, nowMs), nowMs)
@@ -228,6 +244,7 @@ fun PlanetScreen() {
             minuteOfDay = minuteOfDay,
             nowMillis = nowMs,
             notice = notice?.text,
+            focus = focusState.intValue,
             onOpenBuild = { showBuildPanel = true }
         )
 
@@ -263,6 +280,7 @@ private fun offlineSummary(arrivals: List<Arrival>): String {
             com.example.planetgrow.core.ResourceKind.MINERAL -> mineral += a.amount
             com.example.planetgrow.core.ResourceKind.SEED -> seed += a.amount
             com.example.planetgrow.core.ResourceKind.ICE -> ice += a.amount
+            else -> {}
         }
     }
     val parts = ArrayList<String>()
@@ -279,6 +297,7 @@ private fun BoxScope.Hud(
     minuteOfDay: Int,
     nowMillis: Long,
     notice: String?,
+    focus: Int,
     onOpenBuild: () -> Unit
 ) {
     val clockText = "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
@@ -318,11 +337,20 @@ private fun BoxScope.Hud(
         val sats = state.satellites(nowMillis)
         for (sat in sats) {
             val grown = (sat.growth(nowMillis) * 100f).toInt()
+            val here = if (focus == sat.index) "◆ " else ""
             Text(
-                text = if (sat.bridged) "衛星${sat.index + 1} 橋でつながった"
+                text = here + if (sat.bridged) "衛星${sat.index + 1} 橋でつながった"
                 else if (sat.habitable(nowMillis)) "衛星${sat.index + 1} 人が住める"
                 else "衛星${sat.index + 1} 育ち ${grown}%",
                 color = if (sat.habitable(nowMillis)) Color(0xFF9BD46A) else Color(0x99BFD4F0),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+        if (sats.isNotEmpty()) {
+            Text(
+                text = if (focus >= 0) "惑星をタップで戻る" else "衛星をタップで移動",
+                color = Color(0x99FFE9A8),
                 fontSize = 10.sp,
                 fontFamily = FontFamily.Monospace
             )

@@ -46,18 +46,18 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
 
         /**
          * 画面の短辺に収めるブロック数。
-         * 惑星と、衛星の軌道まで入るように決める。
+         * 見ている天体が画面いっぱいに映るように決める。
+         * 衛星は離れているので、タップで見に行く (カメラが移動する)。
          */
-        fun viewBlocksFor(state: PlanetState, now: Long): Int {
-            var need = state.radius(now) + 7.5f
-            for (s in state.satellites(now)) {
-                need = max(need, s.orbitRadius + s.radius(now) + 2.5f)
-            }
-            return (2f * need).roundToInt().coerceAtLeast(24)
-        }
+        fun viewBlocksFor(state: PlanetState, now: Long): Int =
+            (2f * (state.radius(now) + 7.5f)).roundToInt().coerceAtLeast(24)
 
         /** 広い場面ではドットを小さくして、描く量を抑える。 */
-        fun blockPxFor(viewBlocks: Int): Int = if (viewBlocks > 40) 8 else 16
+        fun blockPxFor(viewBlocks: Int): Int = if (viewBlocks > 44) 8 else 16
+
+        /** カメラが見ている天体。-1 = 惑星, 0.. = 衛星。 */
+        const val FOCUS_PLANET = -1
+        const val FOCUS_NONE = -2
 
         /** 画面サイズとブロック数からピクセルバッファのサイズを決める。 */
         fun bufferSize(screenW: Int, screenH: Int, viewBlocks: Int, blockPx: Int): IntArray {
@@ -77,9 +77,21 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
 
     val frame = PixelBuffer(width, height)
     private val background = PixelBuffer(width, height)
-    private val originX = width / 2
-    private val originY = height / 2
+
+    /** カメラが見ているワールド座標 (ブロック)。 */
+    private var camX = 0f
+    private var camY = 0f
+    private var camReady = false
+
+    /** いま見ている天体。-1 = 惑星, 0.. = 衛星。 */
+    var focus: Int = FOCUS_PLANET
+
+    private var originX = width / 2
+    private var originY = height / 2
     private val half = blockPx / 2
+
+    /** 画面外の天体を指す印 [x, y, 天体番号]。タップの当たり判定にも使う。 */
+    private val markers = ArrayList<FloatArray>()
 
     /** 16px のドット絵を今の倍率に合わせる係数。 */
     private val f: Float = blockPx / Tex.SIZE.toFloat()
@@ -203,8 +215,35 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
     private fun nightness(angleRad: Float, sky: Sky): Float =
         1f - smoothstep(-0.25f, 0.2f, localSunHeight(angleRad, sky.sunDirX, sky.sunDirY))
 
+    /** いま見ている天体のワールド座標。 */
+    private fun cameraTarget(state: PlanetState, now: Long): FloatArray {
+        if (focus >= 0) {
+            val sat = state.satellites(now).firstOrNull { it.index == focus }
+            if (sat != null) {
+                val a = toRad(sat.angleDeg(now))
+                return floatArrayOf(cos(a) * sat.orbitRadius, sin(a) * sat.orbitRadius)
+            }
+        }
+        return floatArrayOf(0f, 0f)
+    }
+
     fun render(world: World, sky: Sky, timeSec: Float, dt: Float) {
         val now = sky.epochMillis
+
+        // カメラをなめらかに寄せる
+        val target = cameraTarget(world.state, now)
+        if (!camReady) {
+            camX = target[0]
+            camY = target[1]
+            camReady = true
+        } else {
+            val k = (dt * 2.2f).coerceIn(0f, 1f)
+            camX += (target[0] - camX) * k
+            camY += (target[1] - camY) * k
+        }
+        originX = (width / 2f - camX * blockPx).roundToInt()
+        originY = (height / 2f - camY * blockPx).roundToInt()
+
         frame.copyFrom(background)
         drawStars(timeSec)
         drawShootingStar(dt)
@@ -219,6 +258,76 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         drawResidents(world, sky)
         drawParticles(world)
         drawFalling(world)
+        drawMarkers(world, now)
+    }
+
+    /** 画面の外にある天体を、画面のふちの印で知らせる。 */
+    private fun drawMarkers(world: World, now: Long) {
+        markers.clear()
+        val bodies = ArrayList<FloatArray>() // x, y, 半径, 番号
+        bodies.add(floatArrayOf(0f, 0f, world.state.radius(now), FOCUS_PLANET.toFloat()))
+        for (sat in world.state.satellites(now)) {
+            val a = toRad(sat.angleDeg(now))
+            bodies.add(
+                floatArrayOf(
+                    cos(a) * sat.orbitRadius, sin(a) * sat.orbitRadius,
+                    sat.radius(now), sat.index.toFloat()
+                )
+            )
+        }
+        val margin = 18f
+        for (b in bodies) {
+            val sx = originX + b[0] * blockPx
+            val sy = originY + b[1] * blockPx
+            val r = b[2] * blockPx
+            val visible = sx + r > 0 && sx - r < width && sy + r > 0 && sy - r < height
+            if (visible) continue
+            // 画面のふちに寄せる
+            val dx = sx - width / 2f
+            val dy = sy - height / 2f
+            val len = kotlin.math.hypot(dx, dy).coerceAtLeast(0.001f)
+            val maxX = (width / 2f - margin) / (abs(dx) / len).coerceAtLeast(0.0001f)
+            val maxY = (height / 2f - margin) / (abs(dy) / len).coerceAtLeast(0.0001f)
+            val d = min(maxX, maxY)
+            val mx = width / 2f + dx / len * d
+            val my = height / 2f + dy / len * d
+            val index = b[3].toInt()
+            val color = if (index == FOCUS_PLANET) rgbOf(0x7CC24A) else rgbOf(0x9FB4E8)
+            frame.glow(mx, my, 14f, color, 0.5f)
+            val size = (6 * f).toInt().coerceAtLeast(3)
+            frame.blendRect((mx - size / 2).toInt(), (my - size / 2).toInt(), size, size, Col.withAlpha(color, 230))
+            // 番号のかわりに点を並べる (衛星1 = 1 個)
+            if (index >= 0) {
+                for (k in 0..index) {
+                    val ox = (mx - size).toInt() + k * (size / 2 + 2)
+                    frame.blendRect(ox, (my + size).toInt(), 2, 2, Col.withAlpha(color, 200))
+                }
+            }
+            markers.add(floatArrayOf(mx, my, index.toFloat()))
+        }
+    }
+
+    /**
+     * 画面上の割合 (0..1) をタップしたとき、どの天体か。
+     * FOCUS_NONE なら何もない。
+     */
+    fun bodyAtFraction(state: PlanetState, now: Long, fx: Float, fy: Float): Int {
+        val bx = fx * width
+        val by = fy * height
+        // 画面のふちの印
+        for (m in markers) {
+            if (kotlin.math.hypot(bx - m[0], by - m[1]) < 34f * f) return m[2].toInt()
+        }
+        val wx = camX + (bx - width / 2f) / blockPx
+        val wy = camY + (by - height / 2f) / blockPx
+        for (sat in state.satellites(now)) {
+            val a = toRad(sat.angleDeg(now))
+            val sx = cos(a) * sat.orbitRadius
+            val sy = sin(a) * sat.orbitRadius
+            if (kotlin.math.hypot(wx - sx, wy - sy) <= sat.radius(now) + 4f) return sat.index
+        }
+        if (kotlin.math.hypot(wx, wy) <= state.radius(now) + 6f) return FOCUS_PLANET
+        return FOCUS_NONE
     }
 
     private fun drawStars(timeSec: Float) {

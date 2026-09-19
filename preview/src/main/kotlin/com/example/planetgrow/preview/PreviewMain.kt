@@ -62,6 +62,15 @@ fun main(args: Array<String>) {
         writePng(zoom(scene.frame, (viewBlocks - 2) * blockPx, 2), File(outDir, "${name}_zoom.png"))
         println("  %s  %5.1f ms".format(t, ms))
         if (sheet.size < 4) sheet.add(copyOf(scene.frame))
+
+        // 衛星があれば、そこへ寄った絵も出す (タップで移動したときの見え方)
+        if (state.satellites(now).isNotEmpty() && t == times.first()) {
+            scene.focus = 0
+            repeat(60) { scene.render(world, sky, elapsed, 1f / 30f) }
+            writePng(scene.frame, File(outDir, "${name}_sat.png"))
+            scene.focus = Scene.FOCUS_PLANET
+            repeat(60) { scene.render(world, sky, elapsed, 1f / 30f) }
+        }
     }
     if (sheet.size > 1) writePng(横に並べる(sheet), File(outDir, "lv%d_sheet.png".format(level)))
     println("-> ${outDir.absolutePath}")
