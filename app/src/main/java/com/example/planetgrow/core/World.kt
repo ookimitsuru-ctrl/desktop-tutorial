@@ -278,16 +278,83 @@ class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, val col
     var maxLife: Float = 2.6f
     var size: Float = 2f
     var gravity: Float = 0f
+    /** これより中心に近づいたら、そこに留まって消えるのを待つ (地面に着いた扱い)。負なら無効。 */
+    var groundRadius: Float = -1f
 }
 
-/** 空から落ちてくるもの。 */
+/**
+ * 飛来の見せ方。中身 (資源) は同じでも、飛んでくる様子はまったく違う。
+ *   STRAIGHT … 隕石。まっすぐ地表に落ちて突き刺さる
+ *   DRIFT    … たね。綿毛がついていて、ゆっくり漂いながら着地する
+ *   FLYBY    … 彗星。惑星の近くを直線でかすめて通り過ぎ、氷のきらめきを降らせる
+ */
+enum class FallStyle { STRAIGHT, DRIFT, FLYBY }
+
+fun fallStyleFor(kind: SkyFallKind): FallStyle = when (kind) {
+    SkyFallKind.METEOR -> FallStyle.STRAIGHT
+    SkyFallKind.COSMIC_DUST -> FallStyle.DRIFT
+    SkyFallKind.COMET_DUST -> FallStyle.FLYBY
+}
+
+/** 空から降ってくる・飛んでくるもの。 */
 class FallingObject(val kind: SkyFallKind, val angleDeg: Float, val amount: Int) {
-    /** 惑星の中心からの距離 (ブロック)。 */
-    var dist: Float = 26f
-    var speed: Float = 9f
+    val style: FallStyle = fallStyleFor(kind)
+
     var spin: Float = 0f
     var landed: Boolean = false
     var flash: Float = 0f
+    /** FLYBY はどこにも「着地」しないので、これが立ったら消してよい。 */
+    var finished: Boolean = false
+
+    // ---- STRAIGHT (隕石): 惑星の中心からの距離を縮めて落ちる ----
+    var dist: Float = 26f
+    var speed: Float = 9f
+
+    // ---- DRIFT (たね): 遠くの一点から着地点まで、ゆっくり弧を描いて漂う ----
+    var driftFromX: Float = 0f
+    var driftFromY: Float = 0f
+    var driftToX: Float = 0f
+    var driftToY: Float = 0f
+    var driftT: Float = 0f
+    var driftDuration: Float = 7f
+    var swaySeed: Float = 0f
+
+    // ---- FLYBY (彗星): 惑星のわきを直線で通り過ぎる ----
+    var flyDirX: Float = 1f
+    var flyDirY: Float = 0f
+    var flyPerpX: Float = 0f
+    var flyPerpY: Float = 1f
+    /** 最接近時の、進路に垂直な向きのずれ (符号つき)。 */
+    var flyOffset: Float = 0f
+    /** 経路上の位置。0 が最接近点、マイナスから始まりプラスへ抜ける。 */
+    var flyT: Float = 0f
+    var flyHalfLength: Float = 26f
+    var flySpeed: Float = 10f
+    private var iceTimer: Float = 0f
+
+    /** いまの世界座標 (ブロック単位)。惑星の中心が (0, 0)。 */
+    fun flybyPosition(): FloatArray = floatArrayOf(
+        flyPerpX * flyOffset + flyDirX * flyT,
+        flyPerpY * flyOffset + flyDirY * flyT
+    )
+
+    /**
+     * 氷のきらめきをまいてよいタイミングか。
+     * 経路上の位置ではなく「いま実際に惑星からどれだけ離れているか」で判定する。
+     * こうしないと、まだ遠いのに撒いてしまい、氷が地表に届く前に消えてしまう。
+     */
+    fun withinIceShower(): Boolean {
+        val pos = flybyPosition()
+        val d = kotlin.math.hypot(pos[0], pos[1])
+        return d < abs(flyOffset) + 3f
+    }
+
+    fun tickIceTimer(dt: Float): Boolean {
+        iceTimer -= dt
+        if (iceTimer > 0f) return false
+        iceTimer = 0.05f
+        return true
+    }
 }
 
 fun toRad(deg: Float): Float = deg * (PI.toFloat() / 180f)
@@ -367,7 +434,41 @@ class World(val state: PlanetState) {
     /** 飛来を画面に出す。 */
     fun addFalling(kind: SkyFallKind, angleDeg: Float, amount: Int) {
         if (falling.size > 6) return
-        falling.add(FallingObject(kind, angleDeg, amount))
+        val f = FallingObject(kind, angleDeg, amount)
+        when (f.style) {
+            FallStyle.STRAIGHT -> {
+                // 隕石: そのまま角度に沿って上空から落ちてくる
+            }
+            FallStyle.DRIFT -> {
+                // たね: 遠くのどこかから、着地点 (angleDeg の地表) までゆっくり漂う
+                val a = toRad(angleDeg)
+                val ground = planet.groundRadius(a)
+                f.driftToX = cos(a) * ground
+                f.driftToY = sin(a) * ground
+                val fromAngle = a + rnd.range(-1.1f, 1.1f)
+                val fromDist = planet.radius + rnd.range(16f, 24f)
+                f.driftFromX = cos(fromAngle) * fromDist
+                f.driftFromY = sin(fromAngle) * fromDist
+                f.driftDuration = 6f + rnd.float() * 3f
+                f.swaySeed = rnd.float() * 100f
+                f.spin = rnd.range(-0.6f, 0.6f)
+            }
+            FallStyle.FLYBY -> {
+                // 彗星: 惑星のわきを一直線にかすめて通り過ぎる
+                val travel = rnd.range(0f, 2f * PI.toFloat())
+                f.flyDirX = cos(travel)
+                f.flyDirY = sin(travel)
+                f.flyPerpX = -f.flyDirY
+                f.flyPerpY = f.flyDirX
+                val side = if (rnd.int(2) == 0) 1f else -1f
+                f.flyOffset = (planet.radius + rnd.range(1.5f, 3.5f)) * side
+                f.flyHalfLength = planet.radius + 20f
+                f.flyT = -f.flyHalfLength
+                f.flySpeed = 9f + rnd.range(-1f, 1.5f)
+                f.spin = 0.5f
+            }
+        }
+        falling.add(f)
     }
 
     fun update(dt: Float, sunDirX: Float, sunDirY: Float) {
@@ -382,38 +483,83 @@ class World(val state: PlanetState) {
         var i = 0
         while (i < falling.size) {
             val f = falling[i]
-            f.spin += dt * 4f
-            if (!f.landed) {
-                f.dist -= f.speed * dt
-                f.speed += 6f * dt
-                val ground = planet.groundRadius(toRad(f.angleDeg))
-                if (f.dist <= ground) {
-                    f.dist = ground
-                    f.landed = true
-                    f.flash = 1f
-                    burst(f)
-                }
-            } else {
-                f.flash -= dt * 1.6f
-                if (f.flash <= 0f) {
-                    falling.removeAt(i)
-                    continue
-                }
+            when (f.style) {
+                FallStyle.STRAIGHT -> updateStraight(f, dt)
+                FallStyle.DRIFT -> updateDrift(f, dt)
+                FallStyle.FLYBY -> updateFlyby(f, dt)
+            }
+            if (f.finished) {
+                falling.removeAt(i)
+                continue
             }
             i++
         }
     }
 
-    /** 着弾のかけらを散らす。 */
-    private fun burst(f: FallingObject) {
+    private fun updateStraight(f: FallingObject, dt: Float) {
+        f.spin += dt * 4f
+        if (!f.landed) {
+            f.dist -= f.speed * dt
+            f.speed += 6f * dt
+            val ground = planet.groundRadius(toRad(f.angleDeg))
+            if (f.dist <= ground) {
+                f.dist = ground
+                f.landed = true
+                f.flash = 1f
+                burstRocky(f)
+            }
+        } else {
+            f.flash -= dt * 1.6f
+            if (f.flash <= 0f) f.finished = true
+        }
+    }
+
+    private fun updateDrift(f: FallingObject, dt: Float) {
+        f.spin += dt * 0.8f
+        if (!f.landed) {
+            f.driftT += dt / f.driftDuration
+            if (f.driftT >= 1f) {
+                f.driftT = 1f
+                f.landed = true
+                f.flash = 1f
+                burstFluff(f)
+            }
+        } else {
+            f.flash -= dt * 2.2f
+            if (f.flash <= 0f) f.finished = true
+        }
+    }
+
+    private fun updateFlyby(f: FallingObject, dt: Float) {
+        f.spin += dt * 1.2f
+        f.flyT += f.flySpeed * dt
+        if (f.withinIceShower() && f.tickIceTimer(dt)) {
+            spawnIceSparkle(f)
+        }
+        if (f.flyT > f.flyHalfLength) f.finished = true
+    }
+
+    /** たねが漂う、いまの世界座標。ゆっくり左右に揺れながら着地点へ向かう。 */
+    fun driftPosition(f: FallingObject): FloatArray {
+        val t = smoothstep(0f, 1f, f.driftT)
+        val x = f.driftFromX + (f.driftToX - f.driftFromX) * t
+        val y = f.driftFromY + (f.driftToY - f.driftFromY) * t
+        // 進行方向に垂直な向きへ、だんだん収まる揺れを加える
+        val dx = f.driftToX - f.driftFromX
+        val dy = f.driftToY - f.driftFromY
+        val len = hypot(dx, dy).coerceAtLeast(0.001f)
+        val perpX = -dy / len
+        val perpY = dx / len
+        val sway = sin(f.swaySeed + f.driftT * 14f) * 1.6f * (1f - t * 0.7f)
+        return floatArrayOf(x + perpX * sway, y + perpY * sway)
+    }
+
+    /** 着弾のかけらを散らす (隕石: 岩の破片)。 */
+    private fun burstRocky(f: FallingObject) {
         val a = toRad(f.angleDeg)
         val nx = cos(a)
         val ny = sin(a)
-        val color = when (f.kind) {
-            SkyFallKind.METEOR -> rgbOf(0xC08A5A)
-            SkyFallKind.COSMIC_DUST -> rgbOf(0x9BD46A)
-            SkyFallKind.COMET_DUST -> rgbOf(0xAEE6FF)
-        }
+        val color = rgbOf(0xC08A5A)
         val count = 10 + f.amount * 4
         for (k in 0 until count) {
             val spread = rnd.range(-1.1f, 1.1f)
@@ -430,6 +576,52 @@ class World(val state: PlanetState) {
             p.maxLife = 0.7f + rnd.float() * 0.9f
             p.size = 2f + rnd.int(3)
             p.gravity = -2.6f
+            particles.add(p)
+        }
+    }
+
+    /** たねが着地するときの、やわらかい綿毛のふわっとした散り方。 */
+    private fun burstFluff(f: FallingObject) {
+        val color = rgbOf(0x9BD46A)
+        val count = 6 + f.amount * 2
+        for (k in 0 until count) {
+            val a = rnd.range(0f, 2f * PI.toFloat())
+            val speed = rnd.range(0.15f, 0.6f)
+            val p = Particle(
+                f.driftToX + cos(a) * 0.4f,
+                f.driftToY + sin(a) * 0.4f,
+                cos(a) * speed,
+                sin(a) * speed - 0.2f,
+                color
+            )
+            p.maxLife = 1.0f + rnd.float() * 0.8f
+            p.size = 1f + rnd.int(2)
+            particles.add(p)
+        }
+    }
+
+    /** 彗星が近くをかすめる間、氷のきらめきを少しずつ降らせる。 */
+    private fun spawnIceSparkle(f: FallingObject) {
+        if (particles.size > 170) return
+        val pos = f.flybyPosition()
+        val d = hypot(pos[0], pos[1]).coerceAtLeast(0.001f)
+        val towardX = -pos[0] / d
+        val towardY = -pos[1] / d
+        repeat(2) {
+            val jitter = rnd.range(-2.2f, 2.2f)
+            val px = pos[0] + f.flyDirX * jitter * 0.6f
+            val py = pos[1] + f.flyDirY * jitter * 0.6f
+            val speed = rnd.range(2.2f, 3.2f)
+            val p = Particle(
+                px, py,
+                towardX * speed + f.flyDirX * rnd.range(-0.3f, 0.3f),
+                towardY * speed + f.flyDirY * rnd.range(-0.3f, 0.3f),
+                if (rnd.int(100) < 55) rgbOf(0xEAF7FF) else rgbOf(0xAEE6FF)
+            )
+            p.maxLife = 1.5f + rnd.float() * 1.0f
+            p.size = 1f + rnd.int(2)
+            p.gravity = -2.6f
+            p.groundRadius = planet.radius + 0.3f
             particles.add(p)
         }
     }
@@ -481,6 +673,18 @@ class World(val state: PlanetState) {
             }
             s.vx *= 0.995f
             s.vy *= 0.995f
+            if (s.groundRadius > 0f) {
+                val d2 = hypot(s.x, s.y)
+                if (d2 < s.groundRadius) {
+                    // 地面についたので、そこで止まって残りの寿命だけ光る
+                    val scale = s.groundRadius / d2.coerceAtLeast(0.001f)
+                    s.x *= scale
+                    s.y *= scale
+                    s.vx = 0f
+                    s.vy = 0f
+                    s.gravity = 0f
+                }
+            }
             i++
         }
     }

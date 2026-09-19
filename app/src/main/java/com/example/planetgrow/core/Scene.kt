@@ -115,6 +115,21 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
     private var shootVX = 0f
     private var shootVY = 0f
 
+    // 遠くの UFO (ゲームには関係ない演出)。実時間のペースで、たまに現れる
+    private var ufoWait = 25f
+    private var ufoLife = -1f
+    private var ufoX = 0f
+    private var ufoY = 0f
+    private var ufoVX = 0f
+    private var ufoBobPhase = 0f
+
+    // 遠くを通り過ぎるよその惑星 (演出)。実時間のペースで、めったに現れない
+    private var farPlanetWait = 50f
+    private var farPlanetLife = -1f
+    private var farPlanetX = 0f
+    private var farPlanetY = 0f
+    private var farPlanetVX = 0f
+
     init {
         val rnd = Rnd(0x51A45)
         for (i in 0 until starCount) {
@@ -246,6 +261,10 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
 
         frame.copyFrom(background)
         drawStars(timeSec)
+        // ゲームには関係ない、遠くの演出 (奥から手前の順に描く)
+        drawFarPlanetDecor(dt)
+        drawBackgroundComet(sky)
+        drawUfo(dt)
         drawShootingStar(dt)
         drawMoon(world, sky, now)
         drawSun(world, sky, now)
@@ -376,6 +395,92 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
             val a = ((1f - t) * fade * 230f).toInt()
             frame.blend(x, y, Col.argb(a, 255, 255, 240))
         }
+    }
+
+    /**
+     * 遠くの UFO。ゲームには関係ない演出で、実時間のペースでたまに横切る
+     * (GameTime を早回ししていても、これは普段どおりの速さで現れる)。
+     */
+    private fun drawUfo(dt: Float) {
+        if (ufoLife < 0f) {
+            ufoWait -= dt
+            if (ufoWait <= 0f) {
+                val rnd = Rnd((ufoWait * 1000f).toInt() xor 0x2FA1)
+                ufoLife = rnd.range(4f, 6f)
+                val dir = if (rnd.int(2) == 0) 1f else -1f
+                ufoY = rnd.range(height * 0.08f, height * 0.5f)
+                ufoX = if (dir > 0f) -60f else width + 60f
+                ufoVX = dir * rnd.range(90f, 150f)
+                ufoBobPhase = rnd.float() * 10f
+                ufoWait = 40f + rnd.float() * 75f
+            }
+            return
+        }
+        ufoLife -= dt
+        ufoX += ufoVX * dt
+        val bobY = ufoY + sin(ufoBobPhase + ufoX * 0.02f) * 10f
+        if (ufoLife <= 0f || ufoX < -80f || ufoX > width + 80f) {
+            ufoLife = -1f
+            return
+        }
+        frame.glow(ufoX, bobY, 22f * f, rgbOf(0x9BE8FF), 0.4f)
+        val sprite = sp(Art.ufo)
+        frame.draw(sprite, (ufoX - sprite.w / 2f).roundToInt(), (bobY - sprite.h / 2f).roundToInt())
+    }
+
+    /**
+     * 遠くを通り過ぎる、よその惑星。自分の星と同じ作りに見えるが、
+     * ゲームの進行には関係ない背景の演出。
+     */
+    private fun drawFarPlanetDecor(dt: Float) {
+        if (farPlanetLife < 0f) {
+            farPlanetWait -= dt
+            if (farPlanetWait <= 0f) {
+                val rnd = Rnd((farPlanetWait * 1000f).toInt() xor 0x7B2E)
+                farPlanetLife = rnd.range(24f, 36f)
+                val dir = if (rnd.int(2) == 0) 1f else -1f
+                farPlanetY = rnd.range(height * 0.58f, height * 0.9f)
+                farPlanetX = if (dir > 0f) -40f else width + 40f
+                farPlanetVX = dir * (width + 80f) / farPlanetLife
+                farPlanetWait = 100f + rnd.float() * 160f
+            }
+            return
+        }
+        farPlanetLife -= dt
+        farPlanetX += farPlanetVX * dt
+        if (farPlanetLife <= 0f) {
+            farPlanetLife = -1f
+            return
+        }
+        val sprite = Art.distantPlanet
+        frame.glow(farPlanetX, farPlanetY, 10f, rgbOf(0x8FC85A), 0.16f)
+        frame.draw(sprite, (farPlanetX - sprite.w / 2f).roundToInt(), (farPlanetY - sprite.h / 2f).roundToInt())
+    }
+
+    /**
+     * 遠くの背景を、彗星がまるまる1日 (GameTime 基準) かけてゆっくり横切っていく。
+     * 惑星が生まれてからの日数ごとに軌道 (高さ・向き) が変わるので、毎日同じ道ではない。
+     */
+    private fun drawBackgroundComet(sky: Sky) {
+        val cycle = Math.floorDiv(sky.epochMillis, DAY_MS)
+        val rnd = Rnd((cycle and 0xFFFFFL).toInt() xor 0x51C0)
+        val laneY = rnd.range(height * 0.04f, height * 0.4f)
+        val dir = if (rnd.int(2) == 0) 1f else -1f
+        val margin = width * 0.12f
+        val t = sky.dayFraction
+        val x = if (dir > 0f) {
+            -margin + (width + margin * 2f) * t
+        } else {
+            (width + margin) - (width + margin * 2f) * t
+        }
+        val trail = rgbOf(0xAEE6FF)
+        for (k in 1..9) {
+            val tx = x - dir * k * 5f
+            val alpha = ((1f - k / 10f) * 100f).toInt()
+            frame.blendRect((tx - 1f).toInt(), (laneY - 1f).toInt(), 2, 2, Col.withAlpha(trail, alpha))
+        }
+        frame.glow(x, laneY, 6f, rgbOf(0xCFE8FF), 0.4f)
+        frame.blendRect((x - 1f).toInt(), (laneY - 1f).toInt(), 2, 2, Col.withAlpha(rgbOf(0xFFFFFF), 235))
     }
 
     private fun drawSun(world: World, sky: Sky, now: Long) {
@@ -661,31 +766,78 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         }
     }
 
-    /** 落ちてくる隕石・チリ。 */
+    /** 落ちてくる・飛んでくるもの。見せ方は種類ごとにまったく違う。 */
     private fun drawFalling(world: World) {
         for (obj in world.falling) {
-            val a = toRad(obj.angleDeg)
-            val nx = cos(a)
-            val ny = sin(a)
-            val cx = originX + nx * obj.dist * blockPx
-            val cy = originY + ny * obj.dist * blockPx
-            val trail = Art.skyFallTrailColor(obj.kind)
-
-            if (!obj.landed) {
-                for (k in 1..14) {
-                    val d = obj.dist + k * 0.28f
-                    val x = (originX + nx * d * blockPx).roundToInt()
-                    val y = (originY + ny * d * blockPx).roundToInt()
-                    val alpha = ((1f - k / 15f) * 190f).toInt()
-                    val size = (if (k < 5) 3 else 2) * (if (blockPx == Tex.SIZE) 1 else 1)
-                    frame.blendRect(x - size / 2, y - size / 2, size, size, Col.withAlpha(trail, alpha))
-                }
-                frame.glow(cx, cy, 26f * f, trail, 0.55f)
-                val sprite = sp(Art.skyFallSprite(obj.kind))
-                frame.drawRotated(sprite, cx, cy, sprite.w / 2f, sprite.h / 2f, obj.spin)
-            } else {
-                frame.glow(cx, cy, (30f + 40f * obj.flash) * f, trail, 0.8f * obj.flash)
+            when (obj.style) {
+                FallStyle.STRAIGHT -> drawStraightFall(obj)
+                FallStyle.DRIFT -> drawDriftFall(world, obj)
+                FallStyle.FLYBY -> drawFlybyComet(obj)
             }
         }
+    }
+
+    /** 隕石: まっすぐ落ちて、地表に突き刺さる。 */
+    private fun drawStraightFall(obj: FallingObject) {
+        val a = toRad(obj.angleDeg)
+        val nx = cos(a)
+        val ny = sin(a)
+        val cx = originX + nx * obj.dist * blockPx
+        val cy = originY + ny * obj.dist * blockPx
+        val trail = Art.skyFallTrailColor(obj.kind)
+
+        if (!obj.landed) {
+            for (k in 1..14) {
+                val d = obj.dist + k * 0.28f
+                val x = (originX + nx * d * blockPx).roundToInt()
+                val y = (originY + ny * d * blockPx).roundToInt()
+                val alpha = ((1f - k / 15f) * 190f).toInt()
+                val size = if (k < 5) 3 else 2
+                frame.blendRect(x - size / 2, y - size / 2, size, size, Col.withAlpha(trail, alpha))
+            }
+            frame.glow(cx, cy, 26f * f, trail, 0.55f)
+            val sprite = sp(Art.skyFallSprite(obj.kind))
+            frame.drawRotated(sprite, cx, cy, sprite.w / 2f, sprite.h / 2f, obj.spin)
+        } else {
+            frame.glow(cx, cy, (30f + 40f * obj.flash) * f, trail, 0.8f * obj.flash)
+        }
+    }
+
+    /** たね: 綿毛がついていて、ゆっくり揺れながら漂ってくる。 */
+    private fun drawDriftFall(world: World, obj: FallingObject) {
+        if (!obj.landed) {
+            val pos = world.driftPosition(obj)
+            val cx = originX + pos[0] * blockPx
+            val cy = originY + pos[1] * blockPx
+            frame.glow(cx, cy, 12f * f, rgbOf(0xEAF2C8), 0.22f)
+            val sprite = sp(Art.skyFallSprite(obj.kind))
+            frame.drawRotated(sprite, cx, cy, sprite.w / 2f, sprite.h / 2f, obj.spin)
+        } else {
+            val cx = originX + obj.driftToX * blockPx
+            val cy = originY + obj.driftToY * blockPx
+            frame.glow(cx, cy, (8f + 14f * obj.flash) * f, rgbOf(0x9BD46A), 0.5f * obj.flash)
+        }
+    }
+
+    /** 彗星: 家ほどの大きさの塊が惑星のわきを一直線にかすめて、氷のきらめきを降らせる。 */
+    private fun drawFlybyComet(obj: FallingObject) {
+        val pos = obj.flybyPosition()
+        val cx = originX + pos[0] * blockPx
+        val cy = originY + pos[1] * blockPx
+        val trail = Art.skyFallTrailColor(obj.kind)
+
+        for (k in 1..22) {
+            val back = k * 0.9f
+            val tx = pos[0] - obj.flyDirX * back
+            val ty = pos[1] - obj.flyDirY * back
+            val x = (originX + tx * blockPx).roundToInt()
+            val y = (originY + ty * blockPx).roundToInt()
+            val alpha = ((1f - k / 23f) * 130f).toInt()
+            val size = if (k < 8) 5 else 3
+            frame.blendRect(x - size / 2, y - size / 2, size, size, Col.withAlpha(trail, alpha))
+        }
+        frame.glow(cx, cy, 60f * f, trail, 0.5f)
+        val sprite = sp(Art.cometNucleus)
+        frame.drawRotated(sprite, cx, cy, sprite.w / 2f, sprite.h / 2f, obj.spin)
     }
 }

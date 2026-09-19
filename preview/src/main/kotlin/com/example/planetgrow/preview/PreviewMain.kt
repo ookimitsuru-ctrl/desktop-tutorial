@@ -23,6 +23,10 @@ import javax.imageio.ImageIO
  *                                   ^出力先 ^育ち具合(0-3) ^時刻...
  */
 fun main(args: Array<String>) {
+    if (args.isNotEmpty() && args[0] == "fx") {
+        renderFallEffects(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
     outDir.mkdirs()
     val level = if (args.size > 1) args[1].toIntOrNull() ?: 0 else 0
@@ -141,6 +145,46 @@ private fun demoState(level: Int, now: Long): PlanetState {
     }
     s.lastTickMillis = now
     return s
+}
+
+/** 飛来の演出 (隕石・たね・彗星) を、決まったコマ数まで進めて書き出す。 */
+private fun renderFallEffects(outDir: File) {
+    outDir.mkdirs()
+    val now = System.currentTimeMillis()
+    val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+    val viewBlocks = Scene.viewBlocksFor(state, now)
+    val blockPx = Scene.blockPxFor(viewBlocks)
+    val size = Scene.bufferSize(1080, 2340, viewBlocks, blockPx)
+    val sky = Sky(0.5f, now) // 真昼
+    println("視野 $viewBlocks ブロック / 1ブロック ${blockPx}px / バッファ ${size[0]}x${size[1]}")
+
+    fun renderAt(name: String, kind: com.example.planetgrow.core.SkyFallKind, angle: Float, steps: Int) {
+        val scene = Scene(size[0], size[1], blockPx)
+        val world = World(state)
+        world.syncFromState(now)
+        world.addFalling(kind, angle, 2)
+        val dt = 1f / 30f
+        repeat(steps) { world.update(dt, sky.sunDirX, sky.sunDirY) }
+        scene.render(world, sky, steps * dt, dt)
+        writePng(scene.frame, File(outDir, "$name.png"))
+        writePng(zoom(scene.frame, (viewBlocks - 2) * blockPx, 2), File(outDir, "${name}_zoom.png"))
+        println("  $name  (${steps}コマ)")
+    }
+
+    // 隕石: 落下中 → 着弾の光
+    renderAt("meteor_mid", com.example.planetgrow.core.SkyFallKind.METEOR, 40f, 40)
+    renderAt("meteor_impact", com.example.planetgrow.core.SkyFallKind.METEOR, 40f, 95)
+
+    // たね: 漂っている途中 → 着地直後
+    renderAt("seed_mid", com.example.planetgrow.core.SkyFallKind.COSMIC_DUST, -30f, 195)
+    renderAt("seed_land", com.example.planetgrow.core.SkyFallKind.COSMIC_DUST, -30f, 245)
+
+    // 彗星: 近づいてくる → 最接近で氷をまく → 通り過ぎたあと
+    renderAt("comet_approach", com.example.planetgrow.core.SkyFallKind.COMET_DUST, 0f, 45)
+    renderAt("comet_pass", com.example.planetgrow.core.SkyFallKind.COMET_DUST, 0f, 84)
+    renderAt("comet_after", com.example.planetgrow.core.SkyFallKind.COMET_DUST, 0f, 130)
+
+    println("-> ${outDir.absolutePath}")
 }
 
 private fun parseTime(s: String): Float {

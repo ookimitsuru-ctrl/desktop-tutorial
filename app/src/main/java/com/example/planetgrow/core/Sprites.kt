@@ -1,8 +1,12 @@
 package com.example.planetgrow.core
 
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * 住人・太陽・月・草花などのドット絵。
@@ -488,56 +492,144 @@ object Art {
         mapOf('R' to rgbOf(0x5A4A40), 'M' to rgbOf(0x8A7A6A))
     )
 
-    /** 宇宙のチリ (たねや卵のもと)。 */
-    val cosmicDust: Sprite = Sprite.of(
+    /**
+     * 宇宙のチリ (たねや卵のもと)。
+     * 綿毛のついた種が、ふわふわと漂ってくる見た目にしてある。
+     */
+    val seedFluff: Sprite = run {
+        val n = 16
+        val cx = n / 2f - 0.5f
+        val cy = n / 2f - 0.5f
+        val px = IntArray(n * n)
+        val rnd = Rnd(0x5EED)
+        val fluff = rgbOf(0xF2EEDD)
+        val fluffDim = rgbOf(0xC9DDB0)
+        val tip = rgbOf(0xFFFFFF)
+        val seedColor = rgbOf(0x8A6B42)
+
+        val spokes = 11
+        for (k in 0 until spokes) {
+            val a = (k.toFloat() / spokes) * (2f * kotlin.math.PI.toFloat()) + rnd.range(-0.15f, 0.15f)
+            val len = 5f + rnd.range(-0.7f, 1.0f)
+            val dx = cos(a)
+            val dy = sin(a)
+            var t = 1.4f
+            while (t <= len) {
+                val x = (cx + dx * t).roundToInt()
+                val y = (cy + dy * t).roundToInt()
+                if (x in 0 until n && y in 0 until n) {
+                    px[y * n + x] = when {
+                        t > len - 1.1f -> tip
+                        rnd.int(100) < 30 -> fluffDim
+                        else -> fluff
+                    }
+                }
+                t += 1f
+            }
+        }
+        // 中心の種
+        for (dy in -1..1) for (dx in -1..1) {
+            if (abs(dx) + abs(dy) > 1) continue
+            val x = (cx + dx).roundToInt()
+            val y = (cy + dy).roundToInt()
+            if (x in 0 until n && y in 0 until n) px[y * n + x] = seedColor
+        }
+        Sprite(n, n, px)
+    }
+
+    /**
+     * 彗星の核 (家ほどの大きさ)。氷と岩が混じった塊で、惑星のわきをかすめて飛んでいく。
+     * 進行方向は描画時に回転させる。
+     */
+    val cometNucleus: Sprite = run {
+        val w = 88
+        val h = 72
+        val cx = w / 2f
+        val cy = h / 2f
+        val rx = w * 0.42f
+        val ry = h * 0.40f
+        val px = IntArray(w * h)
+        val rock = rgbOf(0x6E7A8A)
+        val rockDark = rgbOf(0x4E5868)
+        val ice = rgbOf(0xCDE8F5)
+        val iceBright = rgbOf(0xF0FAFF)
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                val nx = (x - cx) / rx
+                val ny = (y - cy) / ry
+                val d = nx * nx + ny * ny
+                val wobble = 1f + 0.10f * sin(atan2(ny, nx) * 5f + 1.7f)
+                if (d > wobble) continue
+                val noise = valueNoise(x * 0.09f, y * 0.09f, 0x77AA)
+                px[y * w + x] = when {
+                    noise > 0.74f -> iceBright
+                    noise > 0.5f -> ice
+                    noise > 0.26f -> rock
+                    else -> rockDark
+                }
+            }
+        }
+        Sprite(w, h, px)
+    }
+
+    /** 遠くを飛んでいく UFO (演出用。ゲームには関係ない)。 */
+    val ufo: Sprite = Sprite.of(
         listOf(
-            "................",
-            "................",
-            ".....G..G.......",
-            "....GGGGG.......",
-            "...GGgGGGG......",
-            "...GGGGgGG......",
-            "....GGGGG.......",
-            ".....G.GG.......",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................"
+            "..........................",
+            "...........GGGG...........",
+            ".........GGwwwwGG.........",
+            "........G.wwwwww.G........",
+            ".......GGGGGGGGGGG........",
+            ".....SSSSSSSSSSSSSSS......",
+            "....SSSssssssssssSSS......",
+            "...SSSSSSSSSSSSSSSSSS.....",
+            "....SSSSSSSSSSSSSSSS......",
+            "......o.....o.....o.......",
+            "..........................",
+            ".........................."
         ),
-        mapOf('G' to rgbOf(0x8FC85A), 'g' to rgbOf(0x5E8F32))
+        mapOf(
+            'G' to rgbOf(0x8FE0D0),
+            'w' to rgbOf(0xEAFFFA),
+            'S' to rgbOf(0x9AA0AC),
+            's' to rgbOf(0xC4CAD4),
+            'o' to rgbOf(0x7CE0FF)
+        )
     )
 
-    /** 彗星のチリ (氷)。 */
-    val cometDust: Sprite = Sprite.of(
-        listOf(
-            "................",
-            "................",
-            "....IIII........",
-            "...IIiiII.......",
-            "..IIiiiiII......",
-            "..IiiiiiiI......",
-            "..IIiiiiII......",
-            "...IIIIII.......",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................"
-        ),
-        mapOf('I' to rgbOf(0xBFE8FA), 'i' to rgbOf(0x8FC9E4))
-    )
+    /**
+     * 遠くを通り過ぎていく、よその惑星 (演出用)。自分の星と同じような作りだが、
+     * 豆粒ほどの大きさなのでブロックには分けず、あらかじめ 1 枚の球として焼き込む。
+     */
+    val distantPlanet: Sprite = run {
+        val n = 26
+        val cx = n / 2f - 0.5f
+        val cy = n / 2f - 0.5f
+        val r = n / 2f - 1f
+        val px = IntArray(n * n)
+        val litGrass = rgbOf(0x7CC24A)
+        val darkSide = rgbOf(0x28401F)
+        val dirt = rgbOf(0x8A6141)
+        for (y in 0 until n) {
+            for (x in 0 until n) {
+                val dx = x - cx
+                val dy = y - cy
+                val d = sqrt(dx * dx + dy * dy)
+                if (d > r) continue
+                // 固定の光源 (左上) で陰影をつける。実際の太陽の向きとは連動しない
+                val lightF = ((-dx / r) * 0.55f + (-dy / r) * 0.35f + 0.35f).coerceIn(0f, 1f)
+                val patch = valueNoise(x * 0.45f, y * 0.45f, 0x9E7)
+                val base = if (patch > 0.76f) dirt else litGrass
+                px[y * n + x] = Col.scale(Col.lerp(darkSide, base, lightF), 0.55f + 0.45f * lightF)
+            }
+        }
+        Sprite(n, n, px)
+    }
 
     fun skyFallSprite(kind: SkyFallKind): Sprite = when (kind) {
         SkyFallKind.METEOR -> meteor
-        SkyFallKind.COSMIC_DUST -> cosmicDust
-        SkyFallKind.COMET_DUST -> cometDust
+        SkyFallKind.COSMIC_DUST -> seedFluff
+        SkyFallKind.COMET_DUST -> cometNucleus
     }
 
     fun skyFallTrailColor(kind: SkyFallKind): Int = when (kind) {
