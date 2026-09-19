@@ -116,6 +116,29 @@ object Art {
         )
     }
 
+    /** 植えたばかりの芽。 */
+    val sprout: Sprite = Sprite.of(
+        listOf(
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".....g..g.......",
+            "....gGg.Gg......",
+            ".....gGGGg......",
+            "......GGG.......",
+            ".......G........",
+            ".......G........",
+            "......GGG......."
+        ),
+        mapOf('G' to rgbOf(0x5BA33C), 'g' to rgbOf(0x77C254))
+    )
+
     val poppy: Sprite = flower(rgbOf(0xD3423A), rgbOf(0x2E2118))
     val dandelion: Sprite = flower(rgbOf(0xF0C63A), rgbOf(0xB8862A))
 
@@ -222,6 +245,161 @@ object Art {
         val f = moonPhaseFraction(epochMillis)
         val idx = (Math.round(f * 8.0).toInt()) % 8
         return moonPhases[idx]
+    }
+
+    // 生きもの ------------------------------------------------------------
+    private val SHEEP_PALETTE: Map<Char, Int> = mapOf(
+        'W' to rgbOf(0xE9E9E4),
+        'w' to rgbOf(0xD2D2CC),
+        'F' to rgbOf(0xDDBBA8),
+        'f' to rgbOf(0xC49E8B),
+        'e' to rgbOf(0x2E2118),
+        'L' to rgbOf(0xD2D2CC),
+        'H' to rgbOf(0x4A4038)
+    )
+
+    private val SHEEP_BODY = listOf(
+        "........................",
+        "........................",
+        ".....WWWWWWWWWW.........",
+        "...WWWWWWWWWWWWWW..fff..",
+        "..WWWWWWWWWWWWWWWW.FFFF.",
+        "..WWWWWWWWWWWWWWWWwFFFFF",
+        "..WWWWWWWWWWWWWWWWwFeFF.",
+        "..WWWWWWWWWWWWWWWWwFFFF.",
+        "..WWWWWWWWWWWWWWWW.FFFF.",
+        "...WWWWWWWWWWWWWWW..ff..",
+        "....wWWWWWWWWWWWw......."
+    )
+
+    private val SHEEP_LEGS_A = listOf(
+        ".....LL.......LL........",
+        ".....LL.......LL........",
+        ".....LL.......LL........",
+        ".....HH.......HH........",
+        "........................"
+    )
+
+    private val SHEEP_LEGS_B = listOf(
+        "....LL.........LL.......",
+        "....LL.........LL.......",
+        "...LL...........LL......",
+        "...HH...........HH......",
+        "........................"
+    )
+
+    /** 0 = 立ち, 1 = 歩き。 */
+    val sheep: Array<Sprite> = arrayOf(
+        Sprite.of(SHEEP_BODY + SHEEP_LEGS_A, SHEEP_PALETTE),
+        Sprite.of(SHEEP_BODY + SHEEP_LEGS_B, SHEEP_PALETTE)
+    )
+
+    const val SHEEP_FOOT_Y = 16f
+    const val SHEEP_CENTER_X = 12f
+
+    /** かえる前の卵。 */
+    val egg: Sprite = Sprite.of(
+        listOf(
+            "................",
+            "................",
+            "................",
+            "................",
+            "......EEEE......",
+            ".....EEEEEE.....",
+            "....EEEEEEEE....",
+            "....EEEEsEEE....",
+            "....EEEEEEEE....",
+            "....EEsEEEEE....",
+            "....EEEEEEEE....",
+            ".....EEEEEE.....",
+            "......EEEE......",
+            "................",
+            "................",
+            "................"
+        ),
+        mapOf('E' to rgbOf(0xEFE4D2), 's' to rgbOf(0xCBBBA0))
+    )
+
+    // 飛来物 ----------------------------------------------------------------
+    /** 隕石 (鉱物のかたまり)。 */
+    val meteor: Sprite = Sprite.of(
+        listOf(
+            "................",
+            "................",
+            "....RRRR........",
+            "...RRMMRRR......",
+            "..RRMMMMRRR.....",
+            "..RMMMMMMRR.....",
+            "..RRMMMMMRR.....",
+            "...RRRMMRR......",
+            "....RRRRR.......",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................"
+        ),
+        mapOf('R' to rgbOf(0x5A4A40), 'M' to rgbOf(0x8A7A6A))
+    )
+
+    /** 宇宙のチリ (たねや卵のもと)。 */
+    val cosmicDust: Sprite = Sprite.of(
+        listOf(
+            "................",
+            "................",
+            ".....G..G.......",
+            "....GGGGG.......",
+            "...GGgGGGG......",
+            "...GGGGgGG......",
+            "....GGGGG.......",
+            ".....G.GG.......",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................"
+        ),
+        mapOf('G' to rgbOf(0x8FC85A), 'g' to rgbOf(0x5E8F32))
+    )
+
+    /** 彗星のチリ (氷)。 */
+    val cometDust: Sprite = Sprite.of(
+        listOf(
+            "................",
+            "................",
+            "....IIII........",
+            "...IIiiII.......",
+            "..IIiiiiII......",
+            "..IiiiiiiI......",
+            "..IIiiiiII......",
+            "...IIIIII.......",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................"
+        ),
+        mapOf('I' to rgbOf(0xBFE8FA), 'i' to rgbOf(0x8FC9E4))
+    )
+
+    fun skyFallSprite(kind: SkyFallKind): Sprite = when (kind) {
+        SkyFallKind.METEOR -> meteor
+        SkyFallKind.COSMIC_DUST -> cosmicDust
+        SkyFallKind.COMET_DUST -> cometDust
+    }
+
+    fun skyFallTrailColor(kind: SkyFallKind): Int = when (kind) {
+        SkyFallKind.METEOR -> rgbOf(0xFF9A3A)
+        SkyFallKind.COSMIC_DUST -> rgbOf(0x9BD46A)
+        SkyFallKind.COMET_DUST -> rgbOf(0xAEE6FF)
     }
 
     /** 煙のつぶ (小さな四角)。 */

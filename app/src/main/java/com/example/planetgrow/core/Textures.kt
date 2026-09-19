@@ -51,6 +51,9 @@ object Tex {
     private val SAND_COLORS = intArrayOf(rgbOf(0xDBD0A0), rgbOf(0xCFC392), rgbOf(0xE6DCB0))
     private val SAND_W = intArrayOf(5, 3, 2)
 
+    private val ICE_COLORS = intArrayOf(rgbOf(0xA8DCF0), rgbOf(0xC4E9F8), rgbOf(0x8FC9E4))
+    private val ICE_W = intArrayOf(5, 3, 2)
+
     private val GLASS_DAY = rgbOf(0x9FD6EA)
     private val GLASS_DAY_HI = rgbOf(0xC8ECF7)
     private val GLASS_NIGHT = rgbOf(0xFFCF6A)
@@ -73,6 +76,10 @@ object Tex {
     val leaves: Array<Sprite> = Array(VARIANTS) { v -> leavesTex(0x9ABC + v * 173) }
     val water: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0xABCD + v * 179, WATER_COLORS, WATER_W) }
     val sand: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0xBCDE + v * 181, SAND_COLORS, SAND_W) }
+
+    /** 上から見た草 (球の表面に使う)。 */
+    val grassTop: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0x7C0D + v * 191, GRASS_COLORS, GRASS_W) }
+    val ice: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0xCDEF + v * 193, ICE_COLORS, ICE_W) }
 
     val windowDay: Sprite = windowTex(GLASS_DAY, GLASS_DAY_HI)
     val windowNight: Sprite = windowTex(GLASS_NIGHT, GLASS_NIGHT_HI)

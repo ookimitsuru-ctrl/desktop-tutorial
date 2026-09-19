@@ -1,28 +1,35 @@
 package com.example.planetgrow.core
 
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
- * 惑星と住人の状態。
+ * 惑星と、その上で暮らすものたち。
  *
  * 座標系: 惑星の中心が (0, 0)。1 ブロック = 1.0。画面と同じく y は下向きが正。
  * 角度: 0 = 右, -90 = 上(真上), 90 = 下, 180 = 左 (度数法・画面座標系)。
+ *
+ * 惑星は「外から見た球」として描く。見えているのは地表だけで、内部は描かない。
  */
 
-enum class BlockKind { GRASS, DIRT, STONE, DEEPSLATE, CORE }
+/** 地表のブロック。 */
+enum class Terrain { GRASS, DIRT, STONE, SAND }
 
 class Planet(val radius: Float) {
     /** ブロック座標の範囲 (-ri .. ri) */
     val ri: Int = ceil(radius).toInt()
     private val span: Int = ri * 2 + 1
-    private val kinds: Array<BlockKind?> = arrayOfNulls(span * span)
+    private val cells: Array<Terrain?> = arrayOfNulls(span * span)
+    private val rim: BooleanArray = BooleanArray(span * span)
 
-    /** 角度ごとの地表までの距離 (0.5 度刻み)。住人や草木の設置に使う。 */
+    /** 角度ごとの地表までの距離 (0.5 度刻み)。住人や建物の設置に使う。 */
     private val surfaceTable = FloatArray(SURF_STEPS)
 
     init {
@@ -30,22 +37,40 @@ class Planet(val radius: Float) {
             for (i in -ri..ri) {
                 val d = hypot(i.toFloat(), j.toFloat())
                 if (d > radius) continue
-                kinds[(j + ri) * span + (i + ri)] = when {
-                    // 中心の 3x3 はマグマ
-                    i >= -1 && i <= 1 && j >= -1 && j <= 1 -> BlockKind.CORE
-                    d > radius - 1.0f -> BlockKind.GRASS
-                    d > radius - 2.4f -> BlockKind.DIRT
-                    d > radius * 0.42f -> BlockKind.STONE
-                    else -> BlockKind.DEEPSLATE
-                }
+                cells[index(i, j)] = terrainFor(i, j)
+            }
+        }
+        // ふちのブロック (外側に面しているもの) を覚えておく
+        for (j in -ri..ri) {
+            for (i in -ri..ri) {
+                if (cells[index(i, j)] == null) continue
+                val edge = terrainAt(i + 1, j) == null || terrainAt(i - 1, j) == null ||
+                    terrainAt(i, j + 1) == null || terrainAt(i, j - 1) == null
+                rim[index(i, j)] = edge
             }
         }
         buildSurfaceTable()
     }
 
-    fun kindAt(i: Int, j: Int): BlockKind? {
+    private fun index(i: Int, j: Int) = (j + ri) * span + (i + ri)
+
+    fun terrainAt(i: Int, j: Int): Terrain? {
         if (i < -ri || j < -ri || i > ri || j > ri) return null
-        return kinds[(j + ri) * span + (i + ri)]
+        return cells[index(i, j)]
+    }
+
+    fun isRim(i: Int, j: Int): Boolean {
+        if (i < -ri || j < -ri || i > ri || j > ri) return false
+        return rim[index(i, j)]
+    }
+
+    /** 地面の模様。岩場や土がまだらに混ざる。 */
+    private fun terrainFor(i: Int, j: Int): Terrain {
+        val rock = valueNoise(i * 0.26f, j * 0.26f, 0x51DE)
+        if (rock > 0.70f) return Terrain.STONE
+        val soil = valueNoise(i * 0.33f + 40f, j * 0.33f - 17f, 0x2A17)
+        if (soil > 0.72f) return Terrain.DIRT
+        return Terrain.GRASS
     }
 
     private fun buildSurfaceTable() {
@@ -59,7 +84,7 @@ class Planet(val radius: Float) {
             while (t > 1f) {
                 val i = (cx * t).roundToInt()
                 val j = (cy * t).roundToInt()
-                if (kindAt(i, j) != null) {
+                if (terrainAt(i, j) != null) {
                     found = t
                     break
                 }
@@ -67,20 +92,6 @@ class Planet(val radius: Float) {
             }
             surfaceTable[k] = found
         }
-    }
-
-    /**
-     * 足元が浮かないように、少し広めに見て低いほうの地表を返す。
-     * ブロックの段差に人や木が引っかかって浮くのを防ぐ。
-     */
-    fun groundRadius(angle: Float): Float {
-        var m = Float.MAX_VALUE
-        for (k in -3..3) {
-            val r = surfaceRadius(angle + k * 0.035f)
-            if (r < m) m = r
-        }
-        // ブロックの角に乗って浮かないよう、理想的な球面より外には出さない
-        return if (m > radius + 0.08f) radius + 0.08f else m
     }
 
     /** angle (ラジアン) 方向の地表までの半径。 */
@@ -92,83 +103,51 @@ class Planet(val radius: Float) {
         return surfaceTable[k]
     }
 
+    /**
+     * 足元が浮かないように、そのものの幅ぶん見渡して一番低い地表を返す。
+     * 幅のある建物ほど広く見るので、ブロックの段差にまたがっても浮かない。
+     */
+    fun groundRadius(angle: Float, halfWidthBlocks: Float = 0.6f): Float {
+        val halfSpan = kotlin.math.atan2(halfWidthBlocks, radius)
+        val steps = 6
+        var m = Float.MAX_VALUE
+        for (k in -steps..steps) {
+            val r = surfaceRadius(angle + halfSpan * k / steps)
+            if (r < m) m = r
+        }
+        return if (m > radius + 0.08f) radius + 0.08f else m
+    }
+
     companion object {
         private const val SURF_STEPS = 720
     }
 }
 
-enum class PropKind { HOUSE, TREE, POPPY, DANDELION, TUFT, LAMP }
+// ---- ちょっとしたノイズ ----
 
-/** 惑星の上に建っているもの。angleDeg は設置角度 (-90 が真上)。 */
-class Prop(val kind: PropKind, val angleDeg: Float)
-
-/**
- * 成長のスケジュール。
- * 「地球の 1 日 = 惑星の 1 日」で、起動日を 1 日目として日数が進むほど賑やかになる。
- * ここを書き換えれば成長の早さや内容を調整できる。
- */
-object Growth {
-    /** 家が建っている向き (真上)。住人の家でもある。 */
-    const val FIRST_HOUSE_ANGLE = -90f
-
-    /** 惑星の半径。家 (高さ 7 ブロック) のおよそ 2 倍の直径から始まる。 */
-    fun radiusForDay(day: Int): Float = when {
-        day < 6 -> 6.5f
-        day < 15 -> 7.5f
-        day < 30 -> 8.5f
-        else -> 9.5f
-    }
-
-    /** 住人の数。 */
-    fun residentsForDay(day: Int): Int = when {
-        day < 15 -> 1
-        day < 30 -> 2
-        else -> 3
-    }
-
-    /** 家は地表が平らな上下左右にだけ建てる。 */
-    private val HOUSE_ANGLES = floatArrayOf(-90f, 0f, 180f, 90f)
-
-    fun houseAngles(day: Int): List<Float> {
-        val n = residentsForDay(day)
-        return (0 until n).map { HOUSE_ANGLES[it % HOUSE_ANGLES.size] }
-    }
-
-    /** その日までに生えているもの。 */
-    fun propsForDay(day: Int): List<Prop> {
-        val out = ArrayList<Prop>()
-        for (a in houseAngles(day)) out.add(Prop(PropKind.HOUSE, a))
-        for (s in SCHEDULE) {
-            if (day >= s.day) out.add(Prop(s.kind, s.angleDeg))
-        }
-        return out
-    }
-
-    private class Entry(val day: Int, val kind: PropKind, val angleDeg: Float)
-
-    private val SCHEDULE = listOf(
-        Entry(2, PropKind.TUFT, -56f),
-        Entry(2, PropKind.TUFT, -124f),
-        Entry(3, PropKind.TREE, -34f),
-        Entry(4, PropKind.POPPY, -142f),
-        Entry(5, PropKind.TUFT, 22f),
-        Entry(6, PropKind.TREE, 148f),
-        Entry(7, PropKind.DANDELION, -14f),
-        Entry(8, PropKind.LAMP, -158f),
-        Entry(9, PropKind.TUFT, 62f),
-        Entry(10, PropKind.POPPY, 118f),
-        Entry(12, PropKind.TREE, 42f),
-        Entry(14, PropKind.TUFT, 170f),
-        Entry(16, PropKind.DANDELION, -104f),
-        Entry(18, PropKind.TREE, -168f),
-        Entry(20, PropKind.LAMP, 14f),
-        Entry(24, PropKind.POPPY, 78f),
-        Entry(28, PropKind.TREE, 100f),
-        Entry(32, PropKind.TUFT, -74f),
-        Entry(36, PropKind.LAMP, 136f),
-        Entry(40, PropKind.TREE, -122f)
-    )
+private fun hashNoise(x: Int, y: Int, seed: Int): Float {
+    var h = x * 374761393 + y * 668265263 + seed * 1274126177
+    h = (h xor (h ushr 13)) * 1274126177
+    h = h xor (h ushr 16)
+    return ((h and 0x7FFFFFFF).toFloat() / 0x7FFFFFFF.toFloat())
 }
+
+/** 2 次元の値ノイズ (0..1)。 */
+fun valueNoise(x: Float, y: Float, seed: Int): Float {
+    val x0 = floor(x).toInt()
+    val y0 = floor(y).toInt()
+    val fx = smoothstep(0f, 1f, x - x0)
+    val fy = smoothstep(0f, 1f, y - y0)
+    val v00 = hashNoise(x0, y0, seed)
+    val v10 = hashNoise(x0 + 1, y0, seed)
+    val v01 = hashNoise(x0, y0 + 1, seed)
+    val v11 = hashNoise(x0 + 1, y0 + 1, seed)
+    val a = v00 + (v10 - v00) * fx
+    val b = v01 + (v11 - v01) * fx
+    return a + (b - a) * fy
+}
+
+// ---- 住人と生きもの ----
 
 /** 惑星の表面を歩く住人。 */
 class Resident(var angle: Float, val homeAngle: Float, seed: Int) {
@@ -188,13 +167,13 @@ class Resident(var angle: Float, val homeAngle: Float, seed: Int) {
     var timer: Float = 2f + rnd.float() * 3f
     var animTime: Float = 0f
     private var turnCooldown: Float = 0f
+
     /** 家に入っている間は 0 に近づき、姿が消える。 */
     var visible: Float = 1f
 
     fun update(dt: Float, sunDirX: Float, sunDirY: Float) {
         animTime += dt
         turnCooldown -= dt
-        // 家のあたりが暗くなったら就寝、明るくなったら起床
         val nightHome = localSunHeight(toRad(homeAngle), sunDirX, sunDirY) < -0.30f
 
         when (state) {
@@ -209,9 +188,9 @@ class Resident(var angle: Float, val homeAngle: Float, seed: Int) {
             GOING_HOME -> {
                 visible = (visible + dt * 2.5f).coerceAtMost(1f)
                 val diff = angleDiff(toRad(homeAngle), angle)
-                if (kotlin.math.abs(diff) < 0.06f) {
+                if (abs(diff) < 0.06f) {
                     angle = toRad(homeAngle)
-                    if (nightHome) state = INSIDE else state = WALK
+                    state = if (nightHome) INSIDE else WALK
                 } else {
                     dir = if (diff > 0) 1f else -1f
                     angle += dir * SPEED * 1.4f * dt
@@ -249,109 +228,239 @@ class Resident(var angle: Float, val homeAngle: Float, seed: Int) {
                 }
             }
         }
-        val two = 2f * PI.toFloat()
-        if (angle > PI.toFloat()) angle -= two
-        if (angle < -PI.toFloat()) angle += two
+        angle = wrapAngle(angle)
     }
 
-    /** 歩行アニメのコマ (0 or 1)。止まっているときは常に 0。 */
+    /** 歩行アニメのコマ (0 or 1)。 */
     fun frame(): Int {
         if (state == IDLE || state == INSIDE) return 0
         return if ((animTime * 5.5f).toInt() % 2 == 0) 0 else 1
     }
 }
 
-/** 煙突から出る煙。位置はワールド座標 (ブロック単位)。 */
-class Smoke(var x: Float, var y: Float, var vx: Float, var vy: Float) {
+/** 惑星をうろうろする生きもの。夜はその場で丸くなる。 */
+class Animal(var angle: Float, seed: Int) {
+    private val rnd = Rnd(seed)
+    var dir: Float = if (rnd.int(2) == 0) 1f else -1f
+    var timer: Float = 1f + rnd.float() * 4f
+    var animTime: Float = 0f
+    var walking: Boolean = true
+
+    fun update(dt: Float, sunDirX: Float, sunDirY: Float) {
+        animTime += dt
+        val night = localSunHeight(angle, sunDirX, sunDirY) < -0.25f
+        if (night) {
+            walking = false
+            return
+        }
+        timer -= dt
+        if (timer <= 0f) {
+            walking = !walking
+            timer = if (walking) 2f + rnd.float() * 5f else 1.5f + rnd.float() * 4f
+            if (rnd.int(100) < 50) dir = -dir
+        }
+        if (walking) {
+            val ahead = localSunHeight(angle + dir * 0.4f, sunDirX, sunDirY)
+            if (ahead < -0.15f) dir = -dir
+            angle = wrapAngle(angle + dir * 0.13f * dt)
+        }
+    }
+
+    fun frame(): Int = if (!walking) 0 else if ((animTime * 4f).toInt() % 2 == 0) 0 else 1
+}
+
+/** 煙突から出る煙や、着弾のかけら。位置はワールド座標 (ブロック単位)。 */
+class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, val color: Int) {
     var life: Float = 0f
     var maxLife: Float = 2.6f
     var size: Float = 2f
+    var gravity: Float = 0f
+}
+
+/** 空から落ちてくるもの。 */
+class FallingObject(val kind: SkyFallKind, val angleDeg: Float, val amount: Int) {
+    /** 惑星の中心からの距離 (ブロック)。 */
+    var dist: Float = 26f
+    var speed: Float = 9f
+    var spin: Float = 0f
+    var landed: Boolean = false
+    var flash: Float = 0f
 }
 
 fun toRad(deg: Float): Float = deg * (PI.toFloat() / 180f)
 
 fun toDeg(rad: Float): Float = rad * (180f / PI.toFloat())
 
+fun wrapAngle(a: Float): Float {
+    val two = 2f * PI.toFloat()
+    var v = a
+    while (v > PI.toFloat()) v -= two
+    while (v < -PI.toFloat()) v += two
+    return v
+}
+
 /** その地点での太陽の高さ (1 = 真上, -1 = 真裏)。 */
 fun localSunHeight(angleRad: Float, sunDirX: Float, sunDirY: Float): Float =
     cos(angleRad) * sunDirX + sin(angleRad) * sunDirY
 
 /**
- * 惑星全体の状態。
+ * 画面に映る惑星まるごと。PlanetState (保存される値) から組み立てる。
  */
-class World(startDay: Int) {
-    var day: Int = startDay
+class World(val state: PlanetState) {
+
+    var planet: Planet = Planet(state.radius())
         private set
-    var planet: Planet = Planet(Growth.radiusForDay(startDay))
-        private set
-    var props: List<Prop> = Growth.propsForDay(startDay)
-        private set
+
     val residents = ArrayList<Resident>()
-    val smoke = ArrayList<Smoke>()
+    val animals = ArrayList<Animal>()
+    val particles = ArrayList<Particle>()
+    val falling = ArrayList<FallingObject>()
+
     private var smokeTimer = 0f
     private val rnd = Rnd(0x7A5E)
+    private var builtRadius = state.radius()
 
     init {
-        rebuildResidents()
+        syncFromState()
     }
 
-    fun setDay(newDay: Int) {
-        if (newDay == day) return
-        val oldRadius = planet.radius
-        day = newDay
-        props = Growth.propsForDay(day)
-        val r = Growth.radiusForDay(day)
-        if (r != oldRadius) planet = Planet(r)
-        rebuildResidents()
-    }
-
-    private fun rebuildResidents() {
-        val want = Growth.residentsForDay(day)
-        val homes = Growth.houseAngles(day)
-        while (residents.size > want) residents.removeAt(residents.size - 1)
-        while (residents.size < want) {
-            val idx = residents.size
-            val home = homes[idx]
-            residents.add(Resident(toRad(home + 18f), home, 0x1000 + idx * 7919))
+    /** 保存された状態に合わせて、惑星の大きさ・住人・生きものの数をそろえる。 */
+    fun syncFromState() {
+        val r = state.radius()
+        if (r != builtRadius) {
+            planet = Planet(r)
+            builtRadius = r
         }
+        val homes = state.placed.filter { it.kind == BuildKind.HOUSE }.map { it.angleDeg }
+        while (residents.size > homes.size) residents.removeAt(residents.size - 1)
+        while (residents.size < homes.size) {
+            val idx = residents.size
+            residents.add(Resident(toRad(homes[idx] + 18f), homes[idx], 0x1000 + idx * 7919))
+        }
+        val wantAnimals = state.animalCount()
+        while (animals.size > wantAnimals) animals.removeAt(animals.size - 1)
+        while (animals.size < wantAnimals) {
+            val idx = animals.size
+            val a = state.placed.filter { it.kind == BuildKind.SHEEP }.getOrNull(idx)
+            animals.add(Animal(toRad((a?.angleDeg ?: 0f) + 10f), 0x2000 + idx * 6971))
+        }
+    }
+
+    /** 飛来を画面に出す。 */
+    fun addFalling(kind: SkyFallKind, angleDeg: Float, amount: Int) {
+        if (falling.size > 6) return
+        falling.add(FallingObject(kind, angleDeg, amount))
     }
 
     fun update(dt: Float, sunDirX: Float, sunDirY: Float) {
         for (r in residents) r.update(dt, sunDirX, sunDirY)
+        for (a in animals) a.update(dt, sunDirX, sunDirY)
+        updateFalling(dt)
+        updateSmoke(dt)
+        updateParticles(dt)
+    }
 
-        // 煙突の煙
-        smokeTimer -= dt
-        if (smokeTimer <= 0f) {
-            smokeTimer = 0.55f + rnd.float() * 0.4f
-            for (p in props) {
-                if (p.kind != PropKind.HOUSE) continue
-                if (smoke.size > 80) break
-                val a = toRad(p.angleDeg)
-                val surf = planet.groundRadius(a)
-                // 煙突はおよそ屋根の上 (地表から 6.6 ブロック)、家の中心から 1 ブロック右
-                val up = surf + 6.7f
-                val side = 1.0f
-                val nx = cos(a)
-                val ny = sin(a)
-                // ローカル右方向 = (-ny, nx)
-                val x = nx * up + (-ny) * side
-                val y = ny * up + nx * side
-                val s = Smoke(x, y, nx * 0.55f + rnd.range(-0.12f, 0.12f), ny * 0.55f + rnd.range(-0.12f, 0.12f))
-                s.maxLife = 2.2f + rnd.float() * 1.4f
-                s.size = 2f + rnd.int(3)
-                smoke.add(s)
-            }
-        }
+    private fun updateFalling(dt: Float) {
         var i = 0
-        while (i < smoke.size) {
-            val s = smoke[i]
+        while (i < falling.size) {
+            val f = falling[i]
+            f.spin += dt * 4f
+            if (!f.landed) {
+                f.dist -= f.speed * dt
+                f.speed += 6f * dt
+                val ground = planet.groundRadius(toRad(f.angleDeg))
+                if (f.dist <= ground) {
+                    f.dist = ground
+                    f.landed = true
+                    f.flash = 1f
+                    burst(f)
+                }
+            } else {
+                f.flash -= dt * 1.6f
+                if (f.flash <= 0f) {
+                    falling.removeAt(i)
+                    continue
+                }
+            }
+            i++
+        }
+    }
+
+    /** 着弾のかけらを散らす。 */
+    private fun burst(f: FallingObject) {
+        val a = toRad(f.angleDeg)
+        val nx = cos(a)
+        val ny = sin(a)
+        val color = when (f.kind) {
+            SkyFallKind.METEOR -> rgbOf(0xC08A5A)
+            SkyFallKind.COSMIC_DUST -> rgbOf(0x9BD46A)
+            SkyFallKind.COMET_DUST -> rgbOf(0xAEE6FF)
+        }
+        val count = 10 + f.amount * 4
+        for (k in 0 until count) {
+            val spread = rnd.range(-1.1f, 1.1f)
+            val sx = -ny * spread
+            val sy = nx * spread
+            val speed = rnd.range(1.2f, 3.4f)
+            val p = Particle(
+                nx * (f.dist + 0.3f) + sx * 0.3f,
+                ny * (f.dist + 0.3f) + sy * 0.3f,
+                (nx + sx) * speed * 0.6f,
+                (ny + sy) * speed * 0.6f,
+                color
+            )
+            p.maxLife = 0.7f + rnd.float() * 0.9f
+            p.size = 2f + rnd.int(3)
+            p.gravity = -2.6f // 惑星に引き戻される
+            particles.add(p)
+        }
+    }
+
+    private fun updateSmoke(dt: Float) {
+        smokeTimer -= dt
+        if (smokeTimer > 0f) return
+        smokeTimer = 0.55f + rnd.float() * 0.4f
+        for (p in state.placed) {
+            if (p.kind != BuildKind.HOUSE) continue
+            if (particles.size > 140) break
+            val a = toRad(p.angleDeg)
+            val surf = planet.groundRadius(a)
+            val up = surf + 7.0f
+            val side = 1.0f
+            val nx = cos(a)
+            val ny = sin(a)
+            val x = nx * up + (-ny) * side
+            val y = ny * up + nx * side
+            val s = Particle(
+                x, y,
+                nx * 0.55f + rnd.range(-0.12f, 0.12f),
+                ny * 0.55f + rnd.range(-0.12f, 0.12f),
+                Art.smokeColor(150)
+            )
+            s.maxLife = 2.2f + rnd.float() * 1.4f
+            s.size = 2f + rnd.int(3)
+            particles.add(s)
+        }
+    }
+
+    private fun updateParticles(dt: Float) {
+        var i = 0
+        while (i < particles.size) {
+            val s = particles[i]
             s.life += dt
             if (s.life >= s.maxLife) {
-                smoke.removeAt(i)
+                particles.removeAt(i)
                 continue
             }
             s.x += s.vx * dt
             s.y += s.vy * dt
+            if (s.gravity != 0f) {
+                val d = hypot(s.x, s.y)
+                if (d > 0.001f) {
+                    s.vx += (s.x / d) * s.gravity * dt
+                    s.vy += (s.y / d) * s.gravity * dt
+                }
+            }
             s.vx *= 0.995f
             s.vy *= 0.995f
             i++

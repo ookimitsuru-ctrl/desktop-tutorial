@@ -1,9 +1,13 @@
 package com.example.planetgrow.preview
 
+import com.example.planetgrow.core.BuildKind
 import com.example.planetgrow.core.PixelBuffer
+import com.example.planetgrow.core.PlanetState
+import com.example.planetgrow.core.Recipes
 import com.example.planetgrow.core.Scene
 import com.example.planetgrow.core.Sky
 import com.example.planetgrow.core.World
+import com.example.planetgrow.core.rgbOf
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
@@ -13,43 +17,88 @@ import javax.imageio.ImageIO
  * アプリ本体と同じ描画コード (core パッケージ) を使って PNG を書き出す。
  *
  *   cd preview && ../gradlew run
- *   cd preview && ../gradlew run --args="out 20 06:00 12:00 19:00 23:00"
- *                                   ^出力先 ^何日目 ^時刻...
+ *   cd preview && ../gradlew run --args="out 2 06:00 12:00 19:00 23:00"
+ *                                   ^出力先 ^育ち具合(0-3) ^時刻...
  */
 fun main(args: Array<String>) {
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
     outDir.mkdirs()
-    val day = if (args.size > 1) args[1].toIntOrNull() ?: 1 else 1
+    val level = if (args.size > 1) args[1].toIntOrNull() ?: 0 else 0
     val times = if (args.size > 2) args.drop(2) else listOf("06:00", "09:00", "12:00", "17:30", "20:00", "00:00")
 
-    // よくある縦長スマホの画面を想定する
-    val viewBlocks = Scene.viewBlocksFor(day)
+    val now = System.currentTimeMillis()
+    val state = demoState(level, now)
+    val viewBlocks = Scene.viewBlocksFor(state)
     val size = Scene.bufferSize(1080, 2340, viewBlocks)
     val scene = Scene(size[0], size[1])
-    println("${day}日目 / 視野 ${viewBlocks} ブロック / バッファ ${size[0]}x${size[1]}")
+    println("育ち具合 $level / 視野 $viewBlocks ブロック / バッファ ${size[0]}x${size[1]}")
+    println("  建物 ${state.placed.size} / 建設中 ${state.jobs.size} / 鉱石 ${state.mineral} たね ${state.seed} 氷 ${state.ice}")
 
     val sheet = ArrayList<PixelBuffer>()
     for (t in times) {
-        val world = World(day)
-        val sky = Sky(parseTime(t), System.currentTimeMillis())
-        // 住人や煙が動き出した状態にしてから描く
+        val world = World(state)
+        val sky = Sky(parseTime(t), now)
         val dt = 1f / 30f
         var elapsed = 0f
         repeat(900) {
             world.update(dt, sky.sunDirX, sky.sunDirY)
             elapsed += dt
         }
+        // 飛来の様子も 1 つ見えるようにする
+        if (t == times.first()) {
+            world.addFalling(com.example.planetgrow.core.SkyFallKind.METEOR, 40f, 2)
+            repeat(30) { world.update(dt, sky.sunDirX, sky.sunDirY) }
+        }
         val start = System.nanoTime()
         scene.render(world, sky, elapsed, dt)
         val ms = (System.nanoTime() - start) / 1_000_000.0
-        val name = "day%02d_%s".format(day, t.replace(":", ""))
+        val name = "lv%d_%s".format(level, t.replace(":", ""))
         writePng(scene.frame, File(outDir, "$name.png"))
         writePng(zoom(scene.frame, (viewBlocks - 2) * Scene.BLOCK, 2), File(outDir, "${name}_zoom.png"))
         println("  %s  %5.1f ms".format(t, ms))
         if (sheet.size < 4) sheet.add(copyOf(scene.frame))
     }
-    if (sheet.size > 1) writePng(横に並べる(sheet), File(outDir, "day%02d_sheet.png".format(day)))
+    if (sheet.size > 1) writePng(横に並べる(sheet), File(outDir, "lv%d_sheet.png".format(level)))
     println("-> ${outDir.absolutePath}")
+}
+
+/** 見た目を確かめるための、育ち具合ごとの状態。 */
+private fun demoState(level: Int, now: Long): PlanetState {
+    val s = PlanetState.newPlanet(now - 3L * 24 * 3600 * 1000)
+    s.mineral = 4
+    s.seed = 3
+    s.ice = 2
+    fun place(kind: BuildKind) {
+        val a = s.freeAngleFor(kind) ?: return
+        s.placed.add(com.example.planetgrow.core.Placed(kind, a, now))
+    }
+    if (level >= 1) {
+        place(BuildKind.FLOWER)
+        place(BuildKind.LAMP)
+    }
+    if (level >= 2) {
+        place(BuildKind.TREE)
+        place(BuildKind.POND)
+        place(BuildKind.SHEEP)
+    }
+    if (level >= 3) {
+        place(BuildKind.HOUSE)
+        place(BuildKind.TREE)
+        place(BuildKind.FLOWER)
+    }
+    // 建設中のものも 1 つ見えるようにする
+    if (level >= 1) {
+        val r = Recipes.of(BuildKind.HOUSE)
+        val angle = s.freeAngleFor(BuildKind.HOUSE)
+        if (angle != null) {
+            s.jobs.add(
+                com.example.planetgrow.core.BuildJob(
+                    BuildKind.HOUSE, angle, now - r.durationMillis / 2, now + r.durationMillis / 2
+                )
+            )
+        }
+    }
+    return s
 }
 
 private fun parseTime(s: String): Float {
@@ -71,7 +120,7 @@ private fun 横に並べる(frames: List<PixelBuffer>): PixelBuffer {
     val w = frames.sumOf { it.width } + gap * (frames.size - 1)
     val h = frames.maxOf { it.height }
     val out = PixelBuffer(w, h)
-    out.fill(com.example.planetgrow.core.rgbOf(0x000000))
+    out.fill(rgbOf(0x000000))
     var x = 0
     for (f in frames) {
         for (y in 0 until f.height) {

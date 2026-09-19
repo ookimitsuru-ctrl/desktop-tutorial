@@ -6,24 +6,33 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +40,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -40,11 +47,17 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import com.example.planetgrow.core.Growth
-import com.example.planetgrow.core.PropKind
+import com.example.planetgrow.core.Arrival
+import com.example.planetgrow.core.BuildKind
+import com.example.planetgrow.core.PlanetState
+import com.example.planetgrow.core.Recipe
+import com.example.planetgrow.core.Recipes
 import com.example.planetgrow.core.Scene
 import com.example.planetgrow.core.Sky
+import com.example.planetgrow.core.SkyFall
 import com.example.planetgrow.core.World
+import com.example.planetgrow.core.formatDuration
+import com.example.planetgrow.core.skyFallLabel
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -70,26 +83,49 @@ private fun localDayFraction(zone: ZoneId, nowMillis: Long): Float {
     return ((sec * 1000L + ms).toDouble() / 86_400_000.0).toFloat()
 }
 
+/** 惑星が生まれてから何日目か。 */
+private fun dayNumber(state: PlanetState, zone: ZoneId, nowMillis: Long): Int {
+    val birth = Instant.ofEpochMilli(state.birthMillis).atZone(zone).toLocalDate()
+    val today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate()
+    return (today.toEpochDay() - birth.toEpochDay() + 1L).coerceIn(1L, 100000L).toInt()
+}
+
 /** 描画フレームの時計。Compose の再コンポーズを起こさずに値を持ち回る。 */
 private class FrameClock {
     var timeSec: Float = 0f
     var dt: Float = 1f / 60f
 }
 
+/** 画面に少しのあいだ出すお知らせ。 */
+private class Notice(val text: String, val untilMillis: Long)
+
 @Composable
 fun PlanetScreen() {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { PlanetPrefs(context) }
     val zone = remember { ZoneId.systemDefault() }
+    val state = remember { prefs.load(System.currentTimeMillis()) }
+    val world = remember { World(state) }
+    val clock = remember { FrameClock() }
 
-    // 実際の経過日数 (地球時間)。日付が変わると自然に増える。
-    val realDay = remember { mutableIntStateOf(prefs.dayNumber(zone)) }
-    // 長押しで先の日を覗くためのオフセット
-    val previewOffset = remember { mutableIntStateOf(0) }
-    // 時計表示 (分が変わったときだけ更新する)
-    val clockMinute = remember { mutableIntStateOf(LocalTime.now(zone).let { it.hour * 60 + it.minute }) }
+    // 状態が変わったら画面を組み直すための印
+    var version by remember { mutableIntStateOf(0) }
+    var minuteOfDay by remember { mutableIntStateOf(LocalTime.now(zone).let { it.hour * 60 + it.minute }) }
+    var notice by remember { mutableStateOf<Notice?>(null) }
+    var showBuildPanel by remember { mutableStateOf(false) }
 
-    val day = realDay.intValue + previewOffset.intValue
+    // 開いた時点で、閉じていた間の飛来をまとめて受け取る
+    LaunchedEffect(Unit) {
+        val now = System.currentTimeMillis()
+        val arrivals = state.advanceTo(now)
+        world.syncFromState()
+        prefs.save(state)
+        if (arrivals.isNotEmpty()) {
+            for (a in arrivals.takeLast(4)) world.addFalling(a.kind, a.angleDeg, a.amount)
+            notice = Notice(offlineSummary(arrivals), now + 9000L)
+        }
+        version++
+    }
 
     BoxWithConstraints(
         Modifier
@@ -99,7 +135,7 @@ fun PlanetScreen() {
         val widthPx = constraints.maxWidth.coerceAtLeast(1)
         val heightPx = constraints.maxHeight.coerceAtLeast(1)
 
-        val viewBlocks = remember(day) { Scene.viewBlocksFor(day) }
+        val viewBlocks = remember(version) { Scene.viewBlocksFor(state) }
         val bufferSize = remember(widthPx, heightPx, viewBlocks) {
             Scene.bufferSize(widthPx, heightPx, viewBlocks)
         }
@@ -108,11 +144,7 @@ fun PlanetScreen() {
             Bitmap.createBitmap(scene.width, scene.height, Bitmap.Config.ARGB_8888)
         }
         val image = remember(bitmap) { bitmap.asImageBitmap() }
-        val world = remember { World(day) }
-        val clock = remember { FrameClock() }
         val frameTick = remember { mutableLongStateOf(0L) }
-
-        LaunchedEffect(day) { world.setDay(day) }
 
         // 1 フレームごとに時間を進める
         LaunchedEffect(Unit) {
@@ -132,22 +164,34 @@ fun PlanetScreen() {
                 val sky = Sky(localDayFraction(zone, nowMs), nowMs)
                 world.update(dt, sky.sunDirX, sky.sunDirY)
 
-                // 1 秒に一度だけ、分が変わっていないか見る
                 frames++
-                if (frames % 60 == 0) {
-                    val t = LocalTime.now(zone)
-                    val minuteOfDay = t.hour * 60 + t.minute
-                    if (minuteOfDay != clockMinute.intValue) {
-                        clockMinute.intValue = minuteOfDay
-                        realDay.intValue = prefs.dayNumber(zone)
+                if (frames % 30 == 0) {
+                    // 飛来や、できあがりがないか見る
+                    val placedBefore = state.placed.size
+                    val arrivals = state.advanceTo(nowMs)
+                    if (arrivals.isNotEmpty()) {
+                        for (a in arrivals) world.addFalling(a.kind, a.angleDeg, a.amount)
+                        notice = Notice(arrivalText(arrivals.last()), nowMs + 7000L)
+                        prefs.save(state)
+                        version++
                     }
+                    if (state.placed.size != placedBefore) {
+                        val done = state.placed.last()
+                        world.syncFromState()
+                        notice = Notice(Recipes.of(done.kind).doneText, nowMs + 7000L)
+                        prefs.save(state)
+                        version++
+                    }
+                    val t = LocalTime.now(zone)
+                    val mod = t.hour * 60 + t.minute
+                    if (mod != minuteOfDay) minuteOfDay = mod
+                    notice?.let { if (nowMs > it.untilMillis) notice = null }
                 }
                 frameTick.longValue = now
             }
         }
 
         Canvas(Modifier.fillMaxSize()) {
-            // frameTick を読むことで毎フレーム描き直される
             val tick = frameTick.longValue
             if (tick >= 0L) {
                 val nowMs = System.currentTimeMillis()
@@ -165,76 +209,293 @@ fun PlanetScreen() {
             }
         }
 
+        val nowMs = System.currentTimeMillis()
         Hud(
-            day = day,
-            minuteOfDay = clockMinute.intValue,
-            residents = Growth.residentsForDay(day),
-            trees = Growth.propsForDay(day).count { it.kind == PropKind.TREE },
-            previewing = previewOffset.intValue > 0,
-            onLongPress = { previewOffset.intValue = (previewOffset.intValue + 1).coerceAtMost(120) },
-            onTap = { previewOffset.intValue = 0 }
+            state = state,
+            day = dayNumber(state, zone, nowMs),
+            minuteOfDay = minuteOfDay,
+            nowMillis = nowMs,
+            notice = notice?.text,
+            onOpenBuild = { showBuildPanel = true }
         )
+
+        if (showBuildPanel) {
+            BuildPanel(
+                state = state,
+                nowMillis = nowMs,
+                onClose = { showBuildPanel = false },
+                onBuild = { recipe ->
+                    val t = System.currentTimeMillis()
+                    if (state.startBuild(recipe, t)) {
+                        world.syncFromState()
+                        prefs.save(state)
+                        version++
+                        notice = Notice("${recipe.label}をはじめました", t + 6000L)
+                        showBuildPanel = false
+                    }
+                }
+            )
+        }
     }
+}
+
+private fun arrivalText(a: Arrival): String =
+    "${skyFallLabel(a.kind)}が落ちてきた  ${com.example.planetgrow.core.resourceLabel(a.kind.resource)}+${a.amount}"
+
+private fun offlineSummary(arrivals: List<Arrival>): String {
+    var mineral = 0
+    var seed = 0
+    var ice = 0
+    for (a in arrivals) {
+        when (a.kind.resource) {
+            com.example.planetgrow.core.ResourceKind.MINERAL -> mineral += a.amount
+            com.example.planetgrow.core.ResourceKind.SEED -> seed += a.amount
+            com.example.planetgrow.core.ResourceKind.ICE -> ice += a.amount
+        }
+    }
+    val parts = ArrayList<String>()
+    if (mineral > 0) parts.add("鉱石+$mineral")
+    if (seed > 0) parts.add("たね+$seed")
+    if (ice > 0) parts.add("氷+$ice")
+    return "留守の間に${arrivals.size}回の飛来  " + parts.joinToString(" ")
 }
 
 @Composable
 private fun BoxScope.Hud(
+    state: PlanetState,
     day: Int,
     minuteOfDay: Int,
-    residents: Int,
-    trees: Int,
-    previewing: Boolean,
-    onLongPress: () -> Unit,
-    onTap: () -> Unit
+    nowMillis: Long,
+    notice: String?,
+    onOpenBuild: () -> Unit
 ) {
-    val clock = "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
+    val clockText = "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
 
+    // 左上: 日数と時刻
     Column(
         modifier = Modifier
             .align(Alignment.TopStart)
             .statusBarsPadding()
-            .padding(18.dp)
+            .padding(16.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(Color(0x55000000))
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(onLongPress = { onLongPress() }, onTap = { onTap() })
-            },
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
             text = "${day}日目",
             color = Color(0xFFFFF3D0),
-            fontSize = 22.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace
         )
         Text(
-            text = clock,
+            text = clockText,
             color = Color(0xFFBFD4F0),
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             fontFamily = FontFamily.Monospace
         )
     }
 
+    // 右上: 資源
     Column(
         modifier = Modifier
-            .align(Alignment.BottomStart)
-            .navigationBarsPadding()
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+            .align(Alignment.TopEnd)
+            .statusBarsPadding()
+            .padding(16.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0x55000000))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        ResourceRow("鉱石", state.mineral, Color(0xFFD9B08C))
+        ResourceRow("たね", state.seed, Color(0xFF9BD46A))
+        ResourceRow("氷", state.ice, Color(0xFFAEE6FF))
         Text(
-            text = "住人 ${residents}人   木 ${trees}本",
-            color = Color(0xCCBFD4F0),
+            text = "次の飛来 " + formatDuration(
+                SkyFall.nextArrival(nowMillis, state.birthMillis).atMillis - nowMillis
+            ),
+            color = Color(0x99BFD4F0),
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+
+    // 下: 建設中のものと「つくる」
+    Column(
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (notice != null) {
+            Text(
+                text = notice,
+                color = Color(0xFFFFE9A8),
+                fontSize = 13.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0x77000000))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
+        for (job in state.jobs) {
+            Text(
+                text = "${Recipes.of(job.kind).label}  あと${formatDuration(job.endMillis - nowMillis)}",
+                color = Color(0xCCBFD4F0),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0x55000000))
+                    .padding(horizontal = 12.dp, vertical = 5.dp)
+            )
+        }
+        Text(
+            text = "つ く る",
+            color = Color(0xFF0B1020),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFE9D9A8))
+                .clickable { onOpenBuild() }
+                .padding(horizontal = 28.dp, vertical = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun ResourceRow(label: String, count: Int, color: Color) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = label,
+            color = color,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace
+        )
+        Text(
+            text = "$count",
+            color = Color.White,
             fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace
         )
-        Text(
-            text = if (previewing) "プレビュー中 — タップで今日に戻る" else "日付を長押しすると先の日を覗けます",
-            color = if (previewing) Color(0xFFFFD98A) else Color(0x99BFD4F0),
-            fontSize = 11.sp,
-            fontFamily = FontFamily.Monospace
-        )
+    }
+}
+
+@Composable
+private fun BuildPanel(
+    state: PlanetState,
+    nowMillis: Long,
+    onClose: () -> Unit,
+    onBuild: (Recipe) -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xAA000000))
+            .clickable { onClose() }
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(12.dp)
+                .widthIn(max = 520.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xF0101828))
+                .padding(18.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "なにを つくる？",
+                    color = Color(0xFFFFF3D0),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "とじる",
+                    color = Color(0xFF9FB4D8),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.clickable { onClose() }
+                )
+            }
+            Text(
+                text = "手持ち  鉱石${state.mineral}  たね${state.seed}  氷${state.ice}",
+                color = Color(0xFFBFD4F0),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace
+            )
+            for (recipe in Recipes.all) {
+                RecipeRow(recipe, state.canBuild(recipe), onBuild)
+            }
+            Text(
+                text = "※ 作りはじめると、できあがるまで実時間で待ちます",
+                color = Color(0x88BFD4F0),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecipeRow(recipe: Recipe, enabled: Boolean, onBuild: (Recipe) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (enabled) Color(0x22FFFFFF) else Color(0x11FFFFFF))
+            .clickable(enabled = enabled) { onBuild(recipe) }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = recipe.label,
+                color = if (enabled) Color(0xFFFFF3D0) else Color(0x66FFF3D0),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+            Text(
+                text = recipe.note,
+                color = if (enabled) Color(0x99BFD4F0) else Color(0x55BFD4F0),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = recipe.costText(),
+                color = if (enabled) Color(0xFF9BD46A) else Color(0xFFD08A8A),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace
+            )
+            Text(
+                text = formatDuration(recipe.durationMillis),
+                color = Color(0x99BFD4F0),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
     }
 }

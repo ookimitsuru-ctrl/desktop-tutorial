@@ -197,7 +197,9 @@ class PixelBuffer(val width: Int, val height: Int) {
         angle: Float,
         flipX: Boolean = false,
         tintColor: Int = Col.WHITE,
-        alpha: Int = 255
+        alpha: Int = 255,
+        /** この行より上のドットは描かない (建設中の「下から出来ていく」演出)。 */
+        srcMinY: Int = 0
     ) {
         val ca = cos(angle)
         val sa = sin(angle)
@@ -235,7 +237,7 @@ class PixelBuffer(val width: Int, val height: Int) {
                 if (flipX) sx = s.w - sx
                 val ix = floor(sx).toInt()
                 val iy = floor(sy).toInt()
-                if (ix < 0 || iy < 0 || ix >= s.w || iy >= s.h) continue
+                if (ix < 0 || iy < srcMinY || ix >= s.w || iy >= s.h) continue
                 val c = s.px[iy * s.w + ix]
                 if ((c ushr 24) == 0) continue
                 var out = if (plain) c else Col.modulate(c, rm, gm, bm)
