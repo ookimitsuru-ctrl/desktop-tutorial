@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.example.planetgrow.core.Arrival
 import com.example.planetgrow.core.BuildKind
+import com.example.planetgrow.core.GameTime
 import com.example.planetgrow.core.PlanetState
 import com.example.planetgrow.core.Recipe
 import com.example.planetgrow.core.Recipes
@@ -61,7 +62,6 @@ import com.example.planetgrow.core.World
 import com.example.planetgrow.core.formatDuration
 import com.example.planetgrow.core.skyFallLabel
 import java.time.Instant
-import java.time.LocalTime
 import java.time.ZoneId
 
 class MainActivity : ComponentActivity() {
@@ -75,6 +75,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+/**
+ * 時計表示用の「時:分」。GameTime.now() を渡せば、太陽の位置と同じ速さで進む
+ * (デバッグで時間を早回ししているときも、表示時刻と太陽がずれない)。
+ */
+private fun minuteOfDayFor(zone: ZoneId, nowMillis: Long): Int {
+    val zdt = Instant.ofEpochMilli(nowMillis).atZone(zone)
+    return zdt.hour * 60 + zdt.minute
 }
 
 /** 地球のローカル時刻での「今日の進み具合」 (0.0 = 0:00, 0.5 = 12:00, 1.0 = 24:00)。 */
@@ -98,33 +107,36 @@ private class FrameClock {
     var dt: Float = 1f / 60f
 }
 
-/** 画面に少しのあいだ出すお知らせ。 */
-private class Notice(val text: String, val untilMillis: Long)
+/**
+ * 画面に少しのあいだ出すお知らせ。
+ * 表示時間は人が読むためのものなので、GameTime (早回し) ではなく実時間で測る。
+ */
+private class Notice(val text: String, val untilRealMillis: Long)
 
 @Composable
 fun PlanetScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { PlanetPrefs(context) }
     val zone = remember { ZoneId.systemDefault() }
-    val state = remember { prefs.load(System.currentTimeMillis()) }
+    val state = remember { prefs.load(GameTime.now()) }
     val world = remember { World(state) }
     val clock = remember { FrameClock() }
 
     // 状態が変わったら画面を組み直すための印
     var version by remember { mutableIntStateOf(0) }
-    var minuteOfDay by remember { mutableIntStateOf(LocalTime.now(zone).let { it.hour * 60 + it.minute }) }
+    var minuteOfDay by remember { mutableIntStateOf(minuteOfDayFor(zone, GameTime.now())) }
     var notice by remember { mutableStateOf<Notice?>(null) }
     var showBuildPanel by remember { mutableStateOf(false) }
 
     // 開いた時点で、閉じていた間の飛来をまとめて受け取る
     LaunchedEffect(Unit) {
-        val now = System.currentTimeMillis()
+        val now = GameTime.now()
         val arrivals = state.advanceTo(now)
         world.syncFromState(now)
         prefs.save(state)
         if (arrivals.isNotEmpty()) {
             for (a in arrivals.takeLast(4)) world.addFalling(a.kind, a.angleDeg, a.amount)
-            notice = Notice(offlineSummary(arrivals), now + 9000L)
+            notice = Notice(offlineSummary(arrivals), System.currentTimeMillis() + 9000L)
         }
         version++
     }
@@ -137,7 +149,7 @@ fun PlanetScreen() {
         val widthPx = constraints.maxWidth.coerceAtLeast(1)
         val heightPx = constraints.maxHeight.coerceAtLeast(1)
 
-        val viewBlocks = remember(version) { Scene.viewBlocksFor(state, System.currentTimeMillis()) }
+        val viewBlocks = remember(version) { Scene.viewBlocksFor(state, GameTime.now()) }
         val blockPx = remember(viewBlocks) { Scene.blockPxFor(viewBlocks) }
         val bufferSize = remember(widthPx, heightPx, viewBlocks, blockPx) {
             Scene.bufferSize(widthPx, heightPx, viewBlocks, blockPx)
@@ -158,7 +170,7 @@ fun PlanetScreen() {
             var startNanos = 0L
             var prevNanos = 0L
             var frames = 0
-            var lastViewBlocks = Scene.viewBlocksFor(state, System.currentTimeMillis())
+            var lastViewBlocks = Scene.viewBlocksFor(state, GameTime.now())
             while (true) {
                 val now = withFrameNanos { it }
                 if (startNanos == 0L) startNanos = now
@@ -168,7 +180,7 @@ fun PlanetScreen() {
                 clock.dt = dt
                 clock.timeSec = ((now - startNanos) / 1_000_000_000.0).toFloat()
 
-                val nowMs = System.currentTimeMillis()
+                val nowMs = GameTime.now()
                 val sky = Sky(localDayFraction(zone, nowMs), nowMs)
                 world.update(dt, sky.sunDirX, sky.sunDirY)
 
@@ -179,14 +191,14 @@ fun PlanetScreen() {
                     val arrivals = state.advanceTo(nowMs)
                     if (arrivals.isNotEmpty()) {
                         for (a in arrivals) world.addFalling(a.kind, a.angleDeg, a.amount)
-                        notice = Notice(arrivalText(arrivals.last()), nowMs + 7000L)
+                        notice = Notice(arrivalText(arrivals.last()), System.currentTimeMillis() + 7000L)
                         prefs.save(state)
                         version++
                     }
                     if (state.placed.size != placedBefore) {
                         val done = state.placed.last()
                         world.syncFromState(nowMs)
-                        notice = Notice(Recipes.of(done.kind).doneText, nowMs + 7000L)
+                        notice = Notice(Recipes.of(done.kind).doneText, System.currentTimeMillis() + 7000L)
                         prefs.save(state)
                         version++
                     }
@@ -198,10 +210,9 @@ fun PlanetScreen() {
                     }
                     world.syncFromState(nowMs)
 
-                    val t = LocalTime.now(zone)
-                    val mod = t.hour * 60 + t.minute
+                    val mod = minuteOfDayFor(zone, nowMs)
                     if (mod != minuteOfDay) minuteOfDay = mod
-                    notice?.let { if (nowMs > it.untilMillis) notice = null }
+                    notice?.let { if (System.currentTimeMillis() > it.untilRealMillis) notice = null }
                 }
                 frameTick.longValue = now
             }
@@ -214,7 +225,7 @@ fun PlanetScreen() {
                     detectTapGestures { offset ->
                         val fx = offset.x / size.width.toFloat()
                         val fy = offset.y / size.height.toFloat()
-                        val hit = scene.bodyAtFraction(state, System.currentTimeMillis(), fx, fy)
+                        val hit = scene.bodyAtFraction(state, GameTime.now(), fx, fy)
                         if (hit != Scene.FOCUS_NONE) focusState.intValue = hit
                     }
                 }
@@ -222,7 +233,7 @@ fun PlanetScreen() {
             val tick = frameTick.longValue
             scene.focus = focusState.intValue
             if (tick >= 0L) {
-                val nowMs = System.currentTimeMillis()
+                val nowMs = GameTime.now()
                 val sky = Sky(localDayFraction(zone, nowMs), nowMs)
                 scene.render(world, sky, clock.timeSec, clock.dt)
                 bitmap.setPixels(scene.frame.px, 0, scene.width, 0, 0, scene.width, scene.height)
@@ -237,7 +248,7 @@ fun PlanetScreen() {
             }
         }
 
-        val nowMs = System.currentTimeMillis()
+        val nowMs = GameTime.now()
         Hud(
             state = state,
             day = dayNumber(state, zone, nowMs),
@@ -254,12 +265,12 @@ fun PlanetScreen() {
                 nowMillis = nowMs,
                 onClose = { showBuildPanel = false },
                 onBuild = { recipe ->
-                    val t = System.currentTimeMillis()
+                    val t = GameTime.now()
                     if (state.startBuild(recipe, t)) {
                         world.syncFromState(t)
                         prefs.save(state)
                         version++
-                        notice = Notice("${recipe.label}をはじめました", t + 6000L)
+                        notice = Notice("${recipe.label}をはじめました", System.currentTimeMillis() + 6000L)
                         showBuildPanel = false
                     }
                 }
