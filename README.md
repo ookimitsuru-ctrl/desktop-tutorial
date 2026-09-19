@@ -111,6 +111,20 @@ curl -LO https://github.com/ookimitsuru-ctrl/desktop-tutorial/releases/download/
 adb install -r planetgrow-debug.apk
 ```
 
+**ダウンロードが途中で止まる・失敗するときは:**
+
+- **リンクを LINE/X/Instagram などの中のブラウザで開いていないか確認する。** アプリ内蔵の
+  ブラウザは大きめのファイルのダウンロードで失敗しやすいので、リンクをコピーして
+  Chrome など通常のブラウザに貼り直してから開いてください。
+- **push した直後は少し待つ。** この Release は push のたびに中身が置き換わるので、
+  ちょうど置き換え中にダウンロードするとファイルが壊れることがあります。数分待って
+  もう一度試してください。
+- **同じ中身の .zip 版を試す。** 一部のネットワークや端末は `.apk` の拡張子だけを
+  理由にダウンロードを止めることがあります。
+  <https://github.com/ookimitsuru-ctrl/desktop-tutorial/releases/download/planetgrow-latest/planetgrow-debug-apk.zip>
+  をダウンロードして展開し、中の `planetgrow-debug.apk` を開いてください。
+- **Wi-Fi とモバイル回線を入れ替えて試す。** 片方だけでダウンロードが途切れる場合があります。
+
 ### Android Studio でビルドする
 
 1. Android Studio でこのフォルダを **Open**

@@ -47,15 +47,19 @@ jobs:
         run: |
           set -eu
           cp app/build/outputs/apk/debug/app-debug.apk planetgrow-debug.apk
+          # .apk 単体のダウンロードが途中で止まる/ブロックされる端末やネットワーク向けに、
+          # 同じ中身の .zip も置いておく (拡張子が違うだけで固まりにくいことがある)
+          zip -q planetgrow-debug-apk.zip planetgrow-debug.apk
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --title "ほしそだて (最新デバッグビルド)" \
-              --notes "惑星育成アプリ「ほしそだて」の最新デバッグビルドです。Android 8.0 (API 26) 以上。端末の設定で提供元不明のアプリのインストールを許可してから planetgrow-debug.apk を開いてください。push のたびに更新されます。" \
+              --notes "惑星育成アプリ「ほしそだて」の最新デバッグビルドです。Android 8.0 (API 26) 以上。端末の設定で提供元不明のアプリのインストールを許可してから planetgrow-debug.apk を開いてください。push のたびに更新されます。ダウンロードが途中で止まる場合は、同じ中身の planetgrow-debug-apk.zip を試すか、時間をおいて (ビルド更新中でないときに) もう一度お試しください。" \
               --prerelease \
               --target "$GITHUB_SHA"
           fi
-          gh release upload "$TAG" planetgrow-debug.apk --clobber
-          echo "APK: https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/planetgrow-debug.apk"
+          gh release upload "$TAG" planetgrow-debug.apk planetgrow-debug-apk.zip --clobber
+          echo "APK:  https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/planetgrow-debug.apk"
+          echo "ZIP:  https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/planetgrow-debug-apk.zip"
 
   preview:
     name: 惑星のプレビュー画像を作る
