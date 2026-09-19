@@ -15,6 +15,18 @@ android {
         versionName = "1.0"
     }
 
+    // CI は毎回まっさらな仮想マシンなので、署名鍵を指定しないと assembleDebug の
+    // たびに違うデバッグ鍵が自動生成されてしまう。そうなると「前に入れたバージョンと
+    // 署名が違う」として上書きインストールが失敗するため、鍵をリポジトリに固定する。
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
