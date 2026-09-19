@@ -139,8 +139,16 @@ object Art {
         mapOf('G' to rgbOf(0x5BA33C), 'g' to rgbOf(0x77C254))
     )
 
-    val poppy: Sprite = flower(rgbOf(0xD3423A), rgbOf(0x2E2118))
-    val dandelion: Sprite = flower(rgbOf(0xF0C63A), rgbOf(0xB8862A))
+    /** 花は 4 種類。どれが咲くかは作ったときに決まる。 */
+    val flowers: Array<Sprite> = arrayOf(
+        flower(rgbOf(0xD3423A), rgbOf(0x2E2118)), // ポピー
+        flower(rgbOf(0xF0C63A), rgbOf(0xB8862A)), // タンポポ
+        flower(rgbOf(0x6A8CE0), rgbOf(0xE8E8F0)), // ヒスイラン
+        flower(rgbOf(0xEFEFEF), rgbOf(0xE8C84A))  // シロツメクサ
+    )
+
+    val poppy: Sprite = flowers[0]
+    val dandelion: Sprite = flowers[1]
 
     val grassTuft: Sprite = Sprite.of(
         listOf(
@@ -248,6 +256,7 @@ object Art {
     }
 
     // 生きもの ------------------------------------------------------------
+    // 0 ヒツジ / 1 ニワトリ / 2 ブタ / 3 ウシ。種類は作ったときに決まる。
     private val SHEEP_PALETTE: Map<Char, Int> = mapOf(
         'W' to rgbOf(0xE9E9E4),
         'w' to rgbOf(0xD2D2CC),
@@ -296,6 +305,141 @@ object Art {
 
     const val SHEEP_FOOT_Y = 16f
     const val SHEEP_CENTER_X = 12f
+
+    private val CHICKEN_PALETTE: Map<Char, Int> = mapOf(
+        'W' to rgbOf(0xF2F2EE),
+        'w' to rgbOf(0xD8D8D2),
+        'R' to rgbOf(0xD8453A),
+        'y' to rgbOf(0xE8B43A),
+        'e' to rgbOf(0x2E2118)
+    )
+
+    private val CHICKEN_BODY = listOf(
+        "................",
+        "................",
+        "........RR......",
+        ".......RRRR.....",
+        "......WWWWWW....",
+        "......WWeWWWyy..",
+        ".....WWWWWWW....",
+        "....WWWWWWWWW...",
+        "...WWWWWWWWWW...",
+        "...WWWWWWWWWw...",
+        "...WWWWWWWWw....",
+        "....WWWWWWW.....",
+        ".....WWWWW......"
+    )
+
+    private val CHICKEN_LEGS_A = listOf(
+        "......y.y.......",
+        "......y.y.......",
+        ".....yy.yy......"
+    )
+
+    private val CHICKEN_LEGS_B = listOf(
+        ".....y...y......",
+        ".....y...y......",
+        "....yy...yy....."
+    )
+
+    private val PIG_PALETTE: Map<Char, Int> = mapOf(
+        'P' to rgbOf(0xE8A0A8),
+        'p' to rgbOf(0xD4868F),
+        'n' to rgbOf(0xCE7686),
+        'e' to rgbOf(0x2E2118),
+        'L' to rgbOf(0xD4868F),
+        'H' to rgbOf(0x6E4A50)
+    )
+
+    private val PIG_BODY = listOf(
+        "......................",
+        "....PPPPPPPPPP........",
+        "..PPPPPPPPPPPPPP......",
+        ".PPPPPPPPPPPPPPPPP....",
+        ".PPPPPPPPPPPPPPPPPnn..",
+        ".PPPPPPPPPPPPPPePPnn..",
+        ".PPPPPPPPPPPPPPPPPnn..",
+        ".PPPPPPPPPPPPPPPPPP...",
+        "..PPPPPPPPPPPPPPPp....",
+        "...pPPPPPPPPPPPPp....."
+    )
+
+    private val PIG_LEGS_A = listOf(
+        "....LL......LL........",
+        "....LL......LL........",
+        "....HH......HH........",
+        "......................"
+    )
+
+    private val PIG_LEGS_B = listOf(
+        "...LL........LL.......",
+        "...LL........LL.......",
+        "...HH........HH.......",
+        "......................"
+    )
+
+    private val COW_PALETTE: Map<Char, Int> = mapOf(
+        'W' to rgbOf(0xEFEFEA),
+        'w' to rgbOf(0xD6D6D0),
+        'B' to rgbOf(0x3A3A3A),
+        'F' to rgbOf(0xE0B8A8),
+        'h' to rgbOf(0xD8CBA8),
+        'e' to rgbOf(0x2E2118),
+        'L' to rgbOf(0xD6D6D0),
+        'H' to rgbOf(0x4A4038)
+    )
+
+    private val COW_BODY = listOf(
+        "........................",
+        "....WWWWWWWWWWWW........",
+        "..WWWBBBWWWWWWWWWW......",
+        ".WWWWBBBWWWWWWWWWWW.....",
+        ".WWWWWWWWWWWWBBWWWWhh...",
+        ".WWBBWWWWWWWWBBWWFFFFF..",
+        ".WWBBWWWWWWWWWWWWFFeFF..",
+        ".WWWWWWWWWWWWWWWWFFFFF..",
+        ".WWWWWWWWWWWWWWWWwFFF...",
+        "..WWWWWWWWWWWWWWWw......",
+        "...wWWWWWWWWWWWWw......."
+    )
+
+    private val COW_LEGS_A = listOf(
+        "....LL........LL........",
+        "....LL........LL........",
+        "....LL........LL........",
+        "....HH........HH........",
+        "........................"
+    )
+
+    private val COW_LEGS_B = listOf(
+        "...LL..........LL.......",
+        "...LL..........LL.......",
+        "..LL............LL......",
+        "..HH............HH......",
+        "........................"
+    )
+
+    /** [種類][コマ] */
+    val animals: Array<Array<Sprite>> = arrayOf(
+        sheep,
+        arrayOf(
+            Sprite.of(CHICKEN_BODY + CHICKEN_LEGS_A, CHICKEN_PALETTE),
+            Sprite.of(CHICKEN_BODY + CHICKEN_LEGS_B, CHICKEN_PALETTE)
+        ),
+        arrayOf(
+            Sprite.of(PIG_BODY + PIG_LEGS_A, PIG_PALETTE),
+            Sprite.of(PIG_BODY + PIG_LEGS_B, PIG_PALETTE)
+        ),
+        arrayOf(
+            Sprite.of(COW_BODY + COW_LEGS_A, COW_PALETTE),
+            Sprite.of(COW_BODY + COW_LEGS_B, COW_PALETTE)
+        )
+    )
+
+    /** 種類ごとの足元と中心。 */
+    fun animalFootY(variant: Int): Float = animals[variant % animals.size][0].h.toFloat()
+
+    fun animalCenterX(variant: Int): Float = animals[variant % animals.size][0].w / 2f
 
     /** かえる前の卵。 */
     val egg: Sprite = Sprite.of(

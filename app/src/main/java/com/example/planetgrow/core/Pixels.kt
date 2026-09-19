@@ -83,6 +83,42 @@ class Sprite(val w: Int, val h: Int, val px: IntArray) {
         }
     }
 
+    /** 2x2 を平均して半分の大きさにする (場面が広いときの表示用)。 */
+    fun halfSize(): Sprite {
+        val hw = (w + 1) / 2
+        val hh = (h + 1) / 2
+        val out = IntArray(hw * hh)
+        for (y in 0 until hh) {
+            for (x in 0 until hw) {
+                var a = 0
+                var r = 0
+                var g = 0
+                var b = 0
+                var n = 0
+                for (dy in 0 until 2) {
+                    for (dx in 0 until 2) {
+                        val sx = x * 2 + dx
+                        val sy = y * 2 + dy
+                        if (sx >= w || sy >= h) continue
+                        val c = px[sy * w + sx]
+                        val ca = (c ushr 24) and 0xFF
+                        a += ca
+                        r += ((c ushr 16) and 0xFF) * ca
+                        g += ((c ushr 8) and 0xFF) * ca
+                        b += (c and 0xFF) * ca
+                        n++
+                    }
+                }
+                if (n == 0 || a == 0) {
+                    out[y * hw + x] = 0
+                } else {
+                    out[y * hw + x] = Col.argb(a / n, r / a, g / a, b / a)
+                }
+            }
+        }
+        return Sprite(hw, hh, out)
+    }
+
     fun rotate90(times: Int): Sprite {
         var cur = this
         repeat(((times % 4) + 4) % 4) {

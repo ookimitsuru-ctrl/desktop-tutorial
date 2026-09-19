@@ -1,7 +1,7 @@
 package com.example.planetgrow.core
 
 /**
- * ブロックを積んで作る建造物 (家・木・街灯・池)。
+ * ブロックを積んで作る建造物 (家・木・街灯・池・畑)。
  * ブロック配置は文字列で書く。1 文字 = 1 ブロック = 16px。
  */
 class Structure(
@@ -50,7 +50,6 @@ object Structures {
 
     /**
      * 家。壁 5 ブロック・屋根 3 段・煙突 1 で高さ 7 ブロック。
-     * 惑星の直径 (13 ブロック) のちょうど半分ほどの大きさになる。
      */
     private val HOUSE_LAYOUT = listOf(
         "....C..",
@@ -62,11 +61,22 @@ object Structures {
         ".LPdPL."
     )
 
-    private val TREE_LAYOUT = listOf(
+    /** 広がった形の木 (オーク・シラカバ・サクラ)。 */
+    private val TREE_BROAD = listOf(
         ".FFF.",
         "FFFFF",
         "FFTFF",
         ".FTF.",
+        "..T..",
+        "..T.."
+    )
+
+    /** とがった形の木 (マツ)。 */
+    private val TREE_CONIFER = listOf(
+        "..F..",
+        ".FFF.",
+        ".FFF.",
+        "FFFFF",
         "..T..",
         "..T.."
     )
@@ -87,29 +97,44 @@ object Structures {
 
     /** 池は上から見た形。惑星の面に平らに置く。 */
     private val POND_LAYOUT = listOf(
-        ".aaa.",
-        "aWWWa",
-        "aWWWa",
-        ".aaa."
+        "aWa",
+        "WWW",
+        "aWa"
     )
 
-    val house: Structure = build(HOUSE_LAYOUT)
-    val tree: Structure = build(TREE_LAYOUT)
-    val sapling: Structure = build(SAPLING_LAYOUT)
-    val lamp: Structure = build(LAMP_LAYOUT)
-    val pond: Structure = build(POND_LAYOUT)
+    /** 畑も上から見た形。作物が育つ。 */
+    private val FARM_LAYOUT = listOf(
+        "xxx",
+        "xxx",
+        "xxx"
+    )
 
-    private fun bodyTex(ch: Char, col: Int, row: Int): Sprite? {
+    val house: Structure = build(HOUSE_LAYOUT, 0, 0)
+    val lamp: Structure = build(LAMP_LAYOUT, 0, 0)
+    val pond: Structure = build(POND_LAYOUT, 0, 0)
+
+    /** 木は 4 種類。 */
+    val trees: Array<Structure> = Array(4) { v ->
+        build(if (v == 2) TREE_CONIFER else TREE_BROAD, v, 0)
+    }
+    val saplings: Array<Structure> = Array(4) { v -> build(SAPLING_LAYOUT, v, 0) }
+
+    /** 畑は作物の育ち具合で 3 段階。 */
+    val farms: Array<Structure> = Array(3) { stage -> build(FARM_LAYOUT, 0, stage) }
+
+    private fun bodyTex(ch: Char, col: Int, row: Int, treeVariant: Int, cropStage: Int): Sprite? {
         val v = Tex.variantFor(col * 31 + 7, row * 17 + 3)
         return when (ch) {
             'R' -> Tex.roof[v]
             'P' -> Tex.plank[v]
             'L' -> Tex.log[v]
-            'T' -> Tex.log[v]
-            'F' -> Tex.leaves[v]
+            'T' -> Tex.logVariants[treeVariant % Tex.logVariants.size][v]
+            'F' -> Tex.leafVariants[treeVariant % Tex.leafVariants.size][v]
             'C' -> Tex.cobble[v]
             'a' -> Tex.sand[v]
             'W' -> Tex.water[v]
+            'g' -> Tex.soil[v]
+            'x' -> Tex.soil[v]
             'I' -> Tex.ice[v]
             'D' -> Tex.doorTop
             'd' -> Tex.doorBottom
@@ -126,7 +151,7 @@ object Structures {
         else -> null
     }
 
-    private fun build(layout: List<String>): Structure {
+    private fun build(layout: List<String>, treeVariant: Int, cropStage: Int): Structure {
         val cols = layout.maxOf { it.length }
         val rows = layout.size
         val w = cols * Tex.SIZE
@@ -140,14 +165,14 @@ object Structures {
         for (row in 0 until rows) {
             val line = layout[row]
             for (col in 0 until cols) {
-                val raw = if (col < line.length) line[col] else '.'
-                if (raw == '.' || raw == ' ') continue
-                // 'W' は家では窓・池では水。家の窓は小文字で書く
-                val ch = raw
+                val ch = if (col < line.length) line[col] else '.'
+                if (ch == '.' || ch == ' ') continue
                 val x = col * Tex.SIZE
                 val y = row * Tex.SIZE
-                val bodySprite = windowTexFor(ch) ?: bodyTex(ch, col, row)
+                val bodySprite = windowTexFor(ch) ?: bodyTex(ch, col, row, treeVariant, cropStage)
                 bodySprite?.let { body.draw(it, x, y) }
+                // 作物は土の上に重ねる
+                if (ch == 'x') body.draw(Tex.wheat[cropStage.coerceIn(0, Tex.wheat.size - 1)], x, y)
                 lightTex(ch)?.let {
                     lights.draw(it, x, y)
                     hasLights = true
@@ -194,28 +219,29 @@ object Structures {
      * 建てているもの・建っているものの見た目。
      * progress は 0..1。木は育つ途中で姿が変わる。
      */
-    fun forBuild(kind: BuildKind, progress: Float): Structure? = when (kind) {
+    fun forBuild(kind: BuildKind, progress: Float, variant: Int, cropStage: Int): Structure? = when (kind) {
         BuildKind.HOUSE -> house
         BuildKind.LAMP -> lamp
         BuildKind.POND -> pond
-        BuildKind.TREE -> if (progress < 0.55f) sapling else tree
+        BuildKind.FARM -> farms[cropStage.coerceIn(0, farms.size - 1)]
+        BuildKind.TREE -> if (progress < 0.55f) saplings[variant % saplings.size] else trees[variant % trees.size]
         else -> null
     }
 
     /** 1 ブロックで置くもの (花や卵)。 */
-    fun flatSpriteFor(kind: BuildKind, progress: Float): Sprite? = when (kind) {
-        BuildKind.FLOWER -> if (progress < 0.6f) Art.sprout else Art.poppy
-        BuildKind.SHEEP -> if (progress < 1f) Art.egg else null
+    fun flatSpriteFor(kind: BuildKind, progress: Float, variant: Int): Sprite? = when (kind) {
+        BuildKind.FLOWER -> if (progress < 0.6f) Art.sprout else Art.flowers[variant % Art.flowers.size]
+        BuildKind.ANIMAL -> if (progress < 1f) Art.egg else null
         BuildKind.TREE -> if (progress < 0.25f) Art.sprout else null
         else -> null
     }
 
     /** 地面に平らに置くもの (立ち上がらないもの)。 */
-    fun isOnSurface(kind: BuildKind): Boolean = kind == BuildKind.POND
+    fun isOnSurface(kind: BuildKind): Boolean = kind == BuildKind.POND || kind == BuildKind.FARM
 
     /** 建設中は下からだんだん現れる。木と花は段階で変わるので常に全部出す。 */
     fun revealsGradually(kind: BuildKind): Boolean = when (kind) {
-        BuildKind.HOUSE, BuildKind.LAMP, BuildKind.POND -> true
+        BuildKind.HOUSE, BuildKind.LAMP, BuildKind.POND, BuildKind.FARM -> true
         else -> false
     }
 }

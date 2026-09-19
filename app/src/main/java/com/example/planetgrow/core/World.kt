@@ -22,7 +22,7 @@ import kotlin.math.sqrt
 /** 地表のブロック。 */
 enum class Terrain { GRASS, DIRT, STONE, SAND }
 
-class Planet(val radius: Float) {
+class Planet(val radius: Float, val terrainSeed: Int = 0x51DE) {
     /** ブロック座標の範囲 (-ri .. ri) */
     val ri: Int = ceil(radius).toInt()
     private val span: Int = ri * 2 + 1
@@ -66,9 +66,9 @@ class Planet(val radius: Float) {
 
     /** 地面の模様。岩場や土がまだらに混ざる。 */
     private fun terrainFor(i: Int, j: Int): Terrain {
-        val rock = valueNoise(i * 0.26f, j * 0.26f, 0x51DE)
+        val rock = valueNoise(i * 0.26f, j * 0.26f, terrainSeed)
         if (rock > 0.70f) return Terrain.STONE
-        val soil = valueNoise(i * 0.33f + 40f, j * 0.33f - 17f, 0x2A17)
+        val soil = valueNoise(i * 0.33f + 40f, j * 0.33f - 17f, terrainSeed xor 0x2A17)
         if (soil > 0.72f) return Terrain.DIRT
         return Terrain.GRASS
     }
@@ -239,17 +239,20 @@ class Resident(var angle: Float, val homeAngle: Float, seed: Int) {
 }
 
 /** 惑星をうろうろする生きもの。夜はその場で丸くなる。 */
-class Animal(var angle: Float, seed: Int) {
+class Animal(var angle: Float, val variant: Int, seed: Int) {
     private val rnd = Rnd(seed)
     var dir: Float = if (rnd.int(2) == 0) 1f else -1f
     var timer: Float = 1f + rnd.float() * 4f
     var animTime: Float = 0f
     var walking: Boolean = true
 
+    /** おなかがすいていると動かなくなる。 */
+    var hungry: Boolean = false
+
     fun update(dt: Float, sunDirX: Float, sunDirY: Float) {
         animTime += dt
         val night = localSunHeight(angle, sunDirX, sunDirY) < -0.25f
-        if (night) {
+        if (night || hungry) {
             walking = false
             return
         }
@@ -308,7 +311,7 @@ fun localSunHeight(angleRad: Float, sunDirX: Float, sunDirY: Float): Float =
  */
 class World(val state: PlanetState) {
 
-    var planet: Planet = Planet(state.radius())
+    var planet: Planet = Planet(state.radius(state.lastTickMillis))
         private set
 
     val residents = ArrayList<Resident>()
@@ -316,17 +319,30 @@ class World(val state: PlanetState) {
     val particles = ArrayList<Particle>()
     val falling = ArrayList<FallingObject>()
 
+    /** 衛星の地形。半径が変わったときだけ作り直す。 */
+    private val satelliteTerrain = HashMap<Int, Planet>()
+
     private var smokeTimer = 0f
     private val rnd = Rnd(0x7A5E)
-    private var builtRadius = state.radius()
+    private var builtRadius = state.radius(state.lastTickMillis)
 
     init {
-        syncFromState()
+        syncFromState(state.lastTickMillis)
+    }
+
+    /** 衛星の地形を取り出す (無ければ作る)。 */
+    fun terrainFor(sat: Satellite, now: Long): Planet {
+        val r = sat.radius(now)
+        val cached = satelliteTerrain[sat.index]
+        if (cached != null && cached.radius == r) return cached
+        val made = Planet(r, 0x5A7E + sat.index * 977)
+        satelliteTerrain[sat.index] = made
+        return made
     }
 
     /** 保存された状態に合わせて、惑星の大きさ・住人・生きものの数をそろえる。 */
-    fun syncFromState() {
-        val r = state.radius()
+    fun syncFromState(now: Long) {
+        val r = state.radius(now)
         if (r != builtRadius) {
             planet = Planet(r)
             builtRadius = r
@@ -337,13 +353,15 @@ class World(val state: PlanetState) {
             val idx = residents.size
             residents.add(Resident(toRad(homes[idx] + 18f), homes[idx], 0x1000 + idx * 7919))
         }
-        val wantAnimals = state.animalCount()
-        while (animals.size > wantAnimals) animals.removeAt(animals.size - 1)
-        while (animals.size < wantAnimals) {
+        val born = state.placed.filter { it.kind == BuildKind.ANIMAL }
+        while (animals.size > born.size) animals.removeAt(animals.size - 1)
+        while (animals.size < born.size) {
             val idx = animals.size
-            val a = state.placed.filter { it.kind == BuildKind.SHEEP }.getOrNull(idx)
-            animals.add(Animal(toRad((a?.angleDeg ?: 0f) + 10f), 0x2000 + idx * 6971))
+            val a = born[idx]
+            animals.add(Animal(toRad(a.angleDeg + 10f), a.variant, 0x2000 + idx * 6971))
         }
+        val hungry = state.animalsHungry(now)
+        for (a in animals) a.hungry = hungry
     }
 
     /** 飛来を画面に出す。 */
@@ -411,7 +429,7 @@ class World(val state: PlanetState) {
             )
             p.maxLife = 0.7f + rnd.float() * 0.9f
             p.size = 2f + rnd.int(3)
-            p.gravity = -2.6f // 惑星に引き戻される
+            p.gravity = -2.6f
             particles.add(p)
         }
     }
@@ -424,7 +442,7 @@ class World(val state: PlanetState) {
             if (p.kind != BuildKind.HOUSE) continue
             if (particles.size > 140) break
             val a = toRad(p.angleDeg)
-            val surf = planet.groundRadius(a)
+            val surf = planet.groundRadius(a, 2.5f)
             val up = surf + 7.0f
             val side = 1.0f
             val nx = cos(a)

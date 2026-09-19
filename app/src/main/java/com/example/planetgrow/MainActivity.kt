@@ -118,7 +118,7 @@ fun PlanetScreen() {
     LaunchedEffect(Unit) {
         val now = System.currentTimeMillis()
         val arrivals = state.advanceTo(now)
-        world.syncFromState()
+        world.syncFromState(now)
         prefs.save(state)
         if (arrivals.isNotEmpty()) {
             for (a in arrivals.takeLast(4)) world.addFalling(a.kind, a.angleDeg, a.amount)
@@ -135,11 +135,14 @@ fun PlanetScreen() {
         val widthPx = constraints.maxWidth.coerceAtLeast(1)
         val heightPx = constraints.maxHeight.coerceAtLeast(1)
 
-        val viewBlocks = remember(version) { Scene.viewBlocksFor(state) }
-        val bufferSize = remember(widthPx, heightPx, viewBlocks) {
-            Scene.bufferSize(widthPx, heightPx, viewBlocks)
+        val viewBlocks = remember(version) { Scene.viewBlocksFor(state, System.currentTimeMillis()) }
+        val blockPx = remember(viewBlocks) { Scene.blockPxFor(viewBlocks) }
+        val bufferSize = remember(widthPx, heightPx, viewBlocks, blockPx) {
+            Scene.bufferSize(widthPx, heightPx, viewBlocks, blockPx)
         }
-        val scene = remember(bufferSize[0], bufferSize[1]) { Scene(bufferSize[0], bufferSize[1]) }
+        val scene = remember(bufferSize[0], bufferSize[1], blockPx) {
+            Scene(bufferSize[0], bufferSize[1], blockPx)
+        }
         val bitmap = remember(scene) {
             Bitmap.createBitmap(scene.width, scene.height, Bitmap.Config.ARGB_8888)
         }
@@ -151,6 +154,7 @@ fun PlanetScreen() {
             var startNanos = 0L
             var prevNanos = 0L
             var frames = 0
+            var lastViewBlocks = Scene.viewBlocksFor(state, System.currentTimeMillis())
             while (true) {
                 val now = withFrameNanos { it }
                 if (startNanos == 0L) startNanos = now
@@ -177,11 +181,19 @@ fun PlanetScreen() {
                     }
                     if (state.placed.size != placedBefore) {
                         val done = state.placed.last()
-                        world.syncFromState()
+                        world.syncFromState(nowMs)
                         notice = Notice(Recipes.of(done.kind).doneText, nowMs + 7000L)
                         prefs.save(state)
                         version++
                     }
+                    // 地殻変動で大きくなったり、衛星が生まれたりしたら組み直す
+                    val vb = Scene.viewBlocksFor(state, nowMs)
+                    if (vb != lastViewBlocks) {
+                        lastViewBlocks = vb
+                        version++
+                    }
+                    world.syncFromState(nowMs)
+
                     val t = LocalTime.now(zone)
                     val mod = t.hour * 60 + t.minute
                     if (mod != minuteOfDay) minuteOfDay = mod
@@ -227,7 +239,7 @@ fun PlanetScreen() {
                 onBuild = { recipe ->
                     val t = System.currentTimeMillis()
                     if (state.startBuild(recipe, t)) {
-                        world.syncFromState()
+                        world.syncFromState(t)
                         prefs.save(state)
                         version++
                         notice = Notice("${recipe.label}をはじめました", t + 6000L)
@@ -271,7 +283,7 @@ private fun BoxScope.Hud(
 ) {
     val clockText = "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
 
-    // 左上: 日数と時刻
+    // 左上: 日数と時刻と惑星の育ち具合
     Column(
         modifier = Modifier
             .align(Alignment.TopStart)
@@ -295,6 +307,26 @@ private fun BoxScope.Hud(
             fontSize = 13.sp,
             fontFamily = FontFamily.Monospace
         )
+        if (state.stillGrowing(nowMillis)) {
+            Text(
+                text = "地殻変動まで " + formatDuration(state.nextGrowthInMillis(nowMillis)),
+                color = Color(0x99BFD4F0),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+        val sats = state.satellites(nowMillis)
+        for (sat in sats) {
+            val grown = (sat.growth(nowMillis) * 100f).toInt()
+            Text(
+                text = if (sat.bridged) "衛星${sat.index + 1} 橋でつながった"
+                else if (sat.habitable(nowMillis)) "衛星${sat.index + 1} 人が住める"
+                else "衛星${sat.index + 1} 育ち ${grown}%",
+                color = if (sat.habitable(nowMillis)) Color(0xFF9BD46A) else Color(0x99BFD4F0),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
     }
 
     // 右上: 資源
@@ -312,6 +344,9 @@ private fun BoxScope.Hud(
         ResourceRow("鉱石", state.mineral, Color(0xFFD9B08C))
         ResourceRow("たね", state.seed, Color(0xFF9BD46A))
         ResourceRow("氷", state.ice, Color(0xFFAEE6FF))
+        if (state.countOf(BuildKind.FARM) > 0 || state.countOf(BuildKind.ANIMAL) > 0) {
+            ResourceRow("作物", state.crop.toInt(), Color(0xFFF0D874))
+        }
         Text(
             text = "次の飛来 " + formatDuration(
                 SkyFall.nextArrival(nowMillis, state.birthMillis).atMillis - nowMillis
@@ -322,7 +357,7 @@ private fun BoxScope.Hud(
         )
     }
 
-    // 下: 建設中のものと「つくる」
+    // 下: 知らせ・建設中のもの・つくる
     Column(
         modifier = Modifier
             .align(Alignment.BottomCenter)
@@ -332,27 +367,18 @@ private fun BoxScope.Hud(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (notice != null) {
-            Text(
-                text = notice,
-                color = Color(0xFFFFE9A8),
-                fontSize = 13.sp,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x77000000))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            )
+            HudLine(notice, Color(0xFFFFE9A8), Color(0x77000000))
+        }
+        if (state.animalsHungry(nowMillis)) {
+            HudLine("生きものがおなかをすかせています", Color(0xFFFFB0A0), Color(0x88401010))
+        } else if (state.needsFarm(nowMillis)) {
+            HudLine("畑をつくって生きものを養いましょう", Color(0xFFFFE9A8), Color(0x77000000))
         }
         for (job in state.jobs) {
-            Text(
-                text = "${Recipes.of(job.kind).label}  あと${formatDuration(job.endMillis - nowMillis)}",
-                color = Color(0xCCBFD4F0),
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x55000000))
-                    .padding(horizontal = 12.dp, vertical = 5.dp)
+            HudLine(
+                "${Recipes.of(job.kind).label}  あと${formatDuration(job.endMillis - nowMillis)}",
+                Color(0xCCBFD4F0),
+                Color(0x55000000)
             )
         }
         Text(
@@ -368,6 +394,20 @@ private fun BoxScope.Hud(
                 .padding(horizontal = 28.dp, vertical = 12.dp)
         )
     }
+}
+
+@Composable
+private fun HudLine(text: String, color: Color, background: Color) {
+    Text(
+        text = text,
+        color = color,
+        fontSize = 12.sp,
+        fontFamily = FontFamily.Monospace,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(background)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+    )
 }
 
 @Composable
@@ -441,7 +481,14 @@ private fun BuildPanel(
                 fontFamily = FontFamily.Monospace
             )
             for (recipe in Recipes.all) {
-                RecipeRow(recipe, state.canBuild(recipe), onBuild)
+                val enabled = state.canBuild(recipe, nowMillis)
+                val reason = when {
+                    enabled -> null
+                    !state.hasResourcesFor(recipe) -> "材料が足りない"
+                    recipe.kind == BuildKind.BRIDGE -> "つなげる衛星がまだない"
+                    else -> "置く場所がない"
+                }
+                RecipeRow(recipe, enabled, reason, onBuild)
             }
             Text(
                 text = "※ 作りはじめると、できあがるまで実時間で待ちます",
@@ -454,7 +501,7 @@ private fun BuildPanel(
 }
 
 @Composable
-private fun RecipeRow(recipe: Recipe, enabled: Boolean, onBuild: (Recipe) -> Unit) {
+private fun RecipeRow(recipe: Recipe, enabled: Boolean, reason: String?, onBuild: (Recipe) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -474,8 +521,8 @@ private fun RecipeRow(recipe: Recipe, enabled: Boolean, onBuild: (Recipe) -> Uni
                 fontFamily = FontFamily.Monospace
             )
             Text(
-                text = recipe.note,
-                color = if (enabled) Color(0x99BFD4F0) else Color(0x55BFD4F0),
+                text = reason ?: recipe.note,
+                color = if (reason != null) Color(0xFFD08A8A) else Color(0x99BFD4F0),
                 fontSize = 10.sp,
                 fontFamily = FontFamily.Monospace
             )

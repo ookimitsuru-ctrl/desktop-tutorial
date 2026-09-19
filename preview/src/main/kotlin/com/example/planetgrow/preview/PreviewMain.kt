@@ -1,6 +1,8 @@
 package com.example.planetgrow.preview
 
+import com.example.planetgrow.core.BuildJob
 import com.example.planetgrow.core.BuildKind
+import com.example.planetgrow.core.Placed
 import com.example.planetgrow.core.PixelBuffer
 import com.example.planetgrow.core.PlanetState
 import com.example.planetgrow.core.Recipes
@@ -28,15 +30,18 @@ fun main(args: Array<String>) {
 
     val now = System.currentTimeMillis()
     val state = demoState(level, now)
-    val viewBlocks = Scene.viewBlocksFor(state)
-    val size = Scene.bufferSize(1080, 2340, viewBlocks)
-    val scene = Scene(size[0], size[1])
-    println("育ち具合 $level / 視野 $viewBlocks ブロック / バッファ ${size[0]}x${size[1]}")
+    val viewBlocks = Scene.viewBlocksFor(state, now)
+    val blockPx = Scene.blockPxFor(viewBlocks)
+    val size = Scene.bufferSize(1080, 2340, viewBlocks, blockPx)
+    val scene = Scene(size[0], size[1], blockPx)
+    println("育ち具合 $level / 視野 $viewBlocks ブロック / 1ブロック ${blockPx}px / バッファ ${size[0]}x${size[1]}")
+    for (pl in state.placed) println("    ${pl.kind} angle=${pl.angleDeg} variant=${pl.variant}")
     println("  建物 ${state.placed.size} / 建設中 ${state.jobs.size} / 鉱石 ${state.mineral} たね ${state.seed} 氷 ${state.ice}")
 
     val sheet = ArrayList<PixelBuffer>()
     for (t in times) {
         val world = World(state)
+        world.syncFromState(now)
         val sky = Sky(parseTime(t), now)
         val dt = 1f / 30f
         var elapsed = 0f
@@ -54,7 +59,7 @@ fun main(args: Array<String>) {
         val ms = (System.nanoTime() - start) / 1_000_000.0
         val name = "lv%d_%s".format(level, t.replace(":", ""))
         writePng(scene.frame, File(outDir, "$name.png"))
-        writePng(zoom(scene.frame, (viewBlocks - 2) * Scene.BLOCK, 2), File(outDir, "${name}_zoom.png"))
+        writePng(zoom(scene.frame, (viewBlocks - 2) * blockPx, 2), File(outDir, "${name}_zoom.png"))
         println("  %s  %5.1f ms".format(t, ms))
         if (sheet.size < 4) sheet.add(copyOf(scene.frame))
     }
@@ -64,40 +69,68 @@ fun main(args: Array<String>) {
 
 /** 見た目を確かめるための、育ち具合ごとの状態。 */
 private fun demoState(level: Int, now: Long): PlanetState {
-    val s = PlanetState.newPlanet(now - 3L * 24 * 3600 * 1000)
-    s.mineral = 4
-    s.seed = 3
-    s.ice = 2
-    fun place(kind: BuildKind) {
+    val ageDays = when (level) {
+        0 -> 1L
+        1 -> 4L
+        2 -> 12L
+        3 -> 30L
+        4 -> 88L   // 3ヶ月直後 (衛星ができはじめる)
+        else -> 125L // 衛星が育ちきって橋がかかる
+    }
+    val s = PlanetState.newPlanet(now - ageDays * 24L * 3600L * 1000L)
+    s.mineral = 6
+    s.seed = 4
+    s.ice = 3
+    s.crop = 5f
+    fun place(kind: BuildKind, variant: Int = 0) {
+        if (com.example.planetgrow.core.Structures.isOnSurface(kind)) {
+            val slot = s.freeFaceSlot(now) ?: return
+            s.placed.add(Placed(kind, slot[1], now, variant, -1, slot[0]))
+            return
+        }
         val a = s.freeAngleFor(kind) ?: return
-        s.placed.add(com.example.planetgrow.core.Placed(kind, a, now))
+        s.placed.add(Placed(kind, a, now, variant))
     }
     if (level >= 1) {
-        place(BuildKind.FLOWER)
+        place(BuildKind.FLOWER, 0)
         place(BuildKind.LAMP)
     }
     if (level >= 2) {
-        place(BuildKind.TREE)
+        place(BuildKind.TREE, 0)
         place(BuildKind.POND)
-        place(BuildKind.SHEEP)
+        place(BuildKind.ANIMAL, 0)
+        place(BuildKind.FARM)
     }
     if (level >= 3) {
         place(BuildKind.HOUSE)
-        place(BuildKind.TREE)
-        place(BuildKind.FLOWER)
+        place(BuildKind.TREE, 1)
+        place(BuildKind.TREE, 2)
+        place(BuildKind.FLOWER, 2)
+        place(BuildKind.ANIMAL, 1)
+    }
+    if (level >= 4) {
+        place(BuildKind.TREE, 3)
+        place(BuildKind.ANIMAL, 2)
+        place(BuildKind.ANIMAL, 3)
+        place(BuildKind.FLOWER, 1)
+    }
+    if (level >= 5) {
+        // 育ちきった衛星に橋をかけた状態
+        val sat = s.satellites(now).firstOrNull { it.habitable(now) }
+        if (sat != null) {
+            s.bridged.add(sat.index)
+            s.placed.add(Placed(BuildKind.BRIDGE, sat.angleDeg(now), now, 0, sat.index))
+        }
     }
     // 建設中のものも 1 つ見えるようにする
-    if (level >= 1) {
+    if (level in 1..3) {
         val r = Recipes.of(BuildKind.HOUSE)
         val angle = s.freeAngleFor(BuildKind.HOUSE)
         if (angle != null) {
-            s.jobs.add(
-                com.example.planetgrow.core.BuildJob(
-                    BuildKind.HOUSE, angle, now - r.durationMillis / 2, now + r.durationMillis / 2
-                )
-            )
+            s.jobs.add(BuildJob(BuildKind.HOUSE, angle, now - r.durationMillis / 2, now + r.durationMillis / 2))
         }
     }
+    s.lastTickMillis = now
     return s
 }
 

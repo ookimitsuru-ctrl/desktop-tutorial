@@ -71,15 +71,43 @@ object Tex {
     val core: Array<Sprite> = Array(VARIANTS) { v -> coreTex(0x4567 + v * 149) }
     val plank: Array<Sprite> = Array(VARIANTS) { v -> plankTex(0x5678 + v * 151, PLANK_COLORS, PLANK_W, PLANK_LINE) }
     val roof: Array<Sprite> = Array(VARIANTS) { v -> roofTex(0x6789 + v * 157) }
-    val log: Array<Sprite> = Array(VARIANTS) { v -> logTex(0x789A + v * 163) }
+    val log: Array<Sprite> = Array(VARIANTS) { v -> logTex(0x789A + v * 163, intArrayOf(0x6E5233, 0x5A4229, 0x7E5F3D), false) }
     val cobble: Array<Sprite> = Array(VARIANTS) { v -> cobbleTex(0x89AB + v * 167) }
-    val leaves: Array<Sprite> = Array(VARIANTS) { v -> leavesTex(0x9ABC + v * 173) }
+    val leaves: Array<Sprite> = Array(VARIANTS) { v -> leavesTex(0x9ABC + v * 173, LEAF_COLORS) }
     val water: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0xABCD + v * 179, WATER_COLORS, WATER_W) }
     val sand: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0xBCDE + v * 181, SAND_COLORS, SAND_W) }
 
     /** 上から見た草 (球の表面に使う)。 */
     val grassTop: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0x7C0D + v * 191, GRASS_COLORS, GRASS_W) }
     val ice: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0xCDEF + v * 193, ICE_COLORS, ICE_W) }
+
+    // 木の種類ごとの葉と幹 (0 オーク / 1 シラカバ / 2 マツ / 3 サクラ)
+    private val LEAF_SETS = arrayOf(
+        intArrayOf(0x4E8F32, 0x3E7327, 0x5FA33C, 0x356322),
+        intArrayOf(0x6FB84A, 0x5CA03B, 0x84CC5E, 0x4C8A33),
+        intArrayOf(0x2F5E38, 0x24482B, 0x3B7145, 0x1C3A22),
+        intArrayOf(0xEDA9C6, 0xE08FB2, 0xF7C2D8, 0xC97B9C)
+    )
+    private val LOG_SETS = arrayOf(
+        intArrayOf(0x6E5233, 0x5A4229, 0x7E5F3D),
+        intArrayOf(0xD8D4C8, 0xBFBAAC, 0xECE8DC),
+        intArrayOf(0x4A3524, 0x3A2A1C, 0x5C452E),
+        intArrayOf(0x6B4A44, 0x553A36, 0x7E5A52)
+    )
+
+    val leafVariants: Array<Array<Sprite>> = Array(LEAF_SETS.size) { t ->
+        Array(VARIANTS) { v -> leavesTex(0x9ABC + v * 173 + t * 811, LEAF_SETS[t]) }
+    }
+
+    val logVariants: Array<Array<Sprite>> = Array(LOG_SETS.size) { t ->
+        Array(VARIANTS) { v -> logTex(0x789A + v * 163 + t * 733, LOG_SETS[t], t == 1) }
+    }
+
+    /** 畑の土。 */
+    val soil: Array<Sprite> = Array(VARIANTS) { v -> soilTex(0xF00D + v * 197) }
+
+    /** 作物 (3 段階)。土の上に重ねて描く。 */
+    val wheat: Array<Sprite> = Array(3) { stage -> wheatTex(stage) }
 
     val windowDay: Sprite = windowTex(GLASS_DAY, GLASS_DAY_HI)
     val windowNight: Sprite = windowTex(GLASS_NIGHT, GLASS_NIGHT_HI)
@@ -170,10 +198,13 @@ object Tex {
         return Sprite(SIZE, SIZE, px)
     }
 
-    private fun logTex(seed: Int): Sprite {
+    private fun logTex(seed: Int, palette: IntArray, birch: Boolean): Sprite {
         val rnd = Rnd(seed)
         val px = IntArray(SIZE * SIZE)
-        val cols = intArrayOf(LOG_MID, LOG_DARK, LOG_LIGHT)
+        val logMid = rgbOf(palette[0])
+        val logDark = rgbOf(palette[1])
+        val logLight = rgbOf(palette[2])
+        val cols = intArrayOf(logMid, logDark, logLight)
         val w = intArrayOf(5, 3, 2)
         for (x in 0 until SIZE) {
             val base = pick(rnd, cols, w)
@@ -181,17 +212,27 @@ object Tex {
                 px[y * SIZE + x] = if (rnd.int(100) < 22) pick(rnd, cols, w) else base
             }
         }
-        // 縦の木目
-        for (y in 0 until SIZE) {
-            px[y * SIZE + 2] = LOG_DARK
-            px[y * SIZE + 9] = LOG_DARK
-            px[y * SIZE + 13] = LOG_LIGHT
-        }
-        // 節
-        val kx = 4 + rnd.int(3)
-        val ky = 5 + rnd.int(5)
-        for (dy in 0 until 3) for (dx in 0 until 2) {
-            px[((ky + dy) % SIZE) * SIZE + ((kx + dx) % SIZE)] = LOG_DARK
+        if (birch) {
+            // シラカバの横しま
+            repeat(4) {
+                val y = rnd.int(SIZE)
+                val x0 = rnd.int(SIZE - 5)
+                val len = 2 + rnd.int(4)
+                for (x in x0 until minOf(SIZE, x0 + len)) px[y * SIZE + x] = logDark
+            }
+        } else {
+            // 縦の木目
+            for (y in 0 until SIZE) {
+                px[y * SIZE + 2] = logDark
+                px[y * SIZE + 9] = logDark
+                px[y * SIZE + 13] = logLight
+            }
+            // 節
+            val kx = 4 + rnd.int(3)
+            val ky = 5 + rnd.int(5)
+            for (dy in 0 until 3) for (dx in 0 until 2) {
+                px[((ky + dy) % SIZE) * SIZE + ((kx + dx) % SIZE)] = logDark
+            }
         }
         return Sprite(SIZE, SIZE, px)
     }
@@ -212,9 +253,10 @@ object Tex {
     }
 
     /** 葉: 隙間を少し開けて塊に見えないようにする。 */
-    private fun leavesTex(seed: Int): Sprite {
+    private fun leavesTex(seed: Int, palette: IntArray): Sprite {
         val rnd = Rnd(seed)
-        val s = clusterNoise(seed xor 0x2D5, LEAF_COLORS, LEAF_W)
+        val colors = IntArray(palette.size) { rgbOf(palette[it]) }
+        val s = clusterNoise(seed xor 0x2D5, colors, LEAF_W)
         val px = s.px
         repeat(10) {
             val x = rnd.int(SIZE)
@@ -225,7 +267,7 @@ object Tex {
         }
         // 影になる濃い葉
         repeat(18) {
-            px[rnd.int(SIZE) * SIZE + rnd.int(SIZE)] = LEAF_COLORS[3]
+            px[rnd.int(SIZE) * SIZE + rnd.int(SIZE)] = colors[3]
         }
         return Sprite(SIZE, SIZE, px)
     }
@@ -250,6 +292,64 @@ object Tex {
                 val yi = y.coerceIn(0, SIZE - 1)
                 px[yi * SIZE + x] = CORE_GLOW[rnd.int(2)]
                 if (rnd.int(100) < 50) y += rnd.int(3) - 1
+            }
+        }
+        return Sprite(SIZE, SIZE, px)
+    }
+
+    /** 畑の土 (うねを掘ったところ)。 */
+    private fun soilTex(seed: Int): Sprite {
+        val rnd = Rnd(seed)
+        val colors = intArrayOf(rgbOf(0x6E4A2E), rgbOf(0x5C3D26), rgbOf(0x7E5836))
+        val s = clusterNoise(seed xor 0x1A3, colors, intArrayOf(5, 3, 2))
+        val px = s.px
+        for (x in 0 until SIZE) {
+            px[3 * SIZE + x] = colors[1]
+            px[11 * SIZE + x] = colors[1]
+            if (rnd.int(100) < 60) px[4 * SIZE + x] = colors[2]
+        }
+        return Sprite(SIZE, SIZE, px)
+    }
+
+    /** 作物。stage 0 = 芽, 1 = 育ち中, 2 = 実り。 */
+    private fun wheatTex(stage: Int): Sprite {
+        val rnd = Rnd(0xC0F + stage * 131)
+        val px = IntArray(SIZE * SIZE)
+        val stem = when (stage) {
+            0 -> rgbOf(0x6FB84A)
+            1 -> rgbOf(0x5CA03B)
+            else -> rgbOf(0xD8B84A)
+        }
+        val head = when (stage) {
+            0 -> rgbOf(0x84CC5E)
+            1 -> rgbOf(0x7EC04A)
+            else -> rgbOf(0xF0D874)
+        }
+        val height = when (stage) {
+            0 -> 4
+            1 -> 8
+            else -> 12
+        }
+        for (col in 0 until 4) {
+            val x = 2 + col * 4 + rnd.int(2)
+            for (k in 0 until height) {
+                val y = SIZE - 1 - k
+                if (y < 0) break
+                px[y * SIZE + x] = stem
+            }
+            // 穂
+            val top = SIZE - height
+            if (stage >= 1) {
+                for (k in 0 until (if (stage == 2) 4 else 2)) {
+                    val y = top + k
+                    if (y in 0 until SIZE) {
+                        px[y * SIZE + x] = head
+                        if (x > 0) px[y * SIZE + x - 1] = head
+                        if (x < SIZE - 1) px[y * SIZE + x + 1] = head
+                    }
+                }
+            } else if (top in 0 until SIZE) {
+                px[top * SIZE + x] = head
             }
         }
         return Sprite(SIZE, SIZE, px)
