@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.planetgrow.core.GameTime
+import com.example.planetgrow.core.PlanetState
 import com.example.planetgrow.core.Scene
 import com.example.planetgrow.core.Sky
 import com.example.planetgrow.core.Tex
@@ -47,6 +51,10 @@ import com.example.planetgrow.core.tiledSwatch
 @Composable
 fun TitleScreen(onEnter: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { PlanetPrefs(context) }
+
+    // 「はじめから」は惑星がまるごと消えるので、二度押しで確かめてから実行する
+    var confirmReset by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
         Modifier
@@ -57,7 +65,6 @@ fun TitleScreen(onEnter: () -> Unit) {
         val heightPx = constraints.maxHeight.coerceAtLeast(1)
 
         val backdrop = remember(widthPx, heightPx) {
-            val prefs = PlanetPrefs(context)
             val now = GameTime.now()
             val state = prefs.load(now)
             val world = World(state)
@@ -129,20 +136,52 @@ fun TitleScreen(onEnter: () -> Unit) {
             )
         }
 
-        Text(
-            text = "ほしにもどる",
-            color = Color(0xFF0B1020),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(bottom = 40.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFFE9D9A8))
-                .clickable { onEnter() }
-                .padding(horizontal = 36.dp, vertical = 14.dp)
-        )
+                .padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "ほしにもどる",
+                color = Color(0xFF0B1020),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFFE9D9A8))
+                    .clickable { onEnter() }
+                    .padding(horizontal = 36.dp, vertical = 14.dp)
+            )
+            Text(
+                text = if (confirmReset) "ほんとうに消す？" else "はじめから",
+                color = if (confirmReset) Color(0xFFFFD6CC) else Color(0xFF9FB4D8),
+                fontSize = 14.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (confirmReset) Color(0xCC5E201A) else Color(0x66000000))
+                    .clickable {
+                        if (confirmReset) {
+                            prefs.save(PlanetState.newPlanet(GameTime.now()))
+                            onEnter()
+                        } else {
+                            confirmReset = true
+                        }
+                    }
+                    .padding(horizontal = 24.dp, vertical = 10.dp)
+            )
+            if (confirmReset) {
+                Text(
+                    text = "いまの惑星は消えて、最初からになります",
+                    color = Color(0xAAFFD6CC),
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
     }
 }
