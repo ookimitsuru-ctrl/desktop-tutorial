@@ -54,6 +54,12 @@ object Tex {
     private val ICE_COLORS = intArrayOf(rgbOf(0xA8DCF0), rgbOf(0xC4E9F8), rgbOf(0x8FC9E4))
     private val ICE_W = intArrayOf(5, 3, 2)
 
+    // 宇宙船の攻撃で焼けた荒れ地
+    private val WASTE_COLORS = intArrayOf(rgbOf(0x5C5248), rgbOf(0x4A423A), rgbOf(0x6B6156), rgbOf(0x3A332C))
+    private val WASTE_W = intArrayOf(5, 4, 3, 2)
+    private val WASTE_CRACK = rgbOf(0x241F1A)
+    private val WASTE_EMBER = rgbOf(0xC96A2E)
+
     private val GLASS_DAY = rgbOf(0x9FD6EA)
     private val GLASS_DAY_HI = rgbOf(0xC8ECF7)
     private val GLASS_NIGHT = rgbOf(0xFFCF6A)
@@ -80,6 +86,7 @@ object Tex {
     /** 上から見た草 (球の表面に使う)。 */
     val grassTop: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0x7C0D + v * 191, GRASS_COLORS, GRASS_W) }
     val ice: Array<Sprite> = Array(VARIANTS) { v -> clusterNoise(0xCDEF + v * 193, ICE_COLORS, ICE_W) }
+    val wasteland: Array<Sprite> = Array(VARIANTS) { v -> wastelandTex(0xDA57 + v * 199) }
 
     // 木の種類ごとの葉と幹 (0 オーク / 1 シラカバ / 2 マツ / 3 サクラ)
     private val LEAF_SETS = arrayOf(
@@ -293,6 +300,25 @@ object Tex {
                 px[yi * SIZE + x] = CORE_GLOW[rnd.int(2)]
                 if (rnd.int(100) < 50) y += rnd.int(3) - 1
             }
+        }
+        return Sprite(SIZE, SIZE, px)
+    }
+
+    /** 攻撃で焼けた荒れ地。ひび割れと、くすぶる燠火が少し残る。 */
+    private fun wastelandTex(seed: Int): Sprite {
+        val rnd = Rnd(seed)
+        val s = clusterNoise(seed xor 0x6E2, WASTE_COLORS, WASTE_W)
+        val px = s.px
+        repeat(3) {
+            var x = rnd.int(SIZE)
+            for (y in 0 until SIZE) {
+                val xi = x.coerceIn(0, SIZE - 1)
+                px[y * SIZE + xi] = WASTE_CRACK
+                if (rnd.int(100) < 45) x += rnd.int(3) - 1
+            }
+        }
+        repeat(3) {
+            if (rnd.int(100) < 55) px[rnd.int(SIZE) * SIZE + rnd.int(SIZE)] = WASTE_EMBER
         }
         return Sprite(SIZE, SIZE, px)
     }

@@ -154,6 +154,27 @@ object Art {
     val poppy: Sprite = flowers[0]
     val dandelion: Sprite = flowers[1]
 
+    /** 何本かの花をまとめて咲かせた、ひとまわり大きい茂み。 */
+    private fun flowerCluster(indices: IntArray): Sprite {
+        val w = 28
+        val h = 22
+        val buf = PixelBuffer(w, h)
+        val offsets = arrayOf(intArrayOf(0, 5), intArrayOf(9, 0), intArrayOf(17, 6))
+        for (k in indices.indices) {
+            val off = offsets[k % offsets.size]
+            buf.draw(flowers[indices[k] % flowers.size], off[0], off[1])
+        }
+        return buf.toSprite()
+    }
+
+    /** 花畑は 1 種類だけでなく、色んな花が一緒に咲く。 */
+    val flowerClusters: Array<Sprite> = arrayOf(
+        flowerCluster(intArrayOf(0, 1)),
+        flowerCluster(intArrayOf(1, 2, 3)),
+        flowerCluster(intArrayOf(2, 3, 0)),
+        flowerCluster(intArrayOf(3, 0, 1))
+    )
+
     val grassTuft: Sprite = Sprite.of(
         listOf(
             "................",

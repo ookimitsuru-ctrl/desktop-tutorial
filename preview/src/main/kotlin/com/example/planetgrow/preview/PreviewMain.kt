@@ -41,6 +41,10 @@ fun main(args: Array<String>) {
         renderUfoSprite(File(if (args.size > 1) args[1] else "out"))
         return
     }
+    if (args.isNotEmpty() && args[0] == "aliens") {
+        renderAlienFeatures(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
     outDir.mkdirs()
     val level = if (args.size > 1) args[1].toIntOrNull() ?: 0 else 0
@@ -151,10 +155,10 @@ private fun demoState(level: Int, now: Long): PlanetState {
     }
     // 建設中のものも 1 つ見えるようにする
     if (level in 1..3) {
-        val r = Recipes.of(BuildKind.HOUSE)
-        val angle = s.freeAngleFor(BuildKind.HOUSE)
+        val r = Recipes.of(BuildKind.FLOWER)
+        val angle = s.freeAngleFor(BuildKind.FLOWER)
         if (angle != null) {
-            s.jobs.add(BuildJob(BuildKind.HOUSE, angle, now - r.durationMillis / 2, now + r.durationMillis / 2))
+            s.jobs.add(BuildJob(BuildKind.FLOWER, angle, now - r.durationMillis / 2, now + r.durationMillis / 2))
         }
     }
     s.lastTickMillis = now
@@ -178,6 +182,105 @@ private fun renderSwatches(outDir: File) {
         writePng(buf, File(outDir, "swatch_$name.png"))
         writePng(zoom(buf, sw.w, 4), File(outDir, "swatch_${name}_big.png"))
     }
+    println("-> ${outDir.absolutePath}")
+}
+
+/** 花畑・荒れ地・宇宙船襲来の当たり方を確かめる (仕様変更の確認用)。 */
+private fun renderAlienFeatures(outDir: File) {
+    outDir.mkdirs()
+
+    // 1) 花の茂み (大きさ・色のバリエーション)
+    run {
+        val clusters = com.example.planetgrow.core.Art.flowerClusters
+        val w = clusters.maxOf { it.w }
+        val h = clusters.sumOf { it.h + 2 }
+        val buf = PixelBuffer(w * 6, h)
+        var x = 0
+        for (c in clusters) {
+            buf.draw(c, x, 0)
+            x += c.w + 4
+        }
+        val factor = 5
+        val big = PixelBuffer(buf.width * factor, buf.height * factor)
+        for (y in 0 until big.height) for (bx in 0 until big.width) {
+            big.px[y * big.width + bx] = buf.px[(y / factor) * buf.width + (bx / factor)]
+        }
+        writePng(big, File(outDir, "flower_clusters.png"))
+    }
+
+    // 2) 荒れ地 (惑星の 1/4 が荒れ地になっている状態)
+    run {
+        val now = System.currentTimeMillis()
+        val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+        state.wastelandStartMillis = now
+        state.wastelandCenterDeg = 0f
+        val world = World(state)
+        world.syncFromState(now)
+        val viewBlocks = Scene.viewBlocksFor(state, now)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val scene = Scene(size[0], size[1], blockPx)
+        val sky = Sky(0.5f, now)
+        scene.render(world, sky, 0f, 0f)
+        writePng(scene.frame, File(outDir, "wasteland.png"))
+    }
+
+    // 3) ペット (どうぶつ) が正面の面に座っているか
+    run {
+        val now = System.currentTimeMillis()
+        val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+        val slot = state.freeFaceSlot(now)!!
+        state.placed.add(Placed(BuildKind.ANIMAL, slot[1], now, 0, -1, slot[0]))
+        val slot2 = state.freeFaceSlot(now)!!
+        state.placed.add(Placed(BuildKind.ANIMAL, slot2[1], now, 2, -1, slot2[0]))
+        val slot3 = state.freeFaceSlot(now)!!
+        val r = Recipes.of(BuildKind.ANIMAL)
+        state.jobs.add(BuildJob(BuildKind.ANIMAL, slot3[1], now - r.durationMillis / 2, now + r.durationMillis / 2, -1, slot3[0]))
+        val world = World(state)
+        world.syncFromState(now)
+        val viewBlocks = Scene.viewBlocksFor(state, now)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val scene = Scene(size[0], size[1], blockPx)
+        val sky = Sky(0.5f, now)
+        scene.render(world, sky, 0f, 0f)
+        writePng(scene.frame, File(outDir, "pets_on_surface.png"))
+        writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "pets_on_surface_zoom.png"))
+    }
+
+    // 4) 宇宙船襲来の結果分布 (運まかせの結果がだいたい狙い通りか)
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, 0f))
+        var t = birth
+        val counts = linkedMapOf("DAMAGE" to 0, "RETREAT" to 0, "VICTORY" to 0)
+        var drops = 0
+        repeat(400) {
+            t += PlanetState.ALIEN_INTERVAL_MILLIS
+            state.advanceTo(t)
+            for (e in state.pendingAlienEvents) {
+                counts[e.outcome.name] = (counts[e.outcome.name] ?: 0) + 1
+                if (e.droppedResource != null) drops++
+            }
+            state.pendingAlienEvents.clear()
+        }
+        println("花0本での400回の襲来結果: $counts (撤退時ドロップ $drops 回)")
+
+        val state2 = PlanetState.newPlanet(birth)
+        state2.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, 0f))
+        repeat(6) { i -> state2.placed.add(Placed(BuildKind.FLOWER, i * 40f, birth)) }
+        var t2 = birth
+        val counts2 = linkedMapOf("DAMAGE" to 0, "RETREAT" to 0, "VICTORY" to 0)
+        repeat(400) {
+            t2 += PlanetState.ALIEN_INTERVAL_MILLIS
+            state2.advanceTo(t2)
+            for (e in state2.pendingAlienEvents) counts2[e.outcome.name] = (counts2[e.outcome.name] ?: 0) + 1
+            state2.pendingAlienEvents.clear()
+        }
+        println("花6本での400回の襲来結果: $counts2")
+    }
+
     println("-> ${outDir.absolutePath}")
 }
 

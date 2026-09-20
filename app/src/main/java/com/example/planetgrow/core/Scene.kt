@@ -275,7 +275,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         drawAtmosphere(world, sky, now)
         drawPlanet(world, sky, now)
         drawBuildings(world, sky, now)
-        drawAnimals(world, sky)
+        drawAnimals(world, sky, now)
         drawResidents(world, sky)
         drawParticles(world)
         drawFalling(world)
@@ -559,6 +559,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
                     Terrain.DIRT -> Tex.dirt[v]
                     Terrain.STONE -> Tex.stone[v]
                     Terrain.SAND -> Tex.sand[v]
+                    Terrain.WASTELAND -> Tex.wasteland[v]
                 }
                 val nx = i / r
                 val ny = j / r
@@ -646,7 +647,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
 
         // 池や畑のように地面にあるものは、球の手前の面に平らに置く
         if (Structures.isOnSurface(kind) || dist >= 0f) {
-            drawOnSurface(world, sky, now, kind, a, dist, progress, building, cropStage)
+            drawOnSurface(world, sky, now, kind, a, dist, progress, building, cropStage, variant)
             return
         }
 
@@ -696,7 +697,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         return (phase * 3f).toInt().coerceIn(0, 2)
     }
 
-    /** 惑星の手前側の面に、平らに置くもの (池や畑)。 */
+    /** 惑星の手前側の面に、平らに置くもの (池・畑・卵・ペット)。 */
     private fun drawOnSurface(
         world: World,
         sky: Sky,
@@ -706,7 +707,8 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         dist: Float,
         progress: Float,
         building: Boolean,
-        cropStage: Int
+        cropStage: Int,
+        variant: Int = 0
     ) {
         val r = world.state.radius(now)
         val faceR = if (dist >= 0f) dist else r * 0.52f
@@ -714,12 +716,20 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         val wy = sin(a) * faceR
         val cx = (originX + wx * blockPx).roundToInt()
         val cy = (originY + wy * blockPx).roundToInt()
-        val st = Structures.forBuild(kind, progress, 0, cropStage) ?: return
-        val body = sp(st.body)
         val nx = wx / r
         val ny = wy / r
         val nz = sqrt((1f - nx * nx - ny * ny).coerceAtLeast(0f))
         val tint = Col.scale(lightTint(nx * sky.sunDirX + ny * sky.sunDirY), 0.72f + 0.28f * nz)
+
+        // 卵など、育ち具合で見た目そのものが変わるものを先に見る (孵ったあとは null になり下へ落ちる)
+        val flat = Structures.flatSpriteFor(kind, progress, variant)
+        if (flat != null) {
+            val s = sp(flat)
+            frame.draw(s, cx - s.w / 2, cy - s.h / 2, tint)
+            return
+        }
+        val st = Structures.forBuild(kind, progress, 0, cropStage) ?: return
+        val body = sp(st.body)
         frame.draw(body, cx - body.w / 2, cy - body.h / 2, tint)
         if (building) {
             frame.draw(sp(st.scaffold), cx - body.w / 2, cy - body.h / 2, tint, ((1f - progress) * 160f).toInt())
@@ -744,21 +754,23 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         }
     }
 
-    private fun drawAnimals(world: World, sky: Sky) {
+    /** ペットは池や畑と同じ、惑星の正面に平らに座っている。 */
+    private fun drawAnimals(world: World, sky: Sky, now: Long) {
+        val r = world.state.radius(now)
         for (an in world.animals) {
-            val surf = world.planet.groundRadius(an.angle)
-            val cx = originX + cos(an.angle) * surf * blockPx
-            val cy = originY + sin(an.angle) * surf * blockPx
-            val rot = an.angle + (PI.toFloat() / 2f)
+            val faceR = if (an.dist >= 0f) an.dist else r * 0.52f
+            val wx = cos(an.angle) * faceR
+            val wy = sin(an.angle) * faceR
+            val cx = (originX + wx * blockPx).roundToInt()
+            val cy = (originY + wy * blockPx).roundToInt()
             val set = Art.animals[an.variant % Art.animals.size]
             val sprite = sp(set[an.frame() % set.size])
-            var tint = surfaceTint(an.angle, sky)
+            val nx = wx / r
+            val ny = wy / r
+            val nz = sqrt((1f - nx * nx - ny * ny).coerceAtLeast(0f))
+            var tint = Col.scale(lightTint(nx * sky.sunDirX + ny * sky.sunDirY), 0.72f + 0.28f * nz)
             if (an.hungry) tint = Col.scale(tint, 0.75f)
-            frame.drawRotated(
-                sprite, cx, cy,
-                Art.animalCenterX(an.variant) * f, Art.animalFootY(an.variant) * f, rot, an.dir < 0f,
-                tint
-            )
+            frame.draw(sprite, cx - sprite.w / 2, cy - sprite.h / 2, tint)
         }
     }
 

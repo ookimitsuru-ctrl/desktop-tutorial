@@ -59,6 +59,7 @@ import com.example.planetgrow.core.Scene
 import com.example.planetgrow.core.Sky
 import com.example.planetgrow.core.SkyFall
 import com.example.planetgrow.core.World
+import com.example.planetgrow.core.alienOutcomeText
 import com.example.planetgrow.core.formatDuration
 import com.example.planetgrow.core.skyFallLabel
 import java.time.Instant
@@ -133,16 +134,21 @@ fun PlanetScreen() {
     var notice by remember { mutableStateOf<Notice?>(null) }
     var showBuildPanel by remember { mutableStateOf(false) }
 
-    // 開いた時点で、閉じていた間の飛来をまとめて受け取る
+    // 開いた時点で、閉じていた間の飛来と宇宙船の襲来をまとめて受け取る
     LaunchedEffect(Unit) {
         val now = GameTime.now()
         val arrivals = state.advanceTo(now)
+        val alienEvents = state.pendingAlienEvents.toList()
+        state.pendingAlienEvents.clear()
         world.syncFromState(now)
         prefs.save(state)
+        val parts = ArrayList<String>()
         if (arrivals.isNotEmpty()) {
             for (a in arrivals.takeLast(4)) world.addFalling(a.kind, a.angleDeg, a.amount)
-            notice = Notice(offlineSummary(arrivals), System.currentTimeMillis() + 9000L)
+            parts.add(offlineSummary(arrivals))
         }
+        if (alienEvents.isNotEmpty()) parts.add(alienOutcomeText(alienEvents.last()))
+        if (parts.isNotEmpty()) notice = Notice(parts.joinToString("  "), System.currentTimeMillis() + 9000L)
         version++
     }
 
@@ -194,9 +200,17 @@ fun PlanetScreen() {
                     // 飛来や、できあがりがないか見る
                     val placedBefore = state.placed.size
                     val arrivals = state.advanceTo(nowMs)
+                    val alienEvents = state.pendingAlienEvents.toList()
+                    state.pendingAlienEvents.clear()
                     if (arrivals.isNotEmpty()) {
                         for (a in arrivals) world.addFalling(a.kind, a.angleDeg, a.amount)
                         notice = Notice(arrivalText(arrivals.last()), System.currentTimeMillis() + 7000L)
+                        prefs.save(state)
+                        version++
+                    }
+                    if (alienEvents.isNotEmpty()) {
+                        world.syncFromState(nowMs)
+                        notice = Notice(alienOutcomeText(alienEvents.last()), System.currentTimeMillis() + 8000L)
                         prefs.save(state)
                         version++
                     }
@@ -390,6 +404,9 @@ private fun BoxScope.Hud(
         ResourceRow("氷", state.ice, Color(0xFFAEE6FF))
         if (state.countOf(BuildKind.FARM) > 0 || state.countOf(BuildKind.ANIMAL) > 0) {
             ResourceRow("作物", state.crop.toInt(), Color(0xFFF0D874))
+        }
+        if (state.rareItem > 0) {
+            ResourceRow("レアアイテム", state.rareItem, Color(0xFFCDA8FF))
         }
         Text(
             text = "次の飛来 " + formatDuration(

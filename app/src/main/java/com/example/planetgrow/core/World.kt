@@ -20,9 +20,15 @@ import kotlin.math.sqrt
  */
 
 /** 地表のブロック。 */
-enum class Terrain { GRASS, DIRT, STONE, SAND }
+enum class Terrain { GRASS, DIRT, STONE, SAND, WASTELAND }
 
-class Planet(val radius: Float, val terrainSeed: Int = 0x51DE) {
+class Planet(
+    val radius: Float,
+    val terrainSeed: Int = 0x51DE,
+    /** 宇宙船の攻撃で荒れ地になっている中心角 (度)。無ければ null。 */
+    private val wastelandCenterDeg: Float? = null,
+    private val wastelandArcDeg: Float = PlanetState.WASTELAND_ARC_DEG
+) {
     /** ブロック座標の範囲 (-ri .. ri) */
     val ri: Int = ceil(radius).toInt()
     private val span: Int = ri * 2 + 1
@@ -64,8 +70,14 @@ class Planet(val radius: Float, val terrainSeed: Int = 0x51DE) {
         return rim[index(i, j)]
     }
 
-    /** 地面の模様。岩場や土がまだらに混ざる。 */
+    /** 地面の模様。岩場や土がまだらに混ざる。攻撃を受けた範囲は荒れ地になる。 */
     private fun terrainFor(i: Int, j: Int): Terrain {
+        if (wastelandCenterDeg != null) {
+            val angleDeg = toDeg(kotlin.math.atan2(j.toFloat(), i.toFloat()))
+            if (kotlin.math.abs(shortestAngle(angleDeg - wastelandCenterDeg)) < wastelandArcDeg / 2f) {
+                return Terrain.WASTELAND
+            }
+        }
         val rock = valueNoise(i * 0.26f, j * 0.26f, terrainSeed)
         if (rock > 0.70f) return Terrain.STONE
         val soil = valueNoise(i * 0.33f + 40f, j * 0.33f - 17f, terrainSeed xor 0x2A17)
@@ -238,38 +250,27 @@ class Resident(var angle: Float, val homeAngle: Float, seed: Int) {
     }
 }
 
-/** 惑星をうろうろする生きもの。夜はその場で丸くなる。 */
-class Animal(var angle: Float, val variant: Int, seed: Int) {
+/**
+ * 惑星の正面に暮らすペット (池や畑と同じ、面に置かれる場所に住む)。
+ * 家畜ではなくペットなので群れず、その場でのんびり過ごす。
+ */
+class Animal(val dist: Float, val angle: Float, val variant: Int, seed: Int) {
     private val rnd = Rnd(seed)
-    var dir: Float = if (rnd.int(2) == 0) 1f else -1f
-    var timer: Float = 1f + rnd.float() * 4f
+    private val animPhase: Float = rnd.float() * 10f
     var animTime: Float = 0f
-    var walking: Boolean = true
 
-    /** おなかがすいていると動かなくなる。 */
+    /** おなかがすいていると元気がなくなる。 */
     var hungry: Boolean = false
 
-    fun update(dt: Float, sunDirX: Float, sunDirY: Float) {
+    fun update(dt: Float) {
         animTime += dt
-        val night = localSunHeight(angle, sunDirX, sunDirY) < -0.25f
-        if (night || hungry) {
-            walking = false
-            return
-        }
-        timer -= dt
-        if (timer <= 0f) {
-            walking = !walking
-            timer = if (walking) 2f + rnd.float() * 5f else 1.5f + rnd.float() * 4f
-            if (rnd.int(100) < 50) dir = -dir
-        }
-        if (walking) {
-            val ahead = localSunHeight(angle + dir * 0.4f, sunDirX, sunDirY)
-            if (ahead < -0.15f) dir = -dir
-            angle = wrapAngle(angle + dir * 0.13f * dt)
-        }
     }
 
-    fun frame(): Int = if (!walking) 0 else if ((animTime * 4f).toInt() % 2 == 0) 0 else 1
+    /** のんびりした仕草のコマ (0 or 1)。おなかがすいているとじっとする。 */
+    fun frame(): Int {
+        if (hungry) return 0
+        return if (((animTime + animPhase) * 1.6f).toInt() % 2 == 0) 0 else 1
+    }
 }
 
 /** 煙突から出る煙や、着弾のかけら。位置はワールド座標 (ブロック単位)。 */
@@ -392,6 +393,7 @@ class World(val state: PlanetState) {
     private var smokeTimer = 0f
     private val rnd = Rnd(0x7A5E)
     private var builtRadius = state.radius(state.lastTickMillis)
+    private var builtWastelandCenter: Float? = state.wastelandCenter(state.lastTickMillis)
 
     init {
         syncFromState(state.lastTickMillis)
@@ -410,9 +412,11 @@ class World(val state: PlanetState) {
     /** 保存された状態に合わせて、惑星の大きさ・住人・生きものの数をそろえる。 */
     fun syncFromState(now: Long) {
         val r = state.radius(now)
-        if (r != builtRadius) {
-            planet = Planet(r)
+        val wasteCenter = state.wastelandCenter(now)
+        if (r != builtRadius || wasteCenter != builtWastelandCenter) {
+            planet = Planet(r, wastelandCenterDeg = wasteCenter)
             builtRadius = r
+            builtWastelandCenter = wasteCenter
         }
         val homes = state.placed.filter { it.kind == BuildKind.HOUSE }.map { it.angleDeg }
         while (residents.size > homes.size) residents.removeAt(residents.size - 1)
@@ -425,7 +429,8 @@ class World(val state: PlanetState) {
         while (animals.size < born.size) {
             val idx = animals.size
             val a = born[idx]
-            animals.add(Animal(toRad(a.angleDeg + 10f), a.variant, 0x2000 + idx * 6971))
+            // 古いセーブ (ふちに立っていた頃) の生きものは面の中心へ寄せる
+            animals.add(Animal(a.dist.coerceAtLeast(0f), toRad(a.angleDeg), a.variant, 0x2000 + idx * 6971))
         }
         val hungry = state.animalsHungry(now)
         for (a in animals) a.hungry = hungry
@@ -473,7 +478,7 @@ class World(val state: PlanetState) {
 
     fun update(dt: Float, sunDirX: Float, sunDirY: Float) {
         for (r in residents) r.update(dt, sunDirX, sunDirY)
-        for (a in animals) a.update(dt, sunDirX, sunDirY)
+        for (a in animals) a.update(dt)
         updateFalling(dt)
         updateSmoke(dt)
         updateParticles(dt)

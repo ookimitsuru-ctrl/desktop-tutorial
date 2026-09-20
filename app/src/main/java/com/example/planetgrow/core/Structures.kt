@@ -230,14 +230,15 @@ object Structures {
 
     /** 1 ブロックで置くもの (花や卵)。 */
     fun flatSpriteFor(kind: BuildKind, progress: Float, variant: Int): Sprite? = when (kind) {
-        BuildKind.FLOWER -> if (progress < 0.6f) Art.sprout else Art.flowers[variant % Art.flowers.size]
+        BuildKind.FLOWER -> if (progress < 0.6f) Art.sprout else Art.flowerClusters[variant % Art.flowerClusters.size]
         BuildKind.ANIMAL -> if (progress < 1f) Art.egg else null
         BuildKind.TREE -> if (progress < 0.25f) Art.sprout else null
         else -> null
     }
 
     /** 地面に平らに置くもの (立ち上がらないもの)。 */
-    fun isOnSurface(kind: BuildKind): Boolean = kind == BuildKind.POND || kind == BuildKind.FARM
+    fun isOnSurface(kind: BuildKind): Boolean =
+        kind == BuildKind.POND || kind == BuildKind.FARM || kind == BuildKind.ANIMAL
 
     /** 建設中は下からだんだん現れる。木と花は段階で変わるので常に全部出す。 */
     fun revealsGradually(kind: BuildKind): Boolean = when (kind) {
