@@ -116,8 +116,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
     private var shootVY = 0f
 
     // 遠くの UFO (ゲームには関係ない演出)。実時間のペースで、たまに現れる
-    // ↓ デモ用に頻繁に出るようにしてある。本来の間隔は UFO_WAIT_MIN/SPAN のコメント参照
-    private var ufoWait = 1.5f
+    private var ufoWait = 40f
     private var ufoLife = -1f
     private var ufoX = 0f
     private var ufoY = 0f
@@ -125,8 +124,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
     private var ufoBobPhase = 0f
 
     // 遠くを通り過ぎるよその惑星 (演出)。実時間のペースで、めったに現れない
-    // ↓ デモ用に頻繁に出るようにしてある。本来の間隔は FAR_PLANET_WAIT_MIN/SPAN のコメント参照
-    private var farPlanetWait = 8f
+    private var farPlanetWait = 100f
     private var farPlanetLife = -1f
     private var farPlanetX = 0f
     private var farPlanetY = 0f
@@ -403,8 +401,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
      * 遠くの UFO。ゲームには関係ない演出で、実時間のペースでたまに横切る
      * (GameTime を早回ししていても、これは普段どおりの速さで現れる)。
      *
-     * いまはデモ用に 4〜10 秒おきと頻繁にしてある。
-     * 本来の間隔 (リリース時はこちらに戻す) は 40〜115 秒おき。
+     * 40〜115 秒おき。
      */
     private fun drawUfo(dt: Float) {
         if (ufoLife < 0f) {
@@ -417,7 +414,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
                 ufoX = if (dir > 0f) -60f else width + 60f
                 ufoVX = dir * rnd.range(90f, 150f)
                 ufoBobPhase = rnd.float() * 10f
-                ufoWait = 4f + rnd.float() * 6f
+                ufoWait = 40f + rnd.float() * 75f
             }
             return
         }
@@ -437,8 +434,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
      * 遠くを通り過ぎる、よその惑星。自分の星と同じ作りに見えるが、
      * ゲームの進行には関係ない背景の演出。
      *
-     * いまはデモ用に 20〜45 秒おきと頻繁にしてある。
-     * 本来の間隔 (リリース時はこちらに戻す) は 100〜260 秒おき。
+     * 100〜260 秒おき。
      */
     private fun drawFarPlanetDecor(dt: Float) {
         if (farPlanetLife < 0f) {
@@ -450,7 +446,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
                 farPlanetY = rnd.range(height * 0.58f, height * 0.9f)
                 farPlanetX = if (dir > 0f) -40f else width + 40f
                 farPlanetVX = dir * (width + 80f) / farPlanetLife
-                farPlanetWait = 20f + rnd.float() * 25f
+                farPlanetWait = 100f + rnd.float() * 160f
             }
             return
         }
