@@ -109,29 +109,9 @@ object Structures {
         "xxx"
     )
 
-    /** 火山。おとなしいうちは火口が黒く冷えている。 */
-    private val VOLCANO_DORMANT_LAYOUT = listOf(
-        "..q..",
-        ".SSS.",
-        ".SSS.",
-        "SSSSS",
-        "SSSSS"
-    )
-
-    /** 活発化すると火口が常に赤く光る (夜だけでなく昼も見える)。 */
-    private val VOLCANO_ACTIVE_LAYOUT = listOf(
-        "..K..",
-        ".SSS.",
-        ".SSS.",
-        "SSSSS",
-        "SSSSS"
-    )
-
     val house: Structure = build(HOUSE_LAYOUT, 0, 0)
     val lamp: Structure = build(LAMP_LAYOUT, 0, 0)
     val pond: Structure = build(POND_LAYOUT, 0, 0)
-    val volcanoDormant: Structure = build(VOLCANO_DORMANT_LAYOUT, 0, 0)
-    val volcanoActive: Structure = build(VOLCANO_ACTIVE_LAYOUT, 0, 0)
 
     /** 木は 4 種類。 */
     val trees: Array<Structure> = Array(4) { v ->
@@ -156,9 +136,6 @@ object Structures {
             'g' -> Tex.soil[v]
             'x' -> Tex.soil[v]
             'I' -> Tex.ice[v]
-            'S' -> Tex.stone[v]
-            'q' -> Tex.deepslate[v]
-            'K' -> Tex.core[v]
             'D' -> Tex.doorTop
             'd' -> Tex.doorBottom
             'N' -> LANTERN
@@ -248,16 +225,17 @@ object Structures {
         BuildKind.POND -> pond
         BuildKind.FARM -> farms[cropStage.coerceIn(0, farms.size - 1)]
         BuildKind.TREE -> if (progress < 0.55f) saplings[variant % saplings.size] else trees[variant % trees.size]
-        BuildKind.VOLCANO -> if (cropStage > 0) volcanoActive else volcanoDormant
         else -> null
     }
 
-    /** 1 ブロックで置くもの (花や卵、外周に立つペット)。 */
+    /** 1 枚のドット絵として置くもの (花や卵、外周に立つペット・火山)。 */
     fun flatSpriteFor(kind: BuildKind, progress: Float, variant: Int): Sprite? = when (kind) {
         BuildKind.FLOWER -> if (progress < 0.6f) Art.sprout else Art.flowerClusters[variant % Art.flowerClusters.size]
         BuildKind.ANIMAL -> if (progress < 1f) Art.egg else null
         BuildKind.PET -> if (progress < 1f) Art.egg else Art.animals[variant % Art.animals.size][0]
         BuildKind.TREE -> if (progress < 0.25f) Art.sprout else null
+        // variant を「活発化したか (0/1)」として使う (Scene.kt で計算)
+        BuildKind.VOLCANO -> if (variant > 0) Art.volcanoActive else Art.volcanoDormant
         else -> null
     }
 

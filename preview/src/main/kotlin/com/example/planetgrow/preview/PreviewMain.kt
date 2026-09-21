@@ -294,10 +294,10 @@ private fun renderVolcanoUpdate(outDir: File) {
 
         state.advanceTo(tick * 3 + 1000L)
         val r9 = state.radius(tick * 3 + 1000L)
-        println("9日目: 半径 $r9 (${startRadius + PlanetState.RADIUS_PER_PERIOD} のはず)")
+        println("9日目: 半径 $r9 (${startRadius + PlanetState.RADIUS_PER_PERIOD} のはず) 火山 ${state.countOf(BuildKind.VOLCANO)}個 (惑星が育つと無くなるので0のはず)")
 
         state.advanceTo(tick * 4 + 1000L)
-        println("12日目: 火山 ${state.countOf(BuildKind.VOLCANO)}個 (2のはず、2周目の出現)")
+        println("12日目: 火山 ${state.countOf(BuildKind.VOLCANO)}個 (1のはず、2周目の出現)")
 
         state.advanceTo(tick * 5 + 1000L)
         val erupted2 = state.pendingEruptions.toList()
@@ -306,7 +306,7 @@ private fun renderVolcanoUpdate(outDir: File) {
 
         state.advanceTo(tick * 6 + 1000L)
         val r18 = state.radius(tick * 6 + 1000L)
-        println("18日目: 半径 $r18 (${startRadius + PlanetState.RADIUS_PER_PERIOD * 2} のはず)")
+        println("18日目: 半径 $r18 (${startRadius + PlanetState.RADIUS_PER_PERIOD * 2} のはず) 火山 ${state.countOf(BuildKind.VOLCANO)}個 (また0のはず)")
     }
 
     // 2) 火山が出る場所に花があったときの扱い (動かす/合体させる)
@@ -383,6 +383,22 @@ private fun renderVolcanoUpdate(outDir: File) {
         scene.render(world, sky, 0f, 1f / 30f)
         writePng(scene.frame, File(outDir, "volcano_eruption.png"))
         writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "volcano_eruption_zoom.png"))
+    }
+
+    // 5) 火山のドット絵そのものを拡大して確かめる (斜面の陰影・火口・溶岩の筋)
+    run {
+        val dormant = com.example.planetgrow.core.Art.volcanoDormant
+        val active = com.example.planetgrow.core.Art.volcanoActive
+        val gap = 8
+        val buf = PixelBuffer(dormant.w + gap + active.w, maxOf(dormant.h, active.h))
+        buf.draw(dormant, 0, 0)
+        buf.draw(active, dormant.w + gap, 0)
+        val factor = 8
+        val big = PixelBuffer(buf.width * factor, buf.height * factor)
+        for (y in 0 until big.height) for (x in 0 until big.width) {
+            big.px[y * big.width + x] = buf.px[(y / factor) * buf.width + (x / factor)]
+        }
+        writePng(big, File(outDir, "volcano_sprite_big.png"))
     }
 
     println("-> ${outDir.absolutePath}")

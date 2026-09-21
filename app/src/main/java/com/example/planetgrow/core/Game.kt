@@ -141,7 +141,7 @@ object SkyFall {
     }
 }
 
-/** 作れるもの。PET は「つくる」からは選べず、レア卵からだけうまれる。VOLCANO は地殻変動でひとりでにできる。 */
+/** 作れるもの。PET は「つくる」からは選べず、レア卵からだけうまれる。VOLCANO は地殻変動でひとりでにでき、惑星が育つとまた無くなる。 */
 enum class BuildKind { FLOWER, TREE, LAMP, POND, FARM, HOUSE, ANIMAL, BRIDGE, PET, VOLCANO }
 
 /** 作るのに要る資源と時間。 */
@@ -361,7 +361,7 @@ class PlanetState(var birthMillis: Long) {
          * 地殻変動のひと区切り。3 日ごとに次の段階へ進み、3 段階 (9日) で1周期:
          *   1段階目 (3日目)  … 火山が出現
          *   2段階目 (6日目)  … その火山が活発化 (噴火の演出)
-         *   3段階目 (9日目)  … 惑星が少し大きくなる (以前と同じ量)
+         *   3段階目 (9日目)  … 惑星が少し大きくなり (以前と同じ量)、火山は役目を終えて無くなる
          */
         val TECTONIC_TICK_MILLIS = 3L * DAY_MS
 
@@ -649,7 +649,8 @@ class PlanetState(var birthMillis: Long) {
      * 地殻変動を進める。3 日ごとに 1 段階進み、3 段階 (9日) で1周期:
      *   1段階目 … 火山が出現 (花があれば動かすか合体させる)
      *   2段階目 … 直前の火山が活発化して噴火する
-     *   3段階目 … 惑星が少し大きくなる (radius() が birthMillis からの経過で自動計算するので、ここでは何もしない)
+     *   3段階目 … 惑星が少し大きくなる (radius() が自動計算) と同時に、
+     *            役目を終えた火山が無くなる
      */
     private fun advanceTectonics(now: Long) {
         val targetTicks = (ageMillis(now) / TECTONIC_TICK_MILLIS).toInt()
@@ -660,6 +661,7 @@ class PlanetState(var birthMillis: Long) {
             when (tick % 3) {
                 1 -> spawnVolcano(atMillis)
                 2 -> intensifyLatestVolcano(atMillis)
+                0 -> removeVolcanoes()
             }
             tectonicTicksDone = tick
             guard++
@@ -677,6 +679,11 @@ class PlanetState(var birthMillis: Long) {
     private fun intensifyLatestVolcano(atMillis: Long) {
         val volcano = placed.lastOrNull { it.kind == BuildKind.VOLCANO } ?: return
         pendingEruptions.add(volcano.angleDeg)
+    }
+
+    /** 惑星が大きくなるとき、そのとき出ていた火山は役目を終えて無くなる。 */
+    private fun removeVolcanoes() {
+        placed.removeAll { it.kind == BuildKind.VOLCANO }
     }
 
     /**

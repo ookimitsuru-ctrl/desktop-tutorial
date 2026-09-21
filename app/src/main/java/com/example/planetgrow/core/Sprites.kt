@@ -195,6 +195,110 @@ object Art {
         flowerClusterBig(intArrayOf(3, 0, 1, 2))
     )
 
+    // 火山 --------------------------------------------------------------------
+    /**
+     * 火山。ブロックの積み上げではなく、UFO や distantPlanet と同じく
+     * なだらかな斜面の陰影と岩の質感を活かした 1 枚のドット絵として焼き込む。
+     * おとなしい間は火口が黒く冷えていて、活発化すると溶岩が赤々と光る。
+     */
+    private fun volcanoSprite(active: Boolean): Sprite {
+        val w = 44
+        val h = 32
+        val cx = w / 2f - 0.5f
+        val topY = 3f
+        val baseY = h - 3f
+        val topHalfW = 2.4f
+        val baseHalfW = 18f
+
+        val rockDark = rgbOf(0x453630)
+        val rockMid = rgbOf(0x6B5648)
+        val rockLight = rgbOf(0x93795F)
+        val rockFleck = rgbOf(0x2E241C)
+
+        val px = IntArray(w * h)
+        val lightFromLeft = 0.6f
+
+        for (y in topY.toInt()..baseY.toInt()) {
+            val t = ((y - topY) / (baseY - topY)).coerceIn(0f, 1f)
+            val jitter = (valueNoise(y * 0.55f, 4.2f, 0x51CA) - 0.5f) * 2.4f
+            val halfW = (topHalfW + (baseHalfW - topHalfW) * t + jitter).coerceAtLeast(1.5f)
+            val x0 = (cx - halfW).roundToInt().coerceAtLeast(0)
+            val x1 = (cx + halfW).roundToInt().coerceAtMost(w - 1)
+            for (x in x0..x1) {
+                val nx = ((x - cx) / halfW).coerceIn(-1f, 1f)
+                val shade = (nx * -lightFromLeft + 0.55f).coerceIn(0f, 1f)
+                var col = if (shade < 0.5f) Col.lerp(rockDark, rockMid, shade * 2f)
+                else Col.lerp(rockMid, rockLight, (shade - 0.5f) * 2f)
+                val n = valueNoise(x * 0.3f, y * 0.3f, 0x9E31)
+                if (n > 0.8f) col = Col.lerp(col, rockFleck, 0.5f)
+                px[y * w + x] = col
+            }
+        }
+
+        val craterCx = cx
+        val craterCy = topY + 2.2f
+        val craterRx = topHalfW + 1.0f
+        val craterRy = 2.1f
+
+        if (active) {
+            val glowFar = rgbOf(0x4A2416)
+            for (y in 0 until h) for (x in 0 until w) {
+                if (px[y * w + x] == Col.CLEAR) continue
+                val ddx = (x - craterCx)
+                val ddy = (y - craterCy) * 1.6f
+                val d = sqrt(ddx * ddx + ddy * ddy)
+                val reach = craterRx * 2.6f
+                if (d < reach) {
+                    val blend = (1f - d / reach).coerceIn(0f, 1f) * 0.55f
+                    px[y * w + x] = Col.lerp(px[y * w + x], glowFar, blend)
+                }
+            }
+            val lavaCore = rgbOf(0xFFF0B0)
+            val lavaMid = rgbOf(0xFF9B33)
+            val lavaDeep = rgbOf(0xC2440F)
+            for (y in 0 until h) for (x in 0 until w) {
+                val ddx = (x - craterCx) / craterRx
+                val ddy = (y - craterCy) / craterRy
+                val d = ddx * ddx + ddy * ddy
+                if (d > 1f) continue
+                px[y * w + x] = if (d < 0.32f) lavaCore else if (d < 0.72f) lavaMid else lavaDeep
+            }
+            // 火口から斜面へ流れ落ちる溶岩の筋
+            for (s in intArrayOf(-1, 0, 1)) {
+                var sx = craterCx + s * 3.6f
+                var y = (craterCy + craterRy).roundToInt()
+                val yEnd = baseY.toInt() - 2
+                while (y <= yEnd) {
+                    val xi = sx.roundToInt()
+                    if (xi in 0 until w && px[y * w + xi] != Col.CLEAR) {
+                        px[y * w + xi] = lavaMid
+                        if (xi + 1 < w && px[y * w + xi + 1] != Col.CLEAR) {
+                            px[y * w + xi + 1] = Col.lerp(lavaMid, rockDark, 0.45f)
+                        }
+                    }
+                    sx += (valueNoise(y * 0.5f, s * 11f + 3f, 0x22BB) - 0.5f) * 1.3f
+                    y++
+                }
+            }
+        } else {
+            val craterDark = rgbOf(0x241B17)
+            val craterRim = rgbOf(0x594538)
+            for (y in 0 until h) for (x in 0 until w) {
+                if (px[y * w + x] == Col.CLEAR) continue
+                val ddx = (x - craterCx) / craterRx
+                val ddy = (y - craterCy) / craterRy
+                val d = ddx * ddx + ddy * ddy
+                if (d > 1f) continue
+                px[y * w + x] = if (d < 0.55f) craterDark else craterRim
+            }
+        }
+
+        return Sprite(w, h, px)
+    }
+
+    val volcanoDormant: Sprite = volcanoSprite(active = false)
+    val volcanoActive: Sprite = volcanoSprite(active = true)
+
     val grassTuft: Sprite = Sprite.of(
         listOf(
             "................",

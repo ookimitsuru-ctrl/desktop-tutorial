@@ -646,8 +646,13 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         } else {
             cropStageFor(now, sinceMillis, building, progress)
         }
-        // 火山に追いやられて合体した花は、ひとまわり大きい見た目にする
-        val flatVariant = if (kind == BuildKind.FLOWER && target == 1) variant + 4 else variant
+        // 火山に追いやられて合体した花は、ひとまわり大きい見た目にする。
+        // 火山自体は、上で求めた cropStage (0/1) を「活発化したか」として使う
+        val flatVariant = when {
+            kind == BuildKind.FLOWER && target == 1 -> variant + 4
+            kind == BuildKind.VOLCANO -> cropStage
+            else -> variant
+        }
 
         // 池や畑のように地面にあるものは、球の手前の面に平らに置く
         if (Structures.isOnSurface(kind) || dist >= 0f) {
