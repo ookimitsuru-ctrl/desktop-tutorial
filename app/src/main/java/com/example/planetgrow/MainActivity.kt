@@ -217,7 +217,9 @@ fun PlanetScreen() {
                     if (state.placed.size != placedBefore) {
                         val done = state.placed.last()
                         world.syncFromState(nowMs)
-                        notice = Notice(Recipes.of(done.kind).doneText, System.currentTimeMillis() + 7000L)
+                        // PET は「つくる」のレシピが無い (レア卵から自動でうまれる) ので別扱い
+                        val doneText = if (done.kind == BuildKind.PET) "ペットがうまれました" else Recipes.of(done.kind).doneText
+                        notice = Notice(doneText, System.currentTimeMillis() + 7000L)
                         prefs.save(state)
                         version++
                     }
@@ -406,7 +408,7 @@ private fun BoxScope.Hud(
             ResourceRow("作物", state.crop.toInt(), Color(0xFFF0D874))
         }
         if (state.rareItem > 0) {
-            ResourceRow("レアアイテム", state.rareItem, Color(0xFFCDA8FF))
+            ResourceRow("レア卵", state.rareItem, Color(0xFFCDA8FF))
         }
         Text(
             text = "次の飛来 " + formatDuration(
@@ -436,8 +438,10 @@ private fun BoxScope.Hud(
             HudLine("畑をつくって生きものを養いましょう", Color(0xFFFFE9A8), Color(0x77000000))
         }
         for (job in state.jobs) {
+            // PET は「つくる」のレシピが無い (レア卵から自動でうまれる) ので別扱い
+            val label = if (job.kind == BuildKind.PET) "レア卵がかえる" else Recipes.of(job.kind).label
             HudLine(
-                "${Recipes.of(job.kind).label}  あと${formatDuration(job.endMillis - nowMillis)}",
+                "$label  あと${formatDuration(job.endMillis - nowMillis)}",
                 Color(0xCCBFD4F0),
                 Color(0x55000000)
             )

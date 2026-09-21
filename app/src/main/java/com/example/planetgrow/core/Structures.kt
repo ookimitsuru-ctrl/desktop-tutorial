@@ -228,10 +228,11 @@ object Structures {
         else -> null
     }
 
-    /** 1 ブロックで置くもの (花や卵)。 */
+    /** 1 ブロックで置くもの (花や卵、外周に立つペット)。 */
     fun flatSpriteFor(kind: BuildKind, progress: Float, variant: Int): Sprite? = when (kind) {
         BuildKind.FLOWER -> if (progress < 0.6f) Art.sprout else Art.flowerClusters[variant % Art.flowerClusters.size]
         BuildKind.ANIMAL -> if (progress < 1f) Art.egg else null
+        BuildKind.PET -> if (progress < 1f) Art.egg else Art.animals[variant % Art.animals.size][0]
         BuildKind.TREE -> if (progress < 0.25f) Art.sprout else null
         else -> null
     }

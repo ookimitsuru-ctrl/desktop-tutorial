@@ -83,8 +83,8 @@ class Arrival(
  * 「その間に何回飛んできたか」を後から計算できる。
  */
 object SkyFall {
-    /** 半日に 1 回 = 1 日およそ 2 回。 */
-    const val SLOT_MILLIS = 12L * HOUR_MS
+    /** 1 時間に 1 回。 */
+    const val SLOT_MILLIS = 1L * HOUR_MS
 
     private fun mix(a: Long, b: Long): Long {
         var h = a * -7046029254386353131L + b * -4658895280553007687L
@@ -141,8 +141,8 @@ object SkyFall {
     }
 }
 
-/** 作れるもの。 */
-enum class BuildKind { FLOWER, TREE, LAMP, POND, FARM, HOUSE, ANIMAL, BRIDGE }
+/** 作れるもの。PET は「つくる」からは選べず、レア卵からだけうまれる。 */
+enum class BuildKind { FLOWER, TREE, LAMP, POND, FARM, HOUSE, ANIMAL, BRIDGE, PET }
 
 /** 作るのに要る資源と時間。 */
 class Recipe(
@@ -174,8 +174,8 @@ object Recipes {
     val all: List<Recipe> = listOf(
         Recipe(BuildKind.FLOWER, "花を植える", "どんな花が咲くかはお楽しみ", "花が咲きました", 0, 1, 0, 1 * HOUR_MS),
         Recipe(BuildKind.POND, "池をつくる", "彗星の氷が溶けて水になる", "池ができました", 0, 0, 3, 4 * HOUR_MS),
-        Recipe(BuildKind.FARM, "畑をつくる", "生きものの食べものを育てる", "畑ができました", 0, 2, 1, 5 * HOUR_MS),
-        Recipe(BuildKind.ANIMAL, "卵をかえす", "何がうまれるかはわからない", "ペットがうまれました", 0, 3, 1, 10 * HOUR_MS),
+        Recipe(BuildKind.FARM, "畑をつくる", "生きものの食べものを育てる", "畑ができました", 0, 2, 1, 2 * HOUR_MS),
+        Recipe(BuildKind.ANIMAL, "卵をかえす", "何がうまれるかはわからない", "家畜が3頭うまれました", 0, 3, 1, 2 * HOUR_MS),
         Recipe(BuildKind.BRIDGE, "橋をかける", "育った衛星とつなぐ", "橋がつながりました", 10, 0, 2, 24 * HOUR_MS)
     )
 
@@ -208,17 +208,23 @@ class AlienEvent(
     val atMillis: Long,
     val outcome: AlienOutcome,
     val droppedResource: ResourceKind? = null,
-    val droppedAmount: Int = 0
+    val droppedAmount: Int = 0,
+    /** DAMAGE のとき、荒れ地の代わりに家畜をさらっていったか。 */
+    val abductedAnimal: Boolean = false
 )
 
 fun alienOutcomeText(e: AlienEvent): String = when (e.outcome) {
-    AlienOutcome.DAMAGE -> "宇宙船が惑星を攻撃した！地表の一部が荒れ地になってしまった"
+    AlienOutcome.DAMAGE -> if (e.abductedAnimal) {
+        "宇宙船が家畜をさらっていった…"
+    } else {
+        "宇宙船が惑星を攻撃した！地表の一部が荒れ地になってしまった"
+    }
     AlienOutcome.RETREAT -> if (e.droppedResource != null) {
         "宇宙船が近づいたが引き返していった (${resourceLabel(e.droppedResource)}+${e.droppedAmount})"
     } else {
         "宇宙船が近づいたが引き返していった"
     }
-    AlienOutcome.VICTORY -> "宇宙船を追い払った！乗り捨てられた船からレアアイテムを見つけた"
+    AlienOutcome.VICTORY -> "宇宙船を追い払った！乗り捨てられた船からレア卵を見つけた"
 }
 
 /** できあがって惑星に建っているもの。variant は木や生きものの種類。 */
@@ -292,13 +298,13 @@ class PlanetState(var birthMillis: Long) {
     /** 畑でとれた作物。生きものが食べる。 */
     var crop: Float = 0f
 
-    /** 宇宙船を追い払って手に入れたもの。使いみちは今後増やす。 */
+    /** 宇宙船を追い払って手に入れたレア卵の在庫。外周が空き次第、ペットが1頭孵る。 */
     var rareItem: Int = 0
 
     /** どこまで時間を進めたか。 */
     var lastTickMillis: Long = birthMillis
 
-    /** 直前の宇宙船襲来がいつだったか (0 ならまだ一度も無い/ペットがいない期間)。 */
+    /** 直前の宇宙船襲来がいつだったか (0 ならまだ一度も無い/家畜がいない期間)。 */
     var lastAlienMillis: Long = 0L
 
     /** 攻撃で荒れ地になった中心角。0 より前なら荒れ地は無い/もう治った。 */
@@ -372,14 +378,17 @@ class PlanetState(var birthMillis: Long) {
         /** 貯めておける作物の上限 (畑 1 つにつき増える)。 */
         fun cropCapacity(farms: Int): Float = 8f + farms * 12f
 
-        /** ペットがいるとき、次の宇宙船襲来までの間隔。 */
-        val ALIEN_INTERVAL_MILLIS = 3L * DAY_MS
+        /** 家畜がいるとき、次の宇宙船襲来までの間隔 (1日に2度)。 */
+        val ALIEN_INTERVAL_MILLIS = DAY_MS / 2L
 
         /** 攻撃を受けたとき荒れ地になる範囲 (惑星をぐるっと 360 度としたときの割合)。 */
         const val WASTELAND_ARC_DEG = 90f
 
         /** 荒れ地が自然に元に戻るまでの時間。 */
         val WASTELAND_HEAL_MILLIS = WEEK_MS
+
+        /** レア卵からペットが孵るまでの時間。 */
+        val PET_HATCH_MILLIS = HOUR_MS
 
         /** 生まれたての惑星。家が一軒と住人が一人だけ。 */
         fun newPlanet(nowMillis: Long): PlanetState {
@@ -525,8 +534,8 @@ class PlanetState(var birthMillis: Long) {
     }
 
     /**
-     * ペットがいるあいだ、一定間隔で宇宙船が来るかどうかを進める。
-     * ペットがいない間は間隔のカウントを止めておく (いなくなっていた期間ぶん
+     * 家畜がいるあいだ、一定間隔で宇宙船が来るかどうかを進める。
+     * 家畜がいない間は間隔のカウントを止めておく (いなくなっていた期間ぶん
      * まとめて襲来する、ということが起きないように)。
      */
     private fun advanceAliens(now: Long) {
@@ -575,6 +584,10 @@ class PlanetState(var birthMillis: Long) {
             roll < damageWeight + retreatWeight -> AlienOutcome.RETREAT
             else -> AlienOutcome.VICTORY
         }
+        if (outcome == AlienOutcome.DAMAGE) {
+            // 家畜がいれば、荒れ地の代わりにそれをさらっていく
+            return AlienEvent(atMillis, outcome, abductedAnimal = countOf(BuildKind.ANIMAL) > 0)
+        }
         if (outcome != AlienOutcome.RETREAT) return AlienEvent(atMillis, outcome)
         // 撤退時、まれに資源を残していく
         if (alienHash(atMillis, 91L) % 100L >= 25L) return AlienEvent(atMillis, outcome)
@@ -586,8 +599,14 @@ class PlanetState(var birthMillis: Long) {
     private fun applyAlienOutcome(e: AlienEvent) {
         when (e.outcome) {
             AlienOutcome.DAMAGE -> {
-                wastelandStartMillis = e.atMillis
-                wastelandCenterDeg = (alienHash(e.atMillis, 77L) % 360L).toFloat() - 180f
+                val livestock = placed.filter { it.kind == BuildKind.ANIMAL }
+                if (e.abductedAnimal && livestock.isNotEmpty()) {
+                    val idx = (alienHash(e.atMillis, 61L) % livestock.size.toLong()).toInt()
+                    placed.remove(livestock[idx])
+                } else {
+                    wastelandStartMillis = e.atMillis
+                    wastelandCenterDeg = (alienHash(e.atMillis, 77L) % 360L).toFloat() - 180f
+                }
             }
             AlienOutcome.RETREAT -> {
                 if (e.droppedResource != null) add(e.droppedResource, e.droppedAmount)
@@ -635,19 +654,40 @@ class PlanetState(var birthMillis: Long) {
         while (i < jobs.size) {
             val j = jobs[i]
             if (now >= j.endMillis) {
-                if (j.kind == BuildKind.BRIDGE) {
-                    if (j.target >= 0) bridged.add(j.target)
-                    placed.add(Placed(j.kind, j.angleDeg, j.endMillis, 0, j.target, j.dist))
-                } else {
-                    placed.add(
-                        Placed(j.kind, j.angleDeg, j.endMillis, variantFor(j.kind, j.endMillis), -1, j.dist)
-                    )
+                when (j.kind) {
+                    BuildKind.BRIDGE -> {
+                        if (j.target >= 0) bridged.add(j.target)
+                        placed.add(Placed(j.kind, j.angleDeg, j.endMillis, 0, j.target, j.dist))
+                    }
+                    BuildKind.ANIMAL -> {
+                        // 卵から家畜が3頭うまれる。面が足りなければ入るだけにする
+                        for (k in 0 until 3) {
+                            val slot = freeFaceSlot(now) ?: break
+                            val variant = variantFor(j.kind, j.endMillis + k)
+                            placed.add(Placed(j.kind, slot[1], j.endMillis, variant, -1, slot[0]))
+                        }
+                    }
+                    else -> {
+                        placed.add(
+                            Placed(j.kind, j.angleDeg, j.endMillis, variantFor(j.kind, j.endMillis), -1, j.dist)
+                        )
+                    }
                 }
                 jobs.removeAt(i)
             } else {
                 i++
             }
         }
+        startPetHatchIfPossible(now)
+    }
+
+    /** レア卵の在庫があり、まだ孵化中のペットがいなければ、外周の空きに1つ孵化を始める。 */
+    private fun startPetHatchIfPossible(now: Long) {
+        if (rareItem <= 0) return
+        if (jobs.any { it.kind == BuildKind.PET }) return
+        val angle = freeAngleFor(BuildKind.PET) ?: return
+        rareItem -= 1
+        jobs.add(BuildJob(BuildKind.PET, angle, now, now + PET_HATCH_MILLIS))
     }
 
     // ---- 作る ----
@@ -702,7 +742,7 @@ class PlanetState(var birthMillis: Long) {
         BuildKind.HOUSE -> 2.5f
         BuildKind.TREE -> 2.5f
         BuildKind.POND, BuildKind.FARM -> 1.5f
-        BuildKind.FLOWER -> 1.0f
+        BuildKind.FLOWER, BuildKind.PET -> 1.0f
         else -> 0.6f
     }
 
@@ -818,6 +858,7 @@ class PlanetState(var birthMillis: Long) {
 fun variantCount(kind: BuildKind): Int = when (kind) {
     BuildKind.TREE -> 4
     BuildKind.ANIMAL -> 4
+    BuildKind.PET -> 4
     BuildKind.FLOWER -> 4
     else -> 1
 }

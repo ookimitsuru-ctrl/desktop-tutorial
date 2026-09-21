@@ -2,6 +2,7 @@ package com.example.planetgrow.preview
 
 import com.example.planetgrow.core.BuildJob
 import com.example.planetgrow.core.BuildKind
+import com.example.planetgrow.core.DAY_MS
 import com.example.planetgrow.core.Placed
 import com.example.planetgrow.core.PixelBuffer
 import com.example.planetgrow.core.PlanetState
@@ -43,6 +44,10 @@ fun main(args: Array<String>) {
     }
     if (args.isNotEmpty() && args[0] == "aliens") {
         renderAlienFeatures(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
+    if (args.isNotEmpty() && args[0] == "specupdate") {
+        renderSpecUpdate(File(if (args.size > 1) args[1] else "out"))
         return
     }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
@@ -182,6 +187,76 @@ private fun renderSwatches(outDir: File) {
         writePng(buf, File(outDir, "swatch_$name.png"))
         writePng(zoom(buf, sw.w, 4), File(outDir, "swatch_${name}_big.png"))
     }
+    println("-> ${outDir.absolutePath}")
+}
+
+/** 家畜3頭孵化・レア卵からペット・略奪の当たり方を確かめる (仕様変更の確認用)。 */
+private fun renderSpecUpdate(outDir: File) {
+    outDir.mkdirs()
+
+    // 1) 卵をかえす -> 家畜が3頭 (面の空きに)
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        state.seed = 10
+        state.ice = 10
+        val r = Recipes.of(BuildKind.ANIMAL)
+        println("卵をかえす: ${r.durationMillis / 3600000}時間")
+        check(state.startBuild(r, birth)) { "卵をかえすを開始できなかった" }
+        val hatchAt = birth + r.durationMillis + 1000L
+        state.advanceTo(hatchAt)
+        val born = state.placed.count { it.kind == BuildKind.ANIMAL }
+        println("家畜のうまれた数: $born (面配置: ${state.placed.filter { it.kind == BuildKind.ANIMAL }.all { it.dist >= 0f }})")
+    }
+
+    // 2) レア卵 -> ペットが外周に1頭
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        state.rareItem = 1
+        state.advanceTo(birth + 1000L) // rareItem を見て孵化ジョブを開始するはず
+        val hatching = state.jobs.any { it.kind == BuildKind.PET }
+        println("レア卵: 孵化ジョブ開始 = $hatching (在庫 ${state.rareItem})")
+        val hatchAt = birth + PlanetState.PET_HATCH_MILLIS + 2000L
+        state.advanceTo(hatchAt)
+        val pet = state.placed.firstOrNull { it.kind == BuildKind.PET }
+        println("ペットうまれた = ${pet != null}, 外周配置 (dist<0) = ${pet?.dist?.let { it < 0f }}")
+
+        // 見た目を確認
+        val world = World(state)
+        world.syncFromState(hatchAt)
+        val viewBlocks = Scene.viewBlocksFor(state, hatchAt)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val scene = Scene(size[0], size[1], blockPx)
+        val sky = Sky(0.5f, hatchAt)
+        scene.render(world, sky, 0f, 0f)
+        writePng(scene.frame, File(outDir, "pet_rim.png"))
+        writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "pet_rim_zoom.png"))
+    }
+
+    // 3) 略奪: 家畜がいるときの DAMAGE は荒れ地でなく略奪になるか (何度も回して確認)
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        repeat(5) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, it * 3.6f)) }
+        var t = birth
+        var abductions = 0
+        var wastelands = 0
+        repeat(60) {
+            t += PlanetState.ALIEN_INTERVAL_MILLIS
+            state.advanceTo(t)
+            for (e in state.pendingAlienEvents) {
+                if (e.outcome == com.example.planetgrow.core.AlienOutcome.DAMAGE) {
+                    if (e.abductedAnimal) abductions++ else wastelands++
+                }
+            }
+            state.pendingAlienEvents.clear()
+        }
+        println("家畜5頭ありでの60回試行: 略奪$abductions 回 / 荒れ地$wastelands 回 (家畜がいる限り略奪のはず) / 残り家畜${state.countOf(BuildKind.ANIMAL)}頭")
+        println("宇宙人襲来の間隔: ${PlanetState.ALIEN_INTERVAL_MILLIS / 3600000}時間 (1日に${DAY_MS / PlanetState.ALIEN_INTERVAL_MILLIS}度)")
+    }
+
     println("-> ${outDir.absolutePath}")
 }
 
