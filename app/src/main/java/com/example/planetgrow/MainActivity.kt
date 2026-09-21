@@ -62,6 +62,8 @@ import com.example.planetgrow.core.World
 import com.example.planetgrow.core.alienOutcomeText
 import com.example.planetgrow.core.formatDuration
 import com.example.planetgrow.core.skyFallLabel
+import com.example.planetgrow.core.volcanoEruptedText
+import com.example.planetgrow.core.volcanoSpawnedText
 import java.time.Instant
 import java.time.ZoneId
 
@@ -140,7 +142,10 @@ fun PlanetScreen() {
         val arrivals = state.advanceTo(now)
         val alienEvents = state.pendingAlienEvents.toList()
         state.pendingAlienEvents.clear()
+        val eruptions = state.pendingEruptions.toList()
+        state.pendingEruptions.clear()
         world.syncFromState(now)
+        eruptions.lastOrNull()?.let { world.eruptVolcano(it) }
         prefs.save(state)
         val parts = ArrayList<String>()
         if (arrivals.isNotEmpty()) {
@@ -148,6 +153,7 @@ fun PlanetScreen() {
             parts.add(offlineSummary(arrivals))
         }
         if (alienEvents.isNotEmpty()) parts.add(alienOutcomeText(alienEvents.last()))
+        if (eruptions.isNotEmpty()) parts.add(volcanoEruptedText())
         if (parts.isNotEmpty()) notice = Notice(parts.joinToString("  "), System.currentTimeMillis() + 9000L)
         version++
     }
@@ -202,6 +208,8 @@ fun PlanetScreen() {
                     val arrivals = state.advanceTo(nowMs)
                     val alienEvents = state.pendingAlienEvents.toList()
                     state.pendingAlienEvents.clear()
+                    val eruptions = state.pendingEruptions.toList()
+                    state.pendingEruptions.clear()
                     if (arrivals.isNotEmpty()) {
                         for (a in arrivals) world.addFalling(a.kind, a.angleDeg, a.amount)
                         notice = Notice(arrivalText(arrivals.last()), System.currentTimeMillis() + 7000L)
@@ -214,11 +222,22 @@ fun PlanetScreen() {
                         prefs.save(state)
                         version++
                     }
+                    if (eruptions.isNotEmpty()) {
+                        world.syncFromState(nowMs)
+                        world.eruptVolcano(eruptions.last())
+                        notice = Notice(volcanoEruptedText(), System.currentTimeMillis() + 8000L)
+                        prefs.save(state)
+                        version++
+                    }
                     if (state.placed.size != placedBefore) {
                         val done = state.placed.last()
                         world.syncFromState(nowMs)
-                        // PET は「つくる」のレシピが無い (レア卵から自動でうまれる) ので別扱い
-                        val doneText = if (done.kind == BuildKind.PET) "ペットがうまれました" else Recipes.of(done.kind).doneText
+                        // PET・VOLCANO は「つくる」のレシピが無い (自動で出現する) ので別扱い
+                        val doneText = when (done.kind) {
+                            BuildKind.PET -> "ペットがうまれました"
+                            BuildKind.VOLCANO -> volcanoSpawnedText()
+                            else -> Recipes.of(done.kind).doneText
+                        }
                         notice = Notice(doneText, System.currentTimeMillis() + 7000L)
                         prefs.save(state)
                         version++
@@ -360,7 +379,7 @@ private fun BoxScope.Hud(
         )
         if (state.stillGrowing(nowMillis)) {
             Text(
-                text = "地殻変動まで " + formatDuration(state.nextGrowthInMillis(nowMillis)),
+                text = "惑星が育つまで " + formatDuration(state.nextGrowthInMillis(nowMillis)),
                 color = Color(0x99BFD4F0),
                 fontSize = 10.sp,
                 fontFamily = FontFamily.Monospace

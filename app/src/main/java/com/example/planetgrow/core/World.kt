@@ -605,6 +605,49 @@ class World(val state: PlanetState) {
         }
     }
 
+    /** 火山が活発化した瞬間の、噴石と噴煙が派手に出る一度きりの演出。 */
+    fun eruptVolcano(angleDeg: Float) {
+        val a = toRad(angleDeg)
+        val nx = cos(a)
+        val ny = sin(a)
+        val surf = planet.groundRadius(a, 2.0f)
+        val originX = nx * (surf + 5.5f)
+        val originY = ny * (surf + 5.5f)
+        val rockColor = rgbOf(0x5A4A42)
+        val emberColor = rgbOf(0xFF8A1E)
+        repeat(28) {
+            val spread = rnd.range(-1.4f, 1.4f)
+            val sx = -ny * spread
+            val sy = nx * spread
+            val speed = rnd.range(2.6f, 5.6f)
+            val p = Particle(
+                originX + sx * 0.3f,
+                originY + sy * 0.3f,
+                (nx * 1.2f + sx) * speed * 0.5f,
+                (ny * 1.2f + sy) * speed * 0.5f,
+                if (rnd.int(100) < 55) rockColor else emberColor
+            )
+            p.maxLife = 1.0f + rnd.float() * 1.2f
+            p.size = 2f + rnd.int(3)
+            p.gravity = -3.2f
+            p.groundRadius = surf
+            particles.add(p)
+        }
+        repeat(16) {
+            val jitter = rnd.range(-1.6f, 1.6f)
+            val p = Particle(
+                originX + (-ny) * jitter,
+                originY + nx * jitter,
+                nx * 0.3f + rnd.range(-0.18f, 0.18f),
+                ny * 0.3f + rnd.range(-0.18f, 0.18f),
+                Art.smokeColor(150 + rnd.int(60))
+            )
+            p.maxLife = 2.6f + rnd.float() * 1.8f
+            p.size = 3f + rnd.int(4)
+            particles.add(p)
+        }
+    }
+
     /** 彗星が近くをかすめる間、氷のきらめきを少しずつ降らせる。 */
     private fun spawnIceSparkle(f: FallingObject) {
         if (particles.size > 170) return

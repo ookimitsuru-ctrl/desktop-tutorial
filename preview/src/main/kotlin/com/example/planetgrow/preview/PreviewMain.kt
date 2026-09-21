@@ -12,6 +12,7 @@ import com.example.planetgrow.core.Sky
 import com.example.planetgrow.core.Tex
 import com.example.planetgrow.core.World
 import com.example.planetgrow.core.rgbOf
+import com.example.planetgrow.core.shortestAngle
 import com.example.planetgrow.core.tiledSwatch
 import java.awt.image.BufferedImage
 import java.io.File
@@ -48,6 +49,10 @@ fun main(args: Array<String>) {
     }
     if (args.isNotEmpty() && args[0] == "specupdate") {
         renderSpecUpdate(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
+    if (args.isNotEmpty() && args[0] == "volcano") {
+        renderVolcanoUpdate(File(if (args.size > 1) args[1] else "out"))
         return
     }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
@@ -260,6 +265,129 @@ private fun renderSpecUpdate(outDir: File) {
     println("-> ${outDir.absolutePath}")
 }
 
+/**
+ * 地殻変動 (3日ごと、9日で1周期: 火山出現→活発化→惑星成長) の確認用。
+ */
+private fun renderVolcanoUpdate(outDir: File) {
+    outDir.mkdirs()
+    val tick = PlanetState.TECTONIC_TICK_MILLIS
+
+    // 1) 周期そのもの: 3日目に出現、6日目に活発化、9日目に成長、これが繰り返す
+    run {
+        val state = PlanetState.newPlanet(0L)
+        val startRadius = state.radius(0L)
+
+        state.advanceTo(tick - 1000L)
+        println("2日目: 火山 ${state.countOf(BuildKind.VOLCANO)}個 (0のはず)")
+
+        state.advanceTo(tick + 1000L)
+        val v1 = state.placed.first { it.kind == BuildKind.VOLCANO }
+        println("3日目: 火山 ${state.countOf(BuildKind.VOLCANO)}個 (1のはず) 角度=${v1.angleDeg}")
+
+        state.advanceTo(tick * 2 - 1000L)
+        println("6日目直前: 噴火予告 ${state.pendingEruptions.size}件 (0のはず)")
+
+        state.advanceTo(tick * 2 + 1000L)
+        val erupted1 = state.pendingEruptions.toList()
+        state.pendingEruptions.clear()
+        println("6日目: 噴火 ${erupted1.size}件 (1のはず) 角度一致=${erupted1.firstOrNull() == v1.angleDeg}")
+
+        state.advanceTo(tick * 3 + 1000L)
+        val r9 = state.radius(tick * 3 + 1000L)
+        println("9日目: 半径 $r9 (${startRadius + PlanetState.RADIUS_PER_PERIOD} のはず)")
+
+        state.advanceTo(tick * 4 + 1000L)
+        println("12日目: 火山 ${state.countOf(BuildKind.VOLCANO)}個 (2のはず、2周目の出現)")
+
+        state.advanceTo(tick * 5 + 1000L)
+        val erupted2 = state.pendingEruptions.toList()
+        state.pendingEruptions.clear()
+        println("15日目: 噴火 ${erupted2.size}件 (1のはず、通算2件目)")
+
+        state.advanceTo(tick * 6 + 1000L)
+        val r18 = state.radius(tick * 6 + 1000L)
+        println("18日目: 半径 $r18 (${startRadius + PlanetState.RADIUS_PER_PERIOD * 2} のはず)")
+    }
+
+    // 2) 火山が出る場所に花があったときの扱い (動かす/合体させる)
+    run {
+        // まず花なしで、火山がどの角度に出るか観測する (アルゴリズムは決定的なので毎回同じ角度になる)
+        val probe = PlanetState.newPlanet(0L)
+        probe.advanceTo(tick + 1000L)
+        val volcanoAngle = probe.placed.first { it.kind == BuildKind.VOLCANO }.angleDeg
+        println("火山の出る角度: $volcanoAngle (これは家の位置だけで決まる)")
+
+        // 2a) そこに花が1本だけ -> 惑星はまだ空いているので、別の場所へ動くはず
+        run {
+            val state = PlanetState.newPlanet(0L)
+            state.placed.add(Placed(BuildKind.FLOWER, volcanoAngle, 0L, 1))
+            state.advanceTo(tick + 1000L)
+            val flower = state.placed.first { it.kind == BuildKind.FLOWER }
+            val moved = kotlin.math.abs(shortestAngle(flower.angleDeg - volcanoAngle)) > 1f
+            println("花1本 (空き地あり): 火山と重なった花が動いた=$moved (新しい角度=${flower.angleDeg}, target=${flower.target})")
+        }
+
+        // 2b) ふちを花で埋め尽くす -> 動かす空き地が無いので、他の花と合体して大きくなるはず
+        run {
+            val state = PlanetState.newPlanet(0L)
+            for (i in 0 until 36) {
+                val a = -90f + i * 10f
+                if (kotlin.math.abs(shortestAngle(a - volcanoAngle)) < 1f) continue
+                if (state.placed.any { kotlin.math.abs(shortestAngle(it.angleDeg - a)) < 1f }) continue
+                state.placed.add(Placed(BuildKind.FLOWER, a, 0L, i % 4))
+            }
+            state.placed.add(Placed(BuildKind.FLOWER, volcanoAngle, 0L, 0))
+            val before = state.countOf(BuildKind.FLOWER)
+            state.advanceTo(tick + 1000L)
+            val after = state.countOf(BuildKind.FLOWER)
+            val merged = state.placed.any { it.kind == BuildKind.FLOWER && it.target == 1 }
+            println("花で埋め尽くし (空き地なし): 花の数 $before -> $after (1減って合体するはず) 合体した花あり=$merged")
+        }
+    }
+
+    // 3) 見た目: おとなしい火山・活発化した火山・合体した大きい花・ふつうの花を並べて確認
+    run {
+        val now = System.currentTimeMillis()
+        val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+        state.placed.add(Placed(BuildKind.VOLCANO, 40f, now))
+        state.placed.add(Placed(BuildKind.VOLCANO, 90f, now - PlanetState.VOLCANO_ACTIVE_AFTER - 1000L))
+        state.placed.add(Placed(BuildKind.FLOWER, -40f, now, 1, 1))
+        state.placed.add(Placed(BuildKind.FLOWER, -70f, now, 1, 0))
+        val world = World(state)
+        world.syncFromState(now)
+        val viewBlocks = Scene.viewBlocksFor(state, now)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val scene = Scene(size[0], size[1], blockPx)
+        val sky = Sky(0.5f, now)
+        scene.render(world, sky, 0f, 0f)
+        writePng(scene.frame, File(outDir, "volcano_and_bigflower.png"))
+        writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "volcano_and_bigflower_zoom.png"))
+        println("見た目確認: おとなしい火山=40°, 活発化した火山=90°, 合体した大きい花=-40°, ふつうの花=-70°")
+    }
+
+    // 4) 噴火エフェクト (噴石・噴煙) が実際に出るか
+    run {
+        val now = System.currentTimeMillis()
+        val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+        state.placed.add(Placed(BuildKind.VOLCANO, 0f, now - PlanetState.VOLCANO_ACTIVE_AFTER - 1000L))
+        val world = World(state)
+        world.syncFromState(now)
+        world.eruptVolcano(0f)
+        println("噴火直後の粒子数: ${world.particles.size} (噴石+噴煙で40個前後のはず)")
+        val viewBlocks = Scene.viewBlocksFor(state, now)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val scene = Scene(size[0], size[1], blockPx)
+        val sky = Sky(0.5f, now)
+        scene.render(world, sky, 0f, 1f / 30f)
+        writePng(scene.frame, File(outDir, "volcano_eruption.png"))
+        writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "volcano_eruption_zoom.png"))
+    }
+
+    println("-> ${outDir.absolutePath}")
+}
+
 /** 花畑・荒れ地・宇宙船襲来の当たり方を確かめる (仕様変更の確認用)。 */
 private fun renderAlienFeatures(outDir: File) {
     outDir.mkdirs()
@@ -267,9 +395,9 @@ private fun renderAlienFeatures(outDir: File) {
     // 1) 花の茂み (大きさ・色のバリエーション)
     run {
         val clusters = com.example.planetgrow.core.Art.flowerClusters
-        val w = clusters.maxOf { it.w }
-        val h = clusters.sumOf { it.h + 2 }
-        val buf = PixelBuffer(w * 6, h)
+        val totalW = clusters.sumOf { it.w + 4 }
+        val h = clusters.maxOf { it.h }
+        val buf = PixelBuffer(totalW, h)
         var x = 0
         for (c in clusters) {
             buf.draw(c, x, 0)

@@ -167,12 +167,32 @@ object Art {
         return buf.toSprite()
     }
 
-    /** 花畑は 1 種類だけでなく、色んな花が一緒に咲く。 */
+    /** 火山に追いやられて他の花と合体した、ひとまわり大きく賑やかな茂み。 */
+    private fun flowerClusterBig(indices: IntArray): Sprite {
+        val w = 40
+        val h = 26
+        val buf = PixelBuffer(w, h)
+        val offsets = arrayOf(intArrayOf(0, 6), intArrayOf(8, 0), intArrayOf(17, 7), intArrayOf(26, 1))
+        for (k in indices.indices) {
+            val off = offsets[k % offsets.size]
+            buf.draw(flowers[indices[k] % flowers.size], off[0], off[1])
+        }
+        return buf.toSprite()
+    }
+
+    /**
+     * 花畑は 1 種類だけでなく、色んな花が一緒に咲く。
+     * 4..7 は、火山に場所を譲って他の花と合体した「大きい花」の見た目 (Placed.target で選ばれる)。
+     */
     val flowerClusters: Array<Sprite> = arrayOf(
         flowerCluster(intArrayOf(0, 1)),
         flowerCluster(intArrayOf(1, 2, 3)),
         flowerCluster(intArrayOf(2, 3, 0)),
-        flowerCluster(intArrayOf(3, 0, 1))
+        flowerCluster(intArrayOf(3, 0, 1)),
+        flowerClusterBig(intArrayOf(0, 1, 2, 3)),
+        flowerClusterBig(intArrayOf(1, 2, 3, 0)),
+        flowerClusterBig(intArrayOf(2, 3, 0, 1)),
+        flowerClusterBig(intArrayOf(3, 0, 1, 2))
     )
 
     val grassTuft: Sprite = Sprite.of(

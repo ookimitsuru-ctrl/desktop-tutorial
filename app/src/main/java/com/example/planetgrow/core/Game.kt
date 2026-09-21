@@ -141,8 +141,8 @@ object SkyFall {
     }
 }
 
-/** 作れるもの。PET は「つくる」からは選べず、レア卵からだけうまれる。 */
-enum class BuildKind { FLOWER, TREE, LAMP, POND, FARM, HOUSE, ANIMAL, BRIDGE, PET }
+/** 作れるもの。PET は「つくる」からは選べず、レア卵からだけうまれる。VOLCANO は地殻変動でひとりでにできる。 */
+enum class BuildKind { FLOWER, TREE, LAMP, POND, FARM, HOUSE, ANIMAL, BRIDGE, PET, VOLCANO }
 
 /** 作るのに要る資源と時間。 */
 class Recipe(
@@ -226,6 +226,12 @@ fun alienOutcomeText(e: AlienEvent): String = when (e.outcome) {
     }
     AlienOutcome.VICTORY -> "宇宙船を追い払った！乗り捨てられた船からレア卵を見つけた"
 }
+
+/** 火山が出現したときの知らせ。 */
+fun volcanoSpawnedText(): String = "地殻変動で火山ができた"
+
+/** 火山が活発化して噴火したときの知らせ。 */
+fun volcanoEruptedText(): String = "火山が活発化して、噴火した！"
 
 /** できあがって惑星に建っているもの。variant は木や生きものの種類。 */
 class Placed(
@@ -311,6 +317,9 @@ class PlanetState(var birthMillis: Long) {
     var wastelandStartMillis: Long = 0L
     var wastelandCenterDeg: Float = 0f
 
+    /** 地殻変動 (3日ごと) を何回分すでに処理したか。 */
+    var tectonicTicksDone: Int = 0
+
     val placed = ArrayList<Placed>()
     val jobs = ArrayList<BuildJob>()
 
@@ -319,6 +328,9 @@ class PlanetState(var birthMillis: Long) {
 
     /** advanceTo() で新しく起きた襲来。呼び出し側が読んだらクリアすること。 */
     val pendingAlienEvents = ArrayList<AlienEvent>()
+
+    /** advanceTo() で新しく活発化した火山の角度。呼び出し側が読んだらクリアすること。 */
+    val pendingEruptions = ArrayList<Float>()
 
     fun resource(kind: ResourceKind): Int = when (kind) {
         ResourceKind.MINERAL -> mineral
@@ -342,14 +354,28 @@ class PlanetState(var birthMillis: Long) {
         /** 生まれたときの半径。 */
         const val START_RADIUS = 6.5f
 
-        /** 1 週間ごとに大きくなる量。 */
-        const val RADIUS_PER_WEEK = 0.5f
+        /** 地殻変動 (3日おき) が3回進むごと、つまり9日ごとに大きくなる量。 */
+        const val RADIUS_PER_PERIOD = 0.5f
 
         /**
-         * 3 ヶ月 (13 週) で成長が止まる。
+         * 地殻変動のひと区切り。3 日ごとに次の段階へ進み、3 段階 (9日) で1周期:
+         *   1段階目 (3日目)  … 火山が出現
+         *   2段階目 (6日目)  … その火山が活発化 (噴火の演出)
+         *   3段階目 (9日目)  … 惑星が少し大きくなる (以前と同じ量)
+         */
+        val TECTONIC_TICK_MILLIS = 3L * DAY_MS
+
+        /** 1 周期 = 地殻変動 3 回分 = 9 日。惑星が大きくなる間隔。 */
+        val PERIOD_MILLIS = TECTONIC_TICK_MILLIS * 3
+
+        /**
+         * 3 ヶ月 (13 周期 = 117日) で成長が止まる。
          * 0.5 x 13 = 6.5 なので、そのとき直径はスタート時のちょうど 2 倍になる。
          */
-        const val GROWTH_WEEKS = 13
+        const val GROWTH_PERIODS = 13
+
+        /** 火山が活発化する (噴火演出が出る) までの、生まれてからの時間。 */
+        val VOLCANO_ACTIVE_AFTER = TECTONIC_TICK_MILLIS
 
         /** 成長が止まってから最初の衛星ができるまで。 */
         const val FIRST_SATELLITE_AFTER = 0L
@@ -419,6 +445,7 @@ class PlanetState(var birthMillis: Long) {
                         "alien" -> state?.lastAlienMillis = value.toLong()
                         "wasteStart" -> state?.wastelandStartMillis = value.toLong()
                         "wasteDeg" -> state?.wastelandCenterDeg = value.toFloat()
+                        "tectonic" -> state?.tectonicTicksDone = value.toInt()
                         "bridge" -> state?.bridged?.add(value.toInt())
                         "p" -> {
                             val f = value.split(',')
@@ -453,16 +480,16 @@ class PlanetState(var birthMillis: Long) {
     fun ageMillis(now: Long): Long = max(0L, now - birthMillis)
 
     /**
-     * 惑星の半径。地殻変動で 1 週間ごとに少しずつ大きくなり、3 ヶ月で止まる。
+     * 惑星の半径。地殻変動 3 回 (9 日) ごとに少しずつ大きくなり、3 ヶ月で止まる。
      * 建物の数では変わらない。
      */
     fun radius(now: Long): Float {
-        val weeks = min(GROWTH_WEEKS.toLong(), ageMillis(now) / WEEK_MS).toInt()
-        return START_RADIUS + RADIUS_PER_WEEK * weeks
+        val periods = min(GROWTH_PERIODS.toLong(), ageMillis(now) / PERIOD_MILLIS).toInt()
+        return START_RADIUS + RADIUS_PER_PERIOD * periods
     }
 
     /** 成長が止まる時刻。 */
-    fun growthEndMillis(): Long = birthMillis + GROWTH_WEEKS * WEEK_MS
+    fun growthEndMillis(): Long = birthMillis + GROWTH_PERIODS * PERIOD_MILLIS
 
     /** まだ大きくなるか。 */
     fun stillGrowing(now: Long): Boolean = now < growthEndMillis()
@@ -470,8 +497,8 @@ class PlanetState(var birthMillis: Long) {
     /** 次に大きくなるまでの時間。 */
     fun nextGrowthInMillis(now: Long): Long {
         if (!stillGrowing(now)) return 0L
-        val weeks = ageMillis(now) / WEEK_MS
-        return birthMillis + (weeks + 1) * WEEK_MS - now
+        val periods = ageMillis(now) / PERIOD_MILLIS
+        return birthMillis + (periods + 1) * PERIOD_MILLIS - now
     }
 
     // ---- 衛星 ----
@@ -506,7 +533,7 @@ class PlanetState(var birthMillis: Long) {
     }
 
     /** 育ちきったときの惑星の半径。 */
-    fun maxRadius(): Float = START_RADIUS + RADIUS_PER_WEEK * GROWTH_WEEKS
+    fun maxRadius(): Float = START_RADIUS + RADIUS_PER_PERIOD * GROWTH_PERIODS
 
     /** 橋をかけられる衛星 (育ちきっていて、まだつながっていないもの)。 */
     fun bridgeTarget(now: Long): Satellite? =
@@ -528,6 +555,7 @@ class PlanetState(var birthMillis: Long) {
         for (a in arrivals) add(a.kind.resource, a.amount)
         advanceFarming(lastTickMillis, now)
         advanceAliens(now)
+        advanceTectonics(now)
         lastTickMillis = now
         finishJobs(now)
         return arrivals
@@ -614,6 +642,65 @@ class PlanetState(var birthMillis: Long) {
             AlienOutcome.VICTORY -> {
                 rareItem += 1
             }
+        }
+    }
+
+    /**
+     * 地殻変動を進める。3 日ごとに 1 段階進み、3 段階 (9日) で1周期:
+     *   1段階目 … 火山が出現 (花があれば動かすか合体させる)
+     *   2段階目 … 直前の火山が活発化して噴火する
+     *   3段階目 … 惑星が少し大きくなる (radius() が birthMillis からの経過で自動計算するので、ここでは何もしない)
+     */
+    private fun advanceTectonics(now: Long) {
+        val targetTicks = (ageMillis(now) / TECTONIC_TICK_MILLIS).toInt()
+        var guard = 0
+        while (tectonicTicksDone < targetTicks && guard < 1000) {
+            val tick = tectonicTicksDone + 1
+            val atMillis = birthMillis + tick * TECTONIC_TICK_MILLIS
+            when (tick % 3) {
+                1 -> spawnVolcano(atMillis)
+                2 -> intensifyLatestVolcano(atMillis)
+            }
+            tectonicTicksDone = tick
+            guard++
+        }
+    }
+
+    /** 惑星のふちに新しい火山が出現する。 */
+    private fun spawnVolcano(atMillis: Long) {
+        val angle = freeAngleAt(BuildKind.VOLCANO, atMillis, ignoreFlowers = true) ?: return
+        placed.add(Placed(BuildKind.VOLCANO, angle, atMillis))
+        resolveFlowerConflict(angle, atMillis)
+    }
+
+    /** 直前に出た火山が活発化して噴火する。 */
+    private fun intensifyLatestVolcano(atMillis: Long) {
+        val volcano = placed.lastOrNull { it.kind == BuildKind.VOLCANO } ?: return
+        pendingEruptions.add(volcano.angleDeg)
+    }
+
+    /**
+     * 火山の出た場所に花があれば、空き地に移す。空き地が無ければ、
+     * 他の花と合体させて (片方は消して) ひとまわり大きい花にする。
+     */
+    private fun resolveFlowerConflict(volcanoAngle: Float, atMillis: Long) {
+        val r = radius(atMillis)
+        val need = (spacingDeg(BuildKind.VOLCANO, r) + spacingDeg(BuildKind.FLOWER, r)) / 2f
+        val flower = placed.filter { it.kind == BuildKind.FLOWER }
+            .minByOrNull { kotlin.math.abs(shortestAngle(it.angleDeg - volcanoAngle)) }
+            ?.takeIf { kotlin.math.abs(shortestAngle(it.angleDeg - volcanoAngle)) < need }
+            ?: return
+        val idx = placed.indexOf(flower)
+        val freeSpot = freeAngleAt(BuildKind.FLOWER, atMillis)
+        if (freeSpot != null) {
+            placed[idx] = Placed(flower.kind, freeSpot, flower.doneMillis, flower.variant, flower.target, flower.dist)
+            return
+        }
+        val partner = placed.filter { it.kind == BuildKind.FLOWER && it !== flower }
+            .minByOrNull { kotlin.math.abs(shortestAngle(it.angleDeg - volcanoAngle)) }
+        if (partner != null) {
+            placed.remove(partner)
+            placed[placed.indexOf(flower)] = Placed(flower.kind, flower.angleDeg, flower.doneMillis, flower.variant, 1, flower.dist)
         }
     }
 
@@ -741,6 +828,7 @@ class PlanetState(var birthMillis: Long) {
     fun halfWidthBlocks(kind: BuildKind): Float = when (kind) {
         BuildKind.HOUSE -> 2.5f
         BuildKind.TREE -> 2.5f
+        BuildKind.VOLCANO -> 2.0f
         BuildKind.POND, BuildKind.FARM -> 1.5f
         BuildKind.FLOWER, BuildKind.PET -> 1.0f
         else -> 0.6f
@@ -797,10 +885,12 @@ class PlanetState(var birthMillis: Long) {
     /**
      * 空いている場所を探す。10 度きざみの候補から、
      * まわりが一番広く空いているところを選ぶ。
+     * ignoreFlowers なら、花があっても気にせず選ぶ (火山が花の上に出るときに使う。
+     * 出たあとその花をどかす/合体させるのは呼び出し側の仕事)。
      */
-    fun freeAngleFor(kind: BuildKind): Float? {
-        val r = radius(max(lastTickMillis, birthMillis))
-        val used = occupied()
+    private fun freeAngleAt(kind: BuildKind, atMillis: Long, ignoreFlowers: Boolean = false): Float? {
+        val r = radius(atMillis)
+        val used = occupied().filter { !ignoreFlowers || it.kind != BuildKind.FLOWER }
         var best: Float? = null
         var bestGap = -1f
         for (i in 0 until 36) {
@@ -824,6 +914,8 @@ class PlanetState(var birthMillis: Long) {
         return best
     }
 
+    fun freeAngleFor(kind: BuildKind): Float? = freeAngleAt(kind, max(lastTickMillis, birthMillis))
+
     // ---- 保存 ----
 
     fun save(): String {
@@ -839,6 +931,7 @@ class PlanetState(var birthMillis: Long) {
         sb.append("alien=").append(lastAlienMillis).append('\n')
         sb.append("wasteStart=").append(wastelandStartMillis).append('\n')
         sb.append("wasteDeg=").append(wastelandCenterDeg).append('\n')
+        sb.append("tectonic=").append(tectonicTicksDone).append('\n')
         for (b in bridged) sb.append("bridge=").append(b).append('\n')
         for (p in placed) {
             sb.append("p=").append(p.kind.name).append(',').append(p.angleDeg).append(',')

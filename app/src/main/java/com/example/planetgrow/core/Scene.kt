@@ -618,11 +618,11 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
     private fun drawBuildings(world: World, sky: Sky, now: Long) {
         for (placed in world.state.placed) {
             if (placed.kind == BuildKind.BRIDGE) continue
-            drawOne(world, sky, now, placed.kind, placed.angleDeg, 1f, false, placed.variant, placed.doneMillis, placed.dist)
+            drawOne(world, sky, now, placed.kind, placed.angleDeg, 1f, false, placed.variant, placed.doneMillis, placed.dist, placed.target)
         }
         for (job in world.state.jobs) {
             if (job.kind == BuildKind.BRIDGE) continue
-            drawOne(world, sky, now, job.kind, job.angleDeg, job.progress(now), true, 0, job.startMillis, job.dist)
+            drawOne(world, sky, now, job.kind, job.angleDeg, job.progress(now), true, 0, job.startMillis, job.dist, -1)
         }
     }
 
@@ -636,10 +636,18 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         building: Boolean,
         variant: Int,
         sinceMillis: Long,
-        dist: Float
+        dist: Float,
+        target: Int = -1
     ) {
         val a = toRad(angleDeg)
-        val cropStage = cropStageFor(now, sinceMillis, building, progress)
+        // 火山だけは「作物の育ち具合」ではなく「おとなしい/活発化した」の 2 段階を表す
+        val cropStage = if (kind == BuildKind.VOLCANO) {
+            volcanoStageFor(now, sinceMillis)
+        } else {
+            cropStageFor(now, sinceMillis, building, progress)
+        }
+        // 火山に追いやられて合体した花は、ひとまわり大きい見た目にする
+        val flatVariant = if (kind == BuildKind.FLOWER && target == 1) variant + 4 else variant
 
         // 池や畑のように地面にあるものは、球の手前の面に平らに置く
         if (Structures.isOnSurface(kind) || dist >= 0f) {
@@ -653,7 +661,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         val rot = a + (PI.toFloat() / 2f)
         val tint = surfaceTint(a, sky)
 
-        val flat = Structures.flatSpriteFor(kind, progress, variant)
+        val flat = Structures.flatSpriteFor(kind, progress, flatVariant)
         if (flat != null) {
             val s = sp(flat)
             frame.drawRotated(s, cx, cy, s.w / 2f, s.h.toFloat(), rot, false, tint)
@@ -684,6 +692,10 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
             }
         }
     }
+
+    /** 火山: 0=おとなしい, 1=活発化した (火口が常に赤く光る)。 */
+    private fun volcanoStageFor(now: Long, sinceMillis: Long): Int =
+        if (now - sinceMillis >= PlanetState.VOLCANO_ACTIVE_AFTER) 1 else 0
 
     /** 畑の作物の育ち具合 (0..2)。時間とともに実って、また植え直される。 */
     private fun cropStageFor(now: Long, sinceMillis: Long, building: Boolean, progress: Float): Int {
