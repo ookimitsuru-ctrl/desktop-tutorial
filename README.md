@@ -1,5 +1,25 @@
-# Welcome to GitHub Desktop!
+# 駐車場管理システム
 
-This is your README. READMEs are where you can communicate what your project is and how to use it.
+車両番号を入力して入庫・出庫を管理するWebアプリです。駐車場のスペースは3台分で、満車時に来た車両は待機となり、駐車中の車両が出庫すると待機中の車両が自動的に繰り上がって入庫します。
 
-Write your name on line 6, save it, and then head back to GitHub Desktop.
+## セットアップ
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+## 起動
+
+```bash
+python app.py
+```
+
+ブラウザで http://127.0.0.1:5000/ を開いてください。
+
+## 使い方
+
+- 車両番号を入力して「入庫」を押すと、空きスペースがあればそこに駐車されます。
+- 3台とも埋まっている場合は「待機」扱いになります。
+- 駐車中の車両の「出庫」を押すとその枠が空き、待機中の先頭の車両があれば自動的にその枠へ繰り上がり入庫します。

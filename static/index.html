@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>駐車場管理システム</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --border: #dfe3e8;
+    --text: #1f2933;
+    --muted: #6b7684;
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+    --danger: #dc2626;
+    --danger-dark: #b91c1c;
+    --slot-empty: #f0fdf4;
+    --slot-empty-border: #86efac;
+    --slot-full: #eff6ff;
+    --slot-full-border: #93c5fd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .container { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .entry-form { display: flex; gap: 8px; }
+  input#vehicle-number {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-enter { background: var(--accent); color: #fff; }
+  .btn-enter:hover:not(:disabled) { background: var(--accent-dark); }
+  .btn-exit { background: var(--danger); color: #fff; }
+  .btn-exit:hover:not(:disabled) { background: var(--danger-dark); }
+
+  .section-title {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+
+  .slots { display: grid; gap: 10px; }
+  .slot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1.5px solid var(--slot-empty-border);
+    background: var(--slot-empty);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .slot.filled { border-color: var(--slot-full-border); background: var(--slot-full); }
+  .slot-label { font-weight: 700; color: var(--muted); margin-right: 10px; min-width: 48px; }
+  .slot-number { font-size: 1.05rem; font-weight: 600; }
+  .slot-empty-text { color: var(--muted); font-size: 0.9rem; }
+
+  .waiting-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .waiting-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    border-radius: 8px;
+  }
+  .waiting-order { color: var(--muted); font-size: 0.85rem; }
+  .empty-note { color: var(--muted); font-size: 0.9rem; }
+
+  #response {
+    min-height: 20px;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    color: var(--accent-dark);
+  }
+  #response.error { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>駐車場管理システム</h1>
+  <p class="subtitle">満車時は3台目まで駐車、4台目以降は待機して繰り上がり入庫します</p>
+
+  <div class="card">
+    <div class="entry-form">
+      <input type="text" id="vehicle-number" placeholder="車両番号を入力" autocomplete="off">
+      <button id="enter-btn" class="btn-enter">入庫</button>
+    </div>
+    <div id="response"></div>
+  </div>
+
+  <div class="card">
+    <p class="section-title">駐車場（3台）</p>
+    <div class="slots" id="slots"></div>
+  </div>
+
+  <div class="card">
+    <p class="section-title">待機中</p>
+    <ul class="waiting-list" id="waiting-list"></ul>
+  </div>
+</div>
+
+<script>
+const responseEl = document.getElementById('response');
+const slotsEl = document.getElementById('slots');
+const waitingListEl = document.getElementById('waiting-list');
+const input = document.getElementById('vehicle-number');
+const enterBtn = document.getElementById('enter-btn');
+
+function showMessage(text, isError) {
+  responseEl.textContent = text;
+  responseEl.classList.toggle('error', Boolean(isError));
+}
+
+async function fetchStatus() {
+  const res = await fetch('/api/status');
+  const data = await res.json();
+  render(data);
+}
+
+function render(data) {
+  slotsEl.innerHTML = '';
+  for (let slot = 1; slot <= data.capacity; slot++) {
+    const vehicle = data.parked.find(v => v.slot === slot);
+    const row = document.createElement('div');
+    row.className = 'slot' + (vehicle ? ' filled' : '');
+
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.alignItems = 'center';
+    const label = document.createElement('span');
+    label.className = 'slot-label';
+    label.textContent = `${slot}番`;
+    left.appendChild(label);
+
+    if (vehicle) {
+      const numberEl = document.createElement('span');
+      numberEl.className = 'slot-number';
+      numberEl.textContent = vehicle.vehicle_number;
+      left.appendChild(numberEl);
+    } else {
+      const emptyEl = document.createElement('span');
+      emptyEl.className = 'slot-empty-text';
+      emptyEl.textContent = '空き';
+      left.appendChild(emptyEl);
+    }
+    row.appendChild(left);
+
+    if (vehicle) {
+      const exitBtn = document.createElement('button');
+      exitBtn.className = 'btn-exit';
+      exitBtn.textContent = '出庫';
+      exitBtn.addEventListener('click', () => handleExit(vehicle.id));
+      row.appendChild(exitBtn);
+    }
+
+    slotsEl.appendChild(row);
+  }
+
+  waitingListEl.innerHTML = '';
+  if (data.waiting.length === 0) {
+    const li = document.createElement('li');
+    li.style.background = 'transparent';
+    li.style.border = 'none';
+    li.innerHTML = '<span class="empty-note">待機中の車両はありません</span>';
+    waitingListEl.appendChild(li);
+  } else {
+    data.waiting.forEach((vehicle, index) => {
+      const li = document.createElement('li');
+      const numberEl = document.createElement('span');
+      numberEl.textContent = vehicle.vehicle_number;
+      const orderEl = document.createElement('span');
+      orderEl.className = 'waiting-order';
+      orderEl.textContent = `待機 ${index + 1}番目`;
+      li.appendChild(numberEl);
+      li.appendChild(orderEl);
+      waitingListEl.appendChild(li);
+    });
+  }
+}
+
+async function handleEnter() {
+  const vehicleNumber = input.value.trim();
+  if (!vehicleNumber) {
+    showMessage('車両番号を入力してください', true);
+    return;
+  }
+  enterBtn.disabled = true;
+  try {
+    const res = await fetch('/api/enter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vehicle_number: vehicleNumber }),
+    });
+    const data = await res.json();
+    showMessage(data.message || data.error, !res.ok);
+    if (res.ok) {
+      input.value = '';
+      await fetchStatus();
+    }
+  } finally {
+    enterBtn.disabled = false;
+  }
+}
+
+async function handleExit(vehicleId) {
+  const res = await fetch(`/api/exit/${vehicleId}`, { method: 'POST' });
+  const data = await res.json();
+  showMessage(data.message || data.error, !res.ok);
+  await fetchStatus();
+}
+
+enterBtn.addEventListener('click', handleEnter);
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleEnter();
+});
+
+fetchStatus();
+</script>
+</body>
+</html>
