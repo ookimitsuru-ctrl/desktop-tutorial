@@ -62,6 +62,10 @@ fun main(args: Array<String>) {
         renderEventsUpdate(File(if (args.size > 1) args[1] else "out"))
         return
     }
+    if (args.isNotEmpty() && args[0] == "history") {
+        renderHistoryUpdate(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
     outDir.mkdirs()
     val level = if (args.size > 1) args[1].toIntOrNull() ?: 0 else 0
@@ -592,6 +596,75 @@ private fun renderEventsUpdate(outDir: File) {
             writePng(scene.frame, File(outDir, "fleeing_$label.png"))
             writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "fleeing_${label}_zoom.png"))
         }
+    }
+
+    println("-> ${outDir.absolutePath}")
+}
+
+/** 畑の生産速度・食料バランスと、グラフ用の記録 (history) の挙動を確かめる。 */
+private fun renderHistoryUpdate(outDir: File) {
+    outDir.mkdirs()
+
+    // 1) 畑1つ・家畜0頭なら、CROP_PERIOD_MILLIS (2時間) ごとに作物が1ずつ増えるはず
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        state.placed.removeAll { it.kind == BuildKind.ANIMAL }
+        state.placed.add(Placed(BuildKind.FARM, 0f, birth, 0, -1, 0f))
+        state.advanceTo(birth + PlanetState.CROP_PERIOD_MILLIS)
+        println("畑1つ・家畜0頭、${PlanetState.CROP_PERIOD_MILLIS / 3600000}時間後の作物: ${state.crop} (1のはず)")
+    }
+
+    // 2) 畑1つ・家畜2頭は生産と消費がつり合い、在庫がほぼ変わらないはず (畑1つで家畜2頭を養える)
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        state.placed.removeAll { it.kind == BuildKind.ANIMAL }
+        repeat(2) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, 10f + it * 3f)) }
+        state.placed.add(Placed(BuildKind.FARM, 0f, birth, 0, -1, 0f))
+        state.advanceTo(birth + PlanetState.FEEDING_STARTS_AFTER) // 給餌が始まる時点まで進めておく
+        state.crop = 4f // 在庫をコントロールされた値にリセットしてから定常状態を見る
+        val before = state.crop
+        state.advanceTo(birth + PlanetState.FEEDING_STARTS_AFTER + PlanetState.CROP_PERIOD_MILLIS * 10)
+        println("畑1つ・家畜2頭、給餌開始後20時間ぶんの作物: ${state.crop} (開始時の${before}からほぼ変わらないはず)")
+    }
+
+    // 3) history が HISTORY_SAMPLE_MILLIS ごとに記録され、HISTORY_MAX_POINTS件で頭打ちになるか。
+    //    (advanceTo は呼ばれるたびに高々1件しか記録しないので、実際のプレイ同様1時間ずつ進める)
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        val totalHours = PlanetState.HISTORY_MAX_POINTS * 3 // 上限の3倍ぶん、1時間ずつ進める
+        var t = birth
+        repeat(totalHours) {
+            t += PlanetState.HISTORY_SAMPLE_MILLIS
+            state.advanceTo(t)
+        }
+        println("${totalHours}時間、1時間ずつ進めたあとの記録件数: ${state.history.size} (上限の${PlanetState.HISTORY_MAX_POINTS}のはず)")
+        val oldestHour = state.history.first().atMillis / PlanetState.HISTORY_SAMPLE_MILLIS
+        val newestHour = state.history.last().atMillis / PlanetState.HISTORY_SAMPLE_MILLIS
+        println("最古の記録: ${oldestHour}時間目、最新の記録: ${newestHour}時間目 " +
+            "(${totalHours - PlanetState.HISTORY_MAX_POINTS + 1}〜${totalHours}時間目のはず、古い記録は切り捨て)")
+    }
+
+    // 4) 記録された頭数・空腹時間が実際の状態と一致するか、セーブ&ロードで壊れないか
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth) // 家畜3頭・畑0
+        state.advanceTo(birth + PlanetState.FEEDING_STARTS_AFTER) // 空腹を検知させる (この時点では未確定)
+        // このテストで見たいのは空腹の進み方だけなので、宇宙船の飛来はこの先すぐ黙らせておく
+        val checkAt = birth + PlanetState.FEEDING_STARTS_AFTER + PlanetState.HISTORY_SAMPLE_MILLIS * 5
+        state.lastAlienMillis = checkAt
+        state.advanceTo(checkAt)
+        val last = state.history.last()
+        println("空腹が5時間続いた状態の記録: 頭数${last.animalCount} 食料${last.crop} 空腹${last.hungryHours}時間 " +
+            "(空腹3時間ごとに1頭旅立つので頭数2, 食料0.0, 空腹2.0のはず)")
+
+        val reloaded = PlanetState.load(state.save())!!
+        println(
+            "セーブ&ロード後の記録件数: ${reloaded.history.size} (${state.history.size}件のままのはず) " +
+                "最新の頭数: ${reloaded.history.last().animalCount} (${last.animalCount}のはず)"
+        )
     }
 
     println("-> ${outDir.absolutePath}")

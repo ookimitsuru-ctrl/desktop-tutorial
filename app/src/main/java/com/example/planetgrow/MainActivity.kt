@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -38,6 +39,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
@@ -148,6 +150,7 @@ fun PlanetScreen(onGameOver: () -> Unit) {
         }
     }
     var showBuildPanel by remember { mutableStateOf(false) }
+    var showGraphPanel by remember { mutableStateOf(false) }
 
     // 開いた時点で、閉じていた間の飛来・宇宙船の襲来・空腹での旅立ちをまとめて受け取る
     LaunchedEffect(Unit) {
@@ -338,7 +341,8 @@ fun PlanetScreen(onGameOver: () -> Unit) {
             nowMillis = nowMs,
             notice = notice?.text,
             focus = focusState.intValue,
-            onOpenBuild = { showBuildPanel = true }
+            onOpenBuild = { showBuildPanel = true },
+            onOpenGraph = { showGraphPanel = true }
         )
 
         if (showBuildPanel) {
@@ -357,6 +361,10 @@ fun PlanetScreen(onGameOver: () -> Unit) {
                     }
                 }
             )
+        }
+
+        if (showGraphPanel) {
+            GraphPanel(state = state, onClose = { showGraphPanel = false })
         }
 
         if (gameOver) {
@@ -386,7 +394,8 @@ private fun BoxScope.Hud(
     nowMillis: Long,
     notice: String?,
     focus: Int,
-    onOpenBuild: () -> Unit
+    onOpenBuild: () -> Unit,
+    onOpenGraph: () -> Unit
 ) {
     val clockText = "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
 
@@ -502,18 +511,32 @@ private fun BoxScope.Hud(
                 Color(0x55000000)
             )
         }
-        Text(
-            text = "つ く る",
-            color = Color(0xFF0B1020),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFE9D9A8))
-                .clickable { onOpenBuild() }
-                .padding(horizontal = 28.dp, vertical = 12.dp)
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = "グラフ",
+                color = Color(0xFFE9D9A8),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0x33FFFFFF))
+                    .clickable { onOpenGraph() }
+                    .padding(horizontal = 22.dp, vertical = 12.dp)
+            )
+            Text(
+                text = "つ く る",
+                color = Color(0xFF0B1020),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE9D9A8))
+                    .clickable { onOpenBuild() }
+                    .padding(horizontal = 28.dp, vertical = 12.dp)
+            )
+        }
     }
 }
 
@@ -664,6 +687,126 @@ private fun RecipeRow(recipe: Recipe, enabled: Boolean, reason: String?, onBuild
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace
             )
+        }
+    }
+}
+
+@Composable
+private fun GraphPanel(state: PlanetState, onClose: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xAA000000))
+            .clickable { onClose() }
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(12.dp)
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xF0101828))
+                .padding(18.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "グラフ",
+                    color = Color(0xFFFFF3D0),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "とじる",
+                    color = Color(0xFF9FB4D8),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.clickable { onClose() }
+                )
+            }
+            val points = state.history
+            if (points.size < 2) {
+                Text(
+                    text = "記録がまだ足りません。しばらく遊ぶとグラフが育ちます。",
+                    color = Color(0x99BFD4F0),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            } else {
+                GraphLine(
+                    label = "家畜の頭数",
+                    values = points.map { it.animalCount.toFloat() },
+                    color = Color(0xFF9BD46A),
+                    current = "${points.last().animalCount}頭"
+                )
+                GraphLine(
+                    label = "食料の量",
+                    values = points.map { it.crop },
+                    color = Color(0xFFF0D874),
+                    current = "%.1f".format(points.last().crop)
+                )
+                GraphLine(
+                    label = "空腹の続いている時間",
+                    values = points.map { it.hungryHours },
+                    color = Color(0xFFFFB0A0),
+                    current = "%.1f時間".format(points.last().hungryHours)
+                )
+            }
+            Text(
+                text = "※ 1時間おきに記録し、直近${PlanetState.HISTORY_MAX_POINTS}件ぶんを表示しています",
+                color = Color(0x88BFD4F0),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+    }
+}
+
+@Composable
+private fun GraphLine(label: String, values: List<Float>, color: Color, current: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                color = Color(0xFFBFD4F0),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace
+            )
+            Text(
+                text = current,
+                color = color,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0x22FFFFFF))
+        ) {
+            val maxV = values.max().coerceAtLeast(0.001f)
+            val n = values.size
+            val w = size.width
+            val h = size.height
+            for (i in 0 until n - 1) {
+                val x1 = w * i / (n - 1).toFloat()
+                val y1 = h - (values[i] / maxV).coerceIn(0f, 1f) * h
+                val x2 = w * (i + 1) / (n - 1).toFloat()
+                val y2 = h - (values[i + 1] / maxV).coerceIn(0f, 1f) * h
+                drawLine(color = color, start = Offset(x1, y1), end = Offset(x2, y2), strokeWidth = 3f)
+            }
         }
     }
 }

@@ -243,6 +243,9 @@ class FleeEvent(val angleDeg: Float, val dist: Float, val variant: Int)
 /** 家畜が空腹で旅立ってしまったときの知らせ。 */
 fun animalFledText(): String = "おなかを空かせた家畜が、食べ物を求めて宇宙へ旅立っていった…"
 
+/** グラフ用に、ある時刻の頭数・食料・空腹の続き具合を記録したもの。 */
+class HistoryPoint(val atMillis: Long, val animalCount: Int, val crop: Float, val hungryHours: Float)
+
 /** できあがって惑星に建っているもの。variant は木や生きものの種類。 */
 class Placed(
     val kind: BuildKind,
@@ -336,6 +339,12 @@ class PlanetState(var birthMillis: Long) {
     /** 家畜が1頭でもいたことがあるか。これが true のあとで0頭になるとゲームオーバー。 */
     var everHadAnimal: Boolean = false
 
+    /** グラフ用の記録をいつ最後に取ったか。 */
+    var lastHistoryMillis: Long = 0L
+
+    /** グラフ用の記録 (頭数・食料・空腹の続き具合)。古い順、直近 HISTORY_MAX_POINTS 件だけ残す。 */
+    val history = ArrayList<HistoryPoint>()
+
     val placed = ArrayList<Placed>()
     val jobs = ArrayList<BuildJob>()
 
@@ -404,18 +413,18 @@ class PlanetState(var birthMillis: Long) {
         const val MAX_SATELLITES = 3
 
         /**
-         * 畑ひとつが作物を 1 つ作るのにかかる時間。実際の畑らしく、種まきから
-         * 収穫まで 1 週間ほどかける (この長さは cropStageFor() の見た目の
-         * 生育段階にもそのまま使われる)。
+         * 畑ひとつが作物を 1 つ作るのにかかる時間 (既定 2 時間ごと)。
+         * この長さは cropStageFor() の見た目の生育段階にもそのまま使われるので、
+         * 2 時間かけて育ち、実ったらまた植え直される。
          */
-        val CROP_PERIOD_MILLIS = WEEK_MS
+        val CROP_PERIOD_MILLIS = 2L * HOUR_MS
 
         /**
          * 生きものひとりが作物を 1 つ食べるのにかかる時間。
-         * 畑と同じ倍率で伸ばしてあるので、畑と生きものの必要な比率は前と変わらない
+         * CROP_PERIOD_MILLIS の 2 倍にしてあるので、畑と生きものの必要な比率は変わらない
          * (畑 1 つでだいたい生きもの 2 匹を養える)。
          */
-        val EAT_PERIOD_MILLIS = 2L * WEEK_MS
+        val EAT_PERIOD_MILLIS = 2L * CROP_PERIOD_MILLIS
 
         /** 生きものが食べはじめるまでの猶予 (惑星が生まれてから 1 週間)。 */
         val FEEDING_STARTS_AFTER = WEEK_MS
@@ -440,6 +449,12 @@ class PlanetState(var birthMillis: Long) {
 
         /** レア卵からペットが孵るまでの時間。 */
         val PET_HATCH_MILLIS = HOUR_MS
+
+        /** グラフ用の記録を取る間隔。 */
+        val HISTORY_SAMPLE_MILLIS = HOUR_MS
+
+        /** グラフ用の記録を残しておく件数の上限。 */
+        const val HISTORY_MAX_POINTS = 48
 
         /** 生まれたての惑星。家が一軒と住人が一人、家畜が3頭。 */
         fun newPlanet(nowMillis: Long): PlanetState {
@@ -478,6 +493,13 @@ class PlanetState(var birthMillis: Long) {
                         "tectonic" -> state?.tectonicTicksDone = value.toInt()
                         "hungrySince" -> state?.hungrySinceMillis = value.toLong()
                         "everHadAnimal" -> state?.everHadAnimal = value == "1"
+                        "lastHist" -> state?.lastHistoryMillis = value.toLong()
+                        "h" -> {
+                            val f = value.split(',')
+                            state?.history?.add(
+                                HistoryPoint(f[0].toLong(), f[1].toInt(), f[2].toFloat(), f[3].toFloat())
+                            )
+                        }
                         "bridge" -> state?.bridged?.add(value.toInt())
                         "p" -> {
                             val f = value.split(',')
@@ -596,11 +618,27 @@ class PlanetState(var birthMillis: Long) {
         }
         finishJobs(now)
         if (countOf(BuildKind.ANIMAL) > 0) everHadAnimal = true
+        sampleHistory(now)
         return arrivals
     }
 
     /** 家畜が1頭もいなくなったらゲームオーバー (一度でも家畜がいたことがある場合だけ)。 */
     fun isGameOver(): Boolean = everHadAnimal && countOf(BuildKind.ANIMAL) <= 0
+
+    /**
+     * グラフ用に、いまの頭数・食料・空腹の続き具合を記録する。
+     * HISTORY_SAMPLE_MILLIS より短い間隔では記録しない (アプリを開いている間に
+     * 何度も advanceTo が呼ばれても、記録が増えすぎないように)。
+     */
+    private fun sampleHistory(now: Long) {
+        if (lastHistoryMillis > 0L && now - lastHistoryMillis < HISTORY_SAMPLE_MILLIS) return
+        lastHistoryMillis = now
+        val hungryHours = if (hungrySinceMillis > 0L) {
+            (now - hungrySinceMillis).coerceAtLeast(0L) / HOUR_MS.toFloat()
+        } else 0f
+        history.add(HistoryPoint(now, countOf(BuildKind.ANIMAL), crop, hungryHours))
+        while (history.size > HISTORY_MAX_POINTS) history.removeAt(0)
+    }
 
     /** 隕石が落ちると、まれに花を1本だめにしてしまう。 */
     private fun maybeDamageFlower(atMillis: Long) {
@@ -1020,6 +1058,11 @@ class PlanetState(var birthMillis: Long) {
         sb.append("tectonic=").append(tectonicTicksDone).append('\n')
         sb.append("hungrySince=").append(hungrySinceMillis).append('\n')
         sb.append("everHadAnimal=").append(if (everHadAnimal) "1" else "0").append('\n')
+        sb.append("lastHist=").append(lastHistoryMillis).append('\n')
+        for (h in history) {
+            sb.append("h=").append(h.atMillis).append(',').append(h.animalCount).append(',')
+                .append(h.crop).append(',').append(h.hungryHours).append('\n')
+        }
         for (b in bridged) sb.append("bridge=").append(b).append('\n')
         for (p in placed) {
             sb.append("p=").append(p.kind.name).append(',').append(p.angleDeg).append(',')
