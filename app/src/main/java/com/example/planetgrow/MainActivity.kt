@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -79,7 +80,7 @@ class MainActivity : ComponentActivity() {
                 if (showTitle) {
                     TitleScreen(onEnter = { showTitle = false })
                 } else {
-                    PlanetScreen()
+                    PlanetScreen(onGameOver = { showTitle = true })
                 }
             }
         }
@@ -123,7 +124,7 @@ private class FrameClock {
 private class Notice(val text: String, val untilRealMillis: Long)
 
 @Composable
-fun PlanetScreen() {
+fun PlanetScreen(onGameOver: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { PlanetPrefs(context) }
     val zone = remember { ZoneId.systemDefault() }
@@ -135,6 +136,8 @@ fun PlanetScreen() {
     var version by remember { mutableIntStateOf(0) }
     var minuteOfDay by remember { mutableIntStateOf(minuteOfDayFor(zone, GameTime.now())) }
     var notice by remember { mutableStateOf<Notice?>(null) }
+    // 家畜が全滅したらゲームオーバー画面を出す
+    var gameOver by remember { mutableStateOf(false) }
     // 表示待ちのお知らせ。1件ずつ、いま出ているものが消えたら次を出す
     val noticeQueue = remember { ArrayDeque<Pair<String, Long>>() }
     fun pushNotice(text: String, durationMillis: Long) {
@@ -161,6 +164,7 @@ fun PlanetScreen() {
         alienEvents.lastOrNull { it.abductedAngleDeg != null }?.abductedAngleDeg?.let { world.startAbduction(it) }
         flees.lastOrNull()?.let { world.startFleeing(it.angleDeg, it.dist, it.variant) }
         prefs.save(state)
+        if (state.isGameOver()) gameOver = true
 
         if (arrivals.isNotEmpty()) {
             for (a in arrivals.takeLast(4)) world.addFalling(a.kind, a.angleDeg, a.amount)
@@ -224,6 +228,10 @@ fun PlanetScreen() {
                     // 飛来や、できあがりがないか見る
                     val placedBefore = state.placed.size
                     val arrivals = state.advanceTo(nowMs)
+                    if (!gameOver && state.isGameOver()) {
+                        gameOver = true
+                        prefs.save(state)
+                    }
                     val alienEvents = state.pendingAlienEvents.toList()
                     state.pendingAlienEvents.clear()
                     val eruptions = state.pendingEruptions.toList()
@@ -349,6 +357,13 @@ fun PlanetScreen() {
                     }
                 }
             )
+        }
+
+        if (gameOver) {
+            GameOverOverlay(day = dayNumber(state, zone, nowMs)) {
+                prefs.save(PlanetState.newPlanet(GameTime.now()))
+                onGameOver()
+            }
         }
     }
 }
@@ -648,6 +663,54 @@ private fun RecipeRow(recipe: Recipe, enabled: Boolean, reason: String?, onBuild
                 color = Color(0x99BFD4F0),
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace
+            )
+        }
+    }
+}
+
+@Composable
+private fun GameOverOverlay(day: Int, onRestart: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xCC000000))
+            .clickable {},
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 420.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xF0101828))
+                .padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "ゲームオーバー",
+                color = Color(0xFFFFB0A0),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+            Text(
+                text = "家畜が1頭もいなくなってしまいました\n${day}日目、惑星はさびしくなってしまいました",
+                color = Color(0xFFBFD4F0),
+                fontSize = 13.sp,
+                fontFamily = FontFamily.Monospace,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "はじめから",
+                color = Color(0xFF0B1020),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE9D9A8))
+                    .clickable { onRestart() }
+                    .padding(horizontal = 28.dp, vertical = 12.dp)
             )
         }
     }

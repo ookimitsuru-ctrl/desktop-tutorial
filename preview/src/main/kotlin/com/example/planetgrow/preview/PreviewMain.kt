@@ -2,7 +2,6 @@ package com.example.planetgrow.preview
 
 import com.example.planetgrow.core.BuildJob
 import com.example.planetgrow.core.BuildKind
-import com.example.planetgrow.core.DAY_MS
 import com.example.planetgrow.core.Placed
 import com.example.planetgrow.core.PixelBuffer
 import com.example.planetgrow.core.PlanetState
@@ -219,7 +218,7 @@ private fun renderSpecUpdate(outDir: File) {
         val hatchAt = birth + r.durationMillis + 1000L
         state.advanceTo(hatchAt)
         val born = state.placed.count { it.kind == BuildKind.ANIMAL }
-        println("家畜のうまれた数: $born (面配置: ${state.placed.filter { it.kind == BuildKind.ANIMAL }.all { it.dist >= 0f }})")
+        println("家畜の数: $born (最初から3頭+今回3頭で6のはず) (面配置: ${state.placed.filter { it.kind == BuildKind.ANIMAL }.all { it.dist >= 0f }})")
     }
 
     // 2) レア卵 -> ペットが外周に1頭
@@ -248,16 +247,16 @@ private fun renderSpecUpdate(outDir: File) {
         writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "pet_rim_zoom.png"))
     }
 
-    // 3) 略奪: 家畜がいるときの DAMAGE は荒れ地でなく略奪になるか (何度も回して確認)
+    // 3) 略奪: 家畜がいるときの DAMAGE は荒れ地でなく略奪になるか (花は無し、何度も回して確認)
     run {
         val birth = 0L
-        val state = PlanetState.newPlanet(birth)
-        repeat(5) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, it * 3.6f)) }
+        val state = PlanetState.newPlanet(birth) // 家畜3頭が自動で面に置かれる
         var t = birth
         var abductions = 0
         var wastelands = 0
-        repeat(60) {
-            t += PlanetState.ALIEN_INTERVAL_MILLIS
+        // advanceAliens の catch-up は1回のadvanceToにつき200時間分までなので、190時間刻みで進める
+        repeat(40) {
+            t += PlanetState.ALIEN_CHECK_MILLIS * 190
             state.advanceTo(t)
             for (e in state.pendingAlienEvents) {
                 if (e.outcome == com.example.planetgrow.core.AlienOutcome.DAMAGE) {
@@ -266,8 +265,8 @@ private fun renderSpecUpdate(outDir: File) {
             }
             state.pendingAlienEvents.clear()
         }
-        println("家畜5頭ありでの60回試行: 略奪$abductions 回 / 荒れ地$wastelands 回 (家畜がいる限り略奪のはず) / 残り家畜${state.countOf(BuildKind.ANIMAL)}頭")
-        println("宇宙人襲来の間隔: ${PlanetState.ALIEN_INTERVAL_MILLIS / 3600000}時間 (1日に${DAY_MS / PlanetState.ALIEN_INTERVAL_MILLIS}度)")
+        println("家畜3頭・花0本、約300日ぶん: 略奪$abductions 回 / 荒れ地$wastelands 回 (家畜がいる限り略奪のはず) / 残り家畜${state.countOf(BuildKind.ANIMAL)}頭")
+        println("宇宙船の判定間隔: ${PlanetState.ALIEN_CHECK_MILLIS / 3600000}時間ごとに${PlanetState.ALIEN_CHANCE_PERCENT}%の確率 (平均すると1日に${"%.1f".format(24.0 * PlanetState.ALIEN_CHANCE_PERCENT / 100)}度ほど)")
     }
 
     println("-> ${outDir.absolutePath}")
@@ -507,16 +506,15 @@ private fun renderMovementUpdate(outDir: File) {
 private fun renderEventsUpdate(outDir: File) {
     outDir.mkdirs()
 
-    // 1) 宇宙船が家畜をさらう時、AlienEvent.abductedAngleDeg が正しく埋まるか
+    // 1) 宇宙船が家畜をさらう時、AlienEvent.abductedAngleDeg が正しく埋まるか (花0本、約300日ぶん)
     run {
         val birth = 0L
         val state = PlanetState.newPlanet(birth)
-        repeat(5) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, it * 3.6f)) }
         var t = birth
         var checked = 0
         var confirmed = 0
-        repeat(200) {
-            t += PlanetState.ALIEN_INTERVAL_MILLIS
+        repeat(40) {
+            t += PlanetState.ALIEN_CHECK_MILLIS * 190
             state.advanceTo(t)
             for (e in state.pendingAlienEvents) {
                 if (e.outcome == com.example.planetgrow.core.AlienOutcome.DAMAGE && e.abductedAnimal) {
@@ -529,11 +527,10 @@ private fun renderEventsUpdate(outDir: File) {
         println("略奪イベント: $checked 回のうち $confirmed 回で角度が記録された (全部一致するはず)")
     }
 
-    // 2) 空腹が FLEE_AFTER_MILLIS 続くごとに、家畜が1頭ずつ旅立つか
+    // 2) 空腹が FLEE_AFTER_MILLIS 続くごとに、家畜が1頭ずつ旅立つか (最初から3頭いる)
     run {
         val birth = 0L
         val state = PlanetState.newPlanet(birth)
-        repeat(3) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, it * 3.6f)) }
         val hungryStart = birth + PlanetState.FEEDING_STARTS_AFTER
 
         state.advanceTo(hungryStart + 1000L)
@@ -663,16 +660,17 @@ private fun renderAlienFeatures(outDir: File) {
         writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "pets_on_surface_zoom.png"))
     }
 
-    // 4) 宇宙船襲来の結果分布 (運まかせの結果がだいたい狙い通りか)
+    // 4) 宇宙船襲来の結果分布: 花が無ければ DAMAGE もあるが、花が1本でもあれば絶対に無いはず
     run {
         val birth = 0L
+        // 家畜が略奪でいなくならないよう、多めに置いておく (新規プレイヤーの3頭より十分多く)
         val state = PlanetState.newPlanet(birth)
-        state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, 0f))
+        repeat(20) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, 20f + it * 3.6f)) }
         var t = birth
         val counts = linkedMapOf("DAMAGE" to 0, "RETREAT" to 0, "VICTORY" to 0)
         var drops = 0
-        repeat(400) {
-            t += PlanetState.ALIEN_INTERVAL_MILLIS
+        repeat(40) {
+            t += PlanetState.ALIEN_CHECK_MILLIS * 190
             state.advanceTo(t)
             for (e in state.pendingAlienEvents) {
                 counts[e.outcome.name] = (counts[e.outcome.name] ?: 0) + 1
@@ -680,20 +678,29 @@ private fun renderAlienFeatures(outDir: File) {
             }
             state.pendingAlienEvents.clear()
         }
-        println("花0本での400回の襲来結果: $counts (撤退時ドロップ $drops 回)")
+        println("花0本、約300日ぶんの襲来結果: $counts (計${counts.values.sum()}回、撤退時ドロップ $drops 回、DAMAGEがあるはず)")
 
+        // 隕石で花が減っていく分、多めに植えて190時間のチャンス毎に補充し「花が常にある」状態を保つ
+        // (チャンク内では advanceTo が190時間ぶんまとめて処理するため、補充はチャンクの境目でしかできない。
+        //  1時間あたり期待値0.06本のペースで減るので、190時間チャンクの間に使い切らないよう30本を維持する)
+        val flowerBuffer = 30
         val state2 = PlanetState.newPlanet(birth)
-        state2.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, 0f))
-        repeat(6) { i -> state2.placed.add(Placed(BuildKind.FLOWER, i * 40f, birth)) }
+        repeat(20) { state2.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, 20f + it * 3.6f)) }
+        repeat(flowerBuffer) { i -> state2.placed.add(Placed(BuildKind.FLOWER, i * 11f, birth)) }
         var t2 = birth
         val counts2 = linkedMapOf("DAMAGE" to 0, "RETREAT" to 0, "VICTORY" to 0)
-        repeat(400) {
-            t2 += PlanetState.ALIEN_INTERVAL_MILLIS
+        var minFlowers = flowerBuffer
+        repeat(40) {
+            t2 += PlanetState.ALIEN_CHECK_MILLIS * 190
             state2.advanceTo(t2)
             for (e in state2.pendingAlienEvents) counts2[e.outcome.name] = (counts2[e.outcome.name] ?: 0) + 1
             state2.pendingAlienEvents.clear()
+            minFlowers = minOf(minFlowers, state2.countOf(BuildKind.FLOWER))
+            while (state2.countOf(BuildKind.FLOWER) < flowerBuffer) {
+                state2.placed.add(Placed(BuildKind.FLOWER, state2.countOf(BuildKind.FLOWER) * 11f + 3f, t2))
+            }
         }
-        println("花6本での400回の襲来結果: $counts2")
+        println("花を常に絶やさなかった場合の約300日ぶんの襲来結果: $counts2 (計${counts2.values.sum()}回、DAMAGE=0のはず、チャンク内最少本数$minFlowers)")
     }
 
     println("-> ${outDir.absolutePath}")

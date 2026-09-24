@@ -333,6 +333,9 @@ class PlanetState(var birthMillis: Long) {
     /** 空腹が始まった時刻 (0 ならいま空腹ではない)。長く続くと家畜が1頭旅立ってしまう。 */
     var hungrySinceMillis: Long = 0L
 
+    /** 家畜が1頭でもいたことがあるか。これが true のあとで0頭になるとゲームオーバー。 */
+    var everHadAnimal: Boolean = false
+
     val placed = ArrayList<Placed>()
     val jobs = ArrayList<BuildJob>()
 
@@ -423,8 +426,11 @@ class PlanetState(var birthMillis: Long) {
         /** 貯めておける作物の上限 (畑 1 つにつき増える)。 */
         fun cropCapacity(farms: Int): Float = 8f + farms * 12f
 
-        /** 家畜がいるとき、次の宇宙船襲来までの間隔 (1日に2度)。 */
-        val ALIEN_INTERVAL_MILLIS = DAY_MS / 2L
+        /** 家畜がいるとき、宇宙船が来るかを判定する間隔。 */
+        val ALIEN_CHECK_MILLIS = HOUR_MS
+
+        /** その1時間に宇宙船が来る確率 (%)。平均するとだいたい1日に2度ほどになる。 */
+        const val ALIEN_CHANCE_PERCENT = 8L
 
         /** 攻撃を受けたとき荒れ地になる範囲 (惑星をぐるっと 360 度としたときの割合)。 */
         const val WASTELAND_ARC_DEG = 90f
@@ -435,10 +441,15 @@ class PlanetState(var birthMillis: Long) {
         /** レア卵からペットが孵るまでの時間。 */
         val PET_HATCH_MILLIS = HOUR_MS
 
-        /** 生まれたての惑星。家が一軒と住人が一人だけ。 */
+        /** 生まれたての惑星。家が一軒と住人が一人、家畜が3頭。 */
         fun newPlanet(nowMillis: Long): PlanetState {
             val s = PlanetState(nowMillis)
             s.placed.add(Placed(BuildKind.HOUSE, -90f, nowMillis))
+            for (k in 0 until 3) {
+                val slot = s.freeFaceSlot(nowMillis) ?: break
+                val variant = variantFor(BuildKind.ANIMAL, nowMillis + k)
+                s.placed.add(Placed(BuildKind.ANIMAL, slot[1], nowMillis, variant, -1, slot[0]))
+            }
             return s
         }
 
@@ -466,6 +477,7 @@ class PlanetState(var birthMillis: Long) {
                         "wasteDeg" -> state?.wastelandCenterDeg = value.toFloat()
                         "tectonic" -> state?.tectonicTicksDone = value.toInt()
                         "hungrySince" -> state?.hungrySinceMillis = value.toLong()
+                        "everHadAnimal" -> state?.everHadAnimal = value == "1"
                         "bridge" -> state?.bridged?.add(value.toInt())
                         "p" -> {
                             val f = value.split(',')
@@ -567,25 +579,42 @@ class PlanetState(var birthMillis: Long) {
      * できあがった建物を建てる。戻り値は「この呼び出しで新しく飛来したもの」。
      */
     fun advanceTo(now: Long): List<Arrival> {
-        if (now <= lastTickMillis) {
-            finishJobs(now)
-            return emptyList()
+        val arrivals = if (now <= lastTickMillis) {
+            emptyList()
+        } else {
+            val a = SkyFall.arrivalsBetween(lastTickMillis, now, birthMillis)
+            for (x in a) {
+                add(x.kind.resource, x.amount)
+                if (x.kind == SkyFallKind.METEOR) maybeDamageFlower(x.atMillis)
+            }
+            advanceFarming(lastTickMillis, now)
+            advanceAliens(now)
+            advanceTectonics(now)
+            advanceHunger(now)
+            lastTickMillis = now
+            a
         }
-        val arrivals = SkyFall.arrivalsBetween(lastTickMillis, now, birthMillis)
-        for (a in arrivals) add(a.kind.resource, a.amount)
-        advanceFarming(lastTickMillis, now)
-        advanceAliens(now)
-        advanceTectonics(now)
-        advanceHunger(now)
-        lastTickMillis = now
         finishJobs(now)
+        if (countOf(BuildKind.ANIMAL) > 0) everHadAnimal = true
         return arrivals
     }
 
+    /** 家畜が1頭もいなくなったらゲームオーバー (一度でも家畜がいたことがある場合だけ)。 */
+    fun isGameOver(): Boolean = everHadAnimal && countOf(BuildKind.ANIMAL) <= 0
+
+    /** 隕石が落ちると、まれに花を1本だめにしてしまう。 */
+    private fun maybeDamageFlower(atMillis: Long) {
+        val flowers = placed.filter { it.kind == BuildKind.FLOWER }
+        if (flowers.isEmpty()) return
+        if (alienHash(atMillis, 211L) % 100L >= 30L) return
+        val idx = (alienHash(atMillis, 223L) % flowers.size.toLong()).toInt()
+        placed.remove(flowers[idx])
+    }
+
     /**
-     * 家畜がいるあいだ、一定間隔で宇宙船が来るかどうかを進める。
-     * 家畜がいない間は間隔のカウントを止めておく (いなくなっていた期間ぶん
-     * まとめて襲来する、ということが起きないように)。
+     * 家畜がいるあいだ、1時間ごとに確率で宇宙船が来るかを判定する。
+     * 決まった時刻ではなく「時間に関係なく」不規則に近づいてくる (平均するとだいたい1日に2度ほど)。
+     * 家畜がいない間はカウントを止めておく (いなくなっていた期間ぶんまとめて襲来しないように)。
      */
     private fun advanceAliens(now: Long) {
         if (countOf(BuildKind.ANIMAL) <= 0) {
@@ -593,18 +622,20 @@ class PlanetState(var birthMillis: Long) {
             return
         }
         if (lastAlienMillis <= 0L) {
-            // 今ペットがいると分かった時点から数え始める (いなかった間の分は数えない)
+            // 今家畜がいると分かった時点から数え始める (いなかった間の分は数えない)
             lastAlienMillis = now
             return
         }
-        var next = lastAlienMillis + ALIEN_INTERVAL_MILLIS
+        var next = lastAlienMillis + ALIEN_CHECK_MILLIS
         var guard = 0
-        while (next <= now && guard < 30) {
-            val event = rollAlienOutcome(next)
-            applyAlienOutcome(event)
-            pendingAlienEvents.add(event)
+        while (next <= now && guard < 200) {
+            if (alienHash(next, 0x41A1E7L) % 100L < ALIEN_CHANCE_PERCENT) {
+                val event = rollAlienOutcome(next)
+                applyAlienOutcome(event)
+                pendingAlienEvents.add(event)
+            }
             lastAlienMillis = next
-            next += ALIEN_INTERVAL_MILLIS
+            next += ALIEN_CHECK_MILLIS
             guard++
         }
     }
@@ -618,13 +649,13 @@ class PlanetState(var birthMillis: Long) {
     }
 
     /**
-     * 結果はほぼ運まかせ。花が多いほど「撃退成功」に少し寄る
-     * (虫が宇宙人を追い払う、という設定を確率のかたむきだけで表す)。
+     * 花が1本でもあれば、虫を怖がってかならず逃げていく (撤退か追い払われるかは運まかせ)。
+     * 花が無いときだけ、攻撃してくる (惑星が荒れる/家畜がさらわれる) 可能性がある。
      */
     private fun rollAlienOutcome(atMillis: Long): AlienEvent {
         val flowers = countOf(BuildKind.FLOWER).coerceAtMost(10)
         val victoryWeight = 20 + flowers * 6
-        val damageWeight = (40 - flowers * 3).coerceAtLeast(10)
+        val damageWeight = if (flowers > 0) 0 else 40
         val retreatWeight = 30
         val total = victoryWeight + damageWeight + retreatWeight
         val roll = (alienHash(atMillis, birthMillis xor 0x41A1E7L) % total.toLong()).toInt()
@@ -988,6 +1019,7 @@ class PlanetState(var birthMillis: Long) {
         sb.append("wasteDeg=").append(wastelandCenterDeg).append('\n')
         sb.append("tectonic=").append(tectonicTicksDone).append('\n')
         sb.append("hungrySince=").append(hungrySinceMillis).append('\n')
+        sb.append("everHadAnimal=").append(if (everHadAnimal) "1" else "0").append('\n')
         for (b in bridged) sb.append("bridge=").append(b).append('\n')
         for (p in placed) {
             sb.append("p=").append(p.kind.name).append(',').append(p.angleDeg).append(',')
