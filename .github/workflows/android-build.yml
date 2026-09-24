@@ -1,0 +1,89 @@
+name: Android Build
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: デバッグ APK をビルドする
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 を用意する
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Android SDK は GitHub のランナーに最初から入っているので追加の用意は不要
+      - name: Gradle を用意する
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: gradlew に実行権限を付ける
+        run: chmod +x ./gradlew
+
+      - name: デバッグ APK をビルドする
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: APK を保存する
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetgrow-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      # スマホのブラウザから1タップで入れられるよう、固定 URL の Release に置く
+      - name: APK を Release に置く
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: planetgrow-latest
+        run: |
+          set -eu
+          cp app/build/outputs/apk/debug/app-debug.apk planetgrow-debug.apk
+          # .apk 単体のダウンロードが途中で止まる/ブロックされる端末やネットワーク向けに、
+          # 同じ中身の .zip も置いておく (拡張子が違うだけで固まりにくいことがある)
+          zip -q planetgrow-debug-apk.zip planetgrow-debug.apk
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "ほしそだて (最新デバッグビルド)" \
+              --notes "惑星育成アプリ「ほしそだて」の最新デバッグビルドです。Android 8.0 (API 26) 以上。端末の設定で提供元不明のアプリのインストールを許可してから planetgrow-debug.apk を開いてください。push のたびに更新されます。ダウンロードが途中で止まる場合は、同じ中身の planetgrow-debug-apk.zip を試すか、時間をおいて (ビルド更新中でないときに) もう一度お試しください。" \
+              --prerelease \
+              --target "$GITHUB_SHA"
+          fi
+          gh release upload "$TAG" planetgrow-debug.apk planetgrow-debug-apk.zip --clobber
+          echo "APK:  https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/planetgrow-debug.apk"
+          echo "ZIP:  https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/planetgrow-debug-apk.zip"
+
+  preview:
+    name: 惑星のプレビュー画像を作る
+    # Android SDK 無しで動く描画プレビュー (絵が壊れていないかの確認用)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 を用意する
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: gradlew に実行権限を付ける
+        run: chmod +x ./gradlew
+
+      - name: プレビュー画像を描く
+        working-directory: preview
+        run: ../gradlew run --args="out 1 06:00 12:00 18:30 23:00"
+
+      - name: プレビュー画像を保存する
+        uses: actions/upload-artifact@v4
+        with:
+          name: planet-preview
+          path: preview/out/*.png
+          if-no-files-found: error

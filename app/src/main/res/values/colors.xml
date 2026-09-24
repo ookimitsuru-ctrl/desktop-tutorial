@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 宇宙空間の色。起動直後もこの色なので画面がちらつかない -->
+    <color name="space">#FF05070F</color>
+    <color name="icon_background">#FF0A1026</color>
+</resources>
