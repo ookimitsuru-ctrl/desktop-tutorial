@@ -228,11 +228,11 @@ object Structures {
         else -> null
     }
 
-    /** 1 枚のドット絵として置くもの (花や卵、外周に立つペット・火山)。 */
+    /** 1 枚のドット絵として置くもの (花や卵・火山)。孵ったあとの家畜・ペットは Scene.drawAnimals が描く。 */
     fun flatSpriteFor(kind: BuildKind, progress: Float, variant: Int): Sprite? = when (kind) {
         BuildKind.FLOWER -> if (progress < 0.6f) Art.sprout else Art.flowerClusters[variant % Art.flowerClusters.size]
         BuildKind.ANIMAL -> if (progress < 1f) Art.egg else null
-        BuildKind.PET -> if (progress < 1f) Art.egg else Art.animals[variant % Art.animals.size][0]
+        BuildKind.PET -> if (progress < 1f) Art.egg else null
         BuildKind.TREE -> if (progress < 0.25f) Art.sprout else null
         // variant を「活発化したか (0/1)」として使う (Scene.kt で計算)
         BuildKind.VOLCANO -> if (variant > 0) Art.volcanoActive else Art.volcanoDormant

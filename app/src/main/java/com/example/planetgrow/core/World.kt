@@ -2,6 +2,7 @@ package com.example.planetgrow.core
 
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
@@ -251,25 +252,91 @@ class Resident(var angle: Float, val homeAngle: Float, seed: Int) {
 }
 
 /**
- * 惑星の正面に暮らすペット (池や畑と同じ、面に置かれる場所に住む)。
- * 家畜ではなくペットなので群れず、その場でのんびり過ごす。
+ * 惑星で暮らす生きもの。家畜は正面の面に、ペットはふちに住む。
+ * どちらも、生まれた場所を中心にゆっくり歩き回っては休む。
  */
-class Animal(val dist: Float, val angle: Float, val variant: Int, seed: Int) {
+class Animal(val onFace: Boolean, homeDist: Float, homeAngle: Float, val variant: Int, seed: Int) {
+    companion object {
+        /** 面を歩き回れる範囲 (ブロック) と速さ。 */
+        const val FACE_RANGE = 1.4f
+        const val FACE_SPEED = 0.5f
+
+        /** ふちを歩き回れる範囲 (ラジアン、約20度) と速さ。 */
+        const val RIM_RANGE = 0.35f
+        const val RIM_SPEED = 0.09f
+    }
+
     private val rnd = Rnd(seed)
     private val animPhase: Float = rnd.float() * 10f
     var animTime: Float = 0f
 
-    /** おなかがすいていると元気がなくなる。 */
+    /** おなかがすいていると元気がなくなる (家畜のみ。ペットは空腹にならない)。 */
     var hungry: Boolean = false
+
+    private val homeX = homeDist * cos(homeAngle)
+    private val homeY = homeDist * sin(homeAngle)
+    private val homeAngleFixed = homeAngle
+
+    /** 面のときだけ意味を持つ、中心からの距離。 */
+    var dist: Float = homeDist
+        private set
+    var angle: Float = homeAngle
+        private set
+
+    private var targetX = homeX
+    private var targetY = homeY
+    private var targetAngle = homeAngle
+    private var walking = false
+    private var timer = rnd.float() * 3f
 
     fun update(dt: Float) {
         animTime += dt
+        if (hungry) {
+            walking = false
+            return
+        }
+        timer -= dt
+        if (timer <= 0f) {
+            walking = !walking
+            if (walking) {
+                timer = 2.5f + rnd.float() * 3.5f
+                if (onFace) {
+                    targetX = homeX + rnd.range(-1f, 1f) * FACE_RANGE
+                    targetY = homeY + rnd.range(-1f, 1f) * FACE_RANGE
+                } else {
+                    targetAngle = homeAngleFixed + rnd.range(-1f, 1f) * RIM_RANGE
+                }
+            } else {
+                timer = 1.5f + rnd.float() * 2.5f
+            }
+        }
+        if (!walking) return
+        if (onFace) {
+            val x = dist * cos(angle)
+            val y = dist * sin(angle)
+            val dx = targetX - x
+            val dy = targetY - y
+            val d = hypot(dx, dy)
+            if (d < 0.03f) {
+                dist = hypot(targetX, targetY)
+                angle = atan2(targetY, targetX)
+            } else {
+                val step = (FACE_SPEED * dt).coerceAtMost(d)
+                dist = hypot(x + dx / d * step, y + dy / d * step)
+                angle = atan2(y + dy / d * step, x + dx / d * step)
+            }
+        } else {
+            val diff = angleDiff(targetAngle, angle)
+            val step = (RIM_SPEED * dt).coerceAtMost(abs(diff))
+            angle += if (diff > 0f) step else -step
+        }
     }
 
-    /** のんびりした仕草のコマ (0 or 1)。おなかがすいているとじっとする。 */
+    /** 歩いているコマ (0 or 1)。休んでいる間もゆっくり体を揺らす。おなかがすいているとじっとする。 */
     fun frame(): Int {
         if (hungry) return 0
-        return if (((animTime + animPhase) * 1.6f).toInt() % 2 == 0) 0 else 1
+        val speed = if (walking) 4f else 1.6f
+        return if (((animTime + animPhase) * speed).toInt() % 2 == 0) 0 else 1
     }
 }
 
@@ -387,6 +454,9 @@ class World(val state: PlanetState) {
     val particles = ArrayList<Particle>()
     val falling = ArrayList<FallingObject>()
 
+    /** 生きものは Placed そのものを鍵にして紐づける (家畜とペットが同じ配列に混ざっても取り違えないため)。 */
+    private val animalByPlaced = HashMap<Placed, Animal>()
+
     /** 衛星の地形。半径が変わったときだけ作り直す。 */
     private val satelliteTerrain = HashMap<Int, Planet>()
 
@@ -424,16 +494,22 @@ class World(val state: PlanetState) {
             val idx = residents.size
             residents.add(Resident(toRad(homes[idx] + 18f), homes[idx], 0x1000 + idx * 7919))
         }
-        val born = state.placed.filter { it.kind == BuildKind.ANIMAL }
-        while (animals.size > born.size) animals.removeAt(animals.size - 1)
-        while (animals.size < born.size) {
-            val idx = animals.size
-            val a = born[idx]
-            // 古いセーブ (ふちに立っていた頃) の生きものは面の中心へ寄せる
-            animals.add(Animal(a.dist.coerceAtLeast(0f), toRad(a.angleDeg), a.variant, 0x2000 + idx * 6971))
+        val live = state.placed.filter { it.kind == BuildKind.ANIMAL || it.kind == BuildKind.PET }
+        animalByPlaced.keys.retainAll(live.toHashSet())
+        animals.clear()
+        for ((idx, p) in live.withIndex()) {
+            val a = animalByPlaced.getOrPut(p) {
+                if (p.kind == BuildKind.ANIMAL) {
+                    // 古いセーブ (ふちに立っていた頃) の生きものは面の中心へ寄せる
+                    Animal(true, p.dist.coerceAtLeast(0f), toRad(p.angleDeg), p.variant, 0x2000 + idx * 6971)
+                } else {
+                    Animal(false, 0f, toRad(p.angleDeg), p.variant, 0x2000 + idx * 6971)
+                }
+            }
+            animals.add(a)
         }
         val hungry = state.animalsHungry(now)
-        for (a in animals) a.hungry = hungry
+        for (a in animals) if (a.onFace) a.hungry = hungry
     }
 
     /** 飛来を画面に出す。 */

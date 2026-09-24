@@ -767,23 +767,30 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         }
     }
 
-    /** ペットは池や畑と同じ、惑星の正面に平らに座っている。 */
+    /** 家畜は池や畑と同じ惑星の正面に平らに座り、ペットは家などと同じくふちに立つ。 */
     private fun drawAnimals(world: World, sky: Sky, now: Long) {
         val r = world.state.radius(now)
         for (an in world.animals) {
-            val faceR = if (an.dist >= 0f) an.dist else r * 0.52f
-            val wx = cos(an.angle) * faceR
-            val wy = sin(an.angle) * faceR
-            val cx = (originX + wx * blockPx).roundToInt()
-            val cy = (originY + wy * blockPx).roundToInt()
             val set = Art.animals[an.variant % Art.animals.size]
             val sprite = sp(set[an.frame() % set.size])
-            val nx = wx / r
-            val ny = wy / r
-            val nz = sqrt((1f - nx * nx - ny * ny).coerceAtLeast(0f))
-            var tint = Col.scale(lightTint(nx * sky.sunDirX + ny * sky.sunDirY), 0.72f + 0.28f * nz)
-            if (an.hungry) tint = Col.scale(tint, 0.75f)
-            frame.draw(sprite, cx - sprite.w / 2, cy - sprite.h / 2, tint)
+            if (an.onFace) {
+                val wx = cos(an.angle) * an.dist
+                val wy = sin(an.angle) * an.dist
+                val cx = (originX + wx * blockPx).roundToInt()
+                val cy = (originY + wy * blockPx).roundToInt()
+                val nx = wx / r
+                val ny = wy / r
+                val nz = sqrt((1f - nx * nx - ny * ny).coerceAtLeast(0f))
+                var tint = Col.scale(lightTint(nx * sky.sunDirX + ny * sky.sunDirY), 0.72f + 0.28f * nz)
+                if (an.hungry) tint = Col.scale(tint, 0.75f)
+                frame.draw(sprite, cx - sprite.w / 2, cy - sprite.h / 2, tint)
+            } else {
+                val surf = world.planet.groundRadius(an.angle, world.state.halfWidthBlocks(BuildKind.PET))
+                val cx = originX + cos(an.angle) * surf * blockPx
+                val cy = originY + sin(an.angle) * surf * blockPx
+                val rot = an.angle + (PI.toFloat() / 2f)
+                frame.drawRotated(sprite, cx, cy, sprite.w / 2f, sprite.h.toFloat(), rot, false, surfaceTint(an.angle, sky))
+            }
         }
     }
 

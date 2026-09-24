@@ -55,6 +55,10 @@ fun main(args: Array<String>) {
         renderVolcanoUpdate(File(if (args.size > 1) args[1] else "out"))
         return
     }
+    if (args.isNotEmpty() && args[0] == "movement") {
+        renderMovementUpdate(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
     outDir.mkdirs()
     val level = if (args.size > 1) args[1].toIntOrNull() ?: 0 else 0
@@ -399,6 +403,97 @@ private fun renderVolcanoUpdate(outDir: File) {
             big.px[y * big.width + x] = buf.px[(y / factor) * buf.width + (x / factor)]
         }
         writePng(big, File(outDir, "volcano_sprite_big.png"))
+    }
+
+    println("-> ${outDir.absolutePath}")
+}
+
+/** 家畜・ペットが歩き回るか (巣から離れすぎないか) と、資源の飛来比率の確認用。 */
+private fun renderMovementUpdate(outDir: File) {
+    outDir.mkdirs()
+
+    // 1) 家畜 (面) とペットが (ふち) が実際に動くか、巣から離れすぎないか
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        val faceSlot = state.freeFaceSlot(birth)!!
+        state.placed.add(Placed(BuildKind.ANIMAL, faceSlot[1], birth, 0, -1, faceSlot[0]))
+        val petAngle = state.freeAngleFor(BuildKind.PET)!!
+        state.placed.add(Placed(BuildKind.PET, petAngle, birth))
+
+        val world = World(state)
+        world.syncFromState(birth)
+        val livestock = world.animals.first { it.onFace }
+        val pet = world.animals.first { !it.onFace }
+        val homeX = livestock.dist * kotlin.math.cos(livestock.angle)
+        val homeY = livestock.dist * kotlin.math.sin(livestock.angle)
+        val homeAngle = pet.angle
+
+        var faceMoved = false
+        var rimMoved = false
+        var maxFaceDrift = 0f
+        var maxRimDrift = 0f
+        val dt = 1f / 30f
+        repeat(30 * 30) { // 30秒ぶん
+            world.update(dt, 0.3f, -0.9f)
+            val x = livestock.dist * kotlin.math.cos(livestock.angle)
+            val y = livestock.dist * kotlin.math.sin(livestock.angle)
+            val faceDrift = kotlin.math.hypot(x - homeX, y - homeY)
+            if (faceDrift > 0.05f) faceMoved = true
+            if (faceDrift > maxFaceDrift) maxFaceDrift = faceDrift
+            val rimDrift = kotlin.math.abs(com.example.planetgrow.core.angleDiff(pet.angle, homeAngle))
+            if (rimDrift > 0.02f) rimMoved = true
+            if (rimDrift > maxRimDrift) maxRimDrift = rimDrift
+        }
+        println("家畜: 30秒で動いた=$faceMoved, 巣からの最大距離=$maxFaceDrift ブロック (2.0くらいまでのはず)")
+        println("ペット: 30秒で動いた=$rimMoved, 巣からの最大角度=${Math.toDegrees(maxRimDrift.toDouble())}度 (20度くらいまでのはず)")
+
+        // 見た目を確認 (別々の時刻で2枚)
+        for ((label, elapsedSteps) in listOf("a" to 0, "b" to 300)) {
+            if (elapsedSteps > 0) repeat(elapsedSteps) { world.update(dt, 0.3f, -0.9f) }
+            world.syncFromState(birth)
+            val viewBlocks = Scene.viewBlocksFor(state, birth)
+            val blockPx = Scene.blockPxFor(viewBlocks)
+            val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+            val scene = Scene(size[0], size[1], blockPx)
+            val sky = Sky(0.5f, birth)
+            scene.render(world, sky, 0f, dt)
+            writePng(scene.frame, File(outDir, "movement_$label.png"))
+            writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "movement_${label}_zoom.png"))
+        }
+    }
+
+    // 1b) ペットを日向の角度に置いて、ふちに正しく立っているか (回転・向き) をはっきり確認する
+    run {
+        val now = System.currentTimeMillis()
+        val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+        state.placed.add(Placed(BuildKind.PET, 0f, now, 1))
+        val world = World(state)
+        world.syncFromState(now)
+        val viewBlocks = Scene.viewBlocksFor(state, now)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val scene = Scene(size[0], size[1], blockPx)
+        val sky = Sky(0.5f, now)
+        scene.render(world, sky, 0f, 0f)
+        writePng(scene.frame, File(outDir, "pet_lit.png"))
+        writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "pet_lit_zoom.png"))
+    }
+
+    // 2) 鉱石の比率 (1000回サンプルして数える)
+    run {
+        val counts = linkedMapOf(
+            com.example.planetgrow.core.SkyFallKind.METEOR to 0,
+            com.example.planetgrow.core.SkyFallKind.COSMIC_DUST to 0,
+            com.example.planetgrow.core.SkyFallKind.COMET_DUST to 0
+        )
+        for (slot in 0 until 1000) {
+            val a = com.example.planetgrow.core.SkyFall.arrivalForSlot(slot.toLong(), 0L)
+            counts[a.kind] = (counts[a.kind] ?: 0) + 1
+        }
+        println("飛来の内訳 (1000回): 隕石(鉱石)=${counts[com.example.planetgrow.core.SkyFallKind.METEOR]} " +
+            "宇宙のチリ(たね)=${counts[com.example.planetgrow.core.SkyFallKind.COSMIC_DUST]} " +
+            "彗星のチリ(氷)=${counts[com.example.planetgrow.core.SkyFallKind.COMET_DUST]} (鉱石は約20%のはず)")
     }
 
     println("-> ${outDir.absolutePath}")

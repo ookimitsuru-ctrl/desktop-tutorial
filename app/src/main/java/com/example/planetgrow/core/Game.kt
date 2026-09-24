@@ -103,9 +103,10 @@ object SkyFall {
         val slotStart = birthMillis + slot * SLOT_MILLIS
         val offset = positive(h) % (SLOT_MILLIS - 60_000L)
         val roll = (positive(mix(h, 11L)) % 100L).toInt()
+        // 鉱石 (隕石) の比率が高すぎたので半分に。空いた分はたね・氷に振り分けた
         val kind = when {
-            roll < 40 -> SkyFallKind.METEOR
-            roll < 75 -> SkyFallKind.COSMIC_DUST
+            roll < 20 -> SkyFallKind.METEOR
+            roll < 65 -> SkyFallKind.COSMIC_DUST
             else -> SkyFallKind.COMET_DUST
         }
         val amount = 1 + (positive(mix(h, 23L)) % 3L).toInt()
