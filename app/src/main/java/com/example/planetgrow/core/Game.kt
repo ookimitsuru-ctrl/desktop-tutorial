@@ -212,7 +212,10 @@ class AlienEvent(
     val droppedAmount: Int = 0,
     /** DAMAGE のとき、荒れ地の代わりに家畜をさらっていったか。 */
     val abductedAnimal: Boolean = false
-)
+) {
+    /** さらわれた家畜がいた角度 (演出用)。applyAlienOutcome() が実際にさらった時に埋める。 */
+    var abductedAngleDeg: Float? = null
+}
 
 fun alienOutcomeText(e: AlienEvent): String = when (e.outcome) {
     AlienOutcome.DAMAGE -> if (e.abductedAnimal) {
@@ -233,6 +236,12 @@ fun volcanoSpawnedText(): String = "地殻変動で火山ができた"
 
 /** 火山が活発化して噴火したときの知らせ。 */
 fun volcanoEruptedText(): String = "火山が活発化して、噴火した！"
+
+/** 空腹に耐えかねて家畜が1頭、宇宙へ旅立ってしまったときの記録 (演出用)。 */
+class FleeEvent(val angleDeg: Float, val dist: Float, val variant: Int)
+
+/** 家畜が空腹で旅立ってしまったときの知らせ。 */
+fun animalFledText(): String = "おなかを空かせた家畜が、食べ物を求めて宇宙へ旅立っていった…"
 
 /** できあがって惑星に建っているもの。variant は木や生きものの種類。 */
 class Placed(
@@ -321,6 +330,9 @@ class PlanetState(var birthMillis: Long) {
     /** 地殻変動 (3日ごと) を何回分すでに処理したか。 */
     var tectonicTicksDone: Int = 0
 
+    /** 空腹が始まった時刻 (0 ならいま空腹ではない)。長く続くと家畜が1頭旅立ってしまう。 */
+    var hungrySinceMillis: Long = 0L
+
     val placed = ArrayList<Placed>()
     val jobs = ArrayList<BuildJob>()
 
@@ -332,6 +344,9 @@ class PlanetState(var birthMillis: Long) {
 
     /** advanceTo() で新しく活発化した火山の角度。呼び出し側が読んだらクリアすること。 */
     val pendingEruptions = ArrayList<Float>()
+
+    /** advanceTo() で新しく空腹のため旅立った家畜。呼び出し側が読んだらクリアすること。 */
+    val pendingFlees = ArrayList<FleeEvent>()
 
     fun resource(kind: ResourceKind): Int = when (kind) {
         ResourceKind.MINERAL -> mineral
@@ -402,6 +417,9 @@ class PlanetState(var birthMillis: Long) {
         /** 生きものが食べはじめるまでの猶予 (惑星が生まれてから 1 週間)。 */
         val FEEDING_STARTS_AFTER = WEEK_MS
 
+        /** 空腹が何時間続くと、家畜が1頭 (さらに続けばもう1頭…) 宇宙へ旅立ってしまうか。 */
+        val FLEE_AFTER_MILLIS = 3L * HOUR_MS
+
         /** 貯めておける作物の上限 (畑 1 つにつき増える)。 */
         fun cropCapacity(farms: Int): Float = 8f + farms * 12f
 
@@ -447,6 +465,7 @@ class PlanetState(var birthMillis: Long) {
                         "wasteStart" -> state?.wastelandStartMillis = value.toLong()
                         "wasteDeg" -> state?.wastelandCenterDeg = value.toFloat()
                         "tectonic" -> state?.tectonicTicksDone = value.toInt()
+                        "hungrySince" -> state?.hungrySinceMillis = value.toLong()
                         "bridge" -> state?.bridged?.add(value.toInt())
                         "p" -> {
                             val f = value.split(',')
@@ -557,6 +576,7 @@ class PlanetState(var birthMillis: Long) {
         advanceFarming(lastTickMillis, now)
         advanceAliens(now)
         advanceTectonics(now)
+        advanceHunger(now)
         lastTickMillis = now
         finishJobs(now)
         return arrivals
@@ -631,6 +651,7 @@ class PlanetState(var birthMillis: Long) {
                 val livestock = placed.filter { it.kind == BuildKind.ANIMAL }
                 if (e.abductedAnimal && livestock.isNotEmpty()) {
                     val idx = (alienHash(e.atMillis, 61L) % livestock.size.toLong()).toInt()
+                    e.abductedAngleDeg = livestock[idx].angleDeg
                     placed.remove(livestock[idx])
                 } else {
                     wastelandStartMillis = e.atMillis
@@ -730,6 +751,32 @@ class PlanetState(var birthMillis: Long) {
             crop -= animals * (to - feedFrom).toFloat() / EAT_PERIOD_MILLIS.toFloat()
         }
         crop = crop.coerceIn(0f, cropCapacity(farms))
+    }
+
+    /**
+     * 空腹が長く続くと、家畜が1頭ずつ食べ物を求めて宇宙へ旅立ってしまう。
+     * 空腹でなくなった時点でカウントはリセットする。
+     */
+    private fun advanceHunger(now: Long) {
+        if (!animalsHungry(now)) {
+            hungrySinceMillis = 0L
+            return
+        }
+        if (hungrySinceMillis <= 0L) {
+            hungrySinceMillis = now
+            return
+        }
+        var guard = 0
+        while (now - hungrySinceMillis >= FLEE_AFTER_MILLIS && guard < 30) {
+            val livestock = placed.filter { it.kind == BuildKind.ANIMAL }
+            if (livestock.isEmpty()) break
+            val idx = (alienHash(hungrySinceMillis, 151L) % livestock.size.toLong()).toInt()
+            val gone = livestock[idx]
+            placed.remove(gone)
+            pendingFlees.add(FleeEvent(gone.angleDeg, gone.dist, gone.variant))
+            hungrySinceMillis += FLEE_AFTER_MILLIS
+            guard++
+        }
     }
 
     fun countOf(kind: BuildKind): Int = placed.count { it.kind == kind }
@@ -940,6 +987,7 @@ class PlanetState(var birthMillis: Long) {
         sb.append("wasteStart=").append(wastelandStartMillis).append('\n')
         sb.append("wasteDeg=").append(wastelandCenterDeg).append('\n')
         sb.append("tectonic=").append(tectonicTicksDone).append('\n')
+        sb.append("hungrySince=").append(hungrySinceMillis).append('\n')
         for (b in bridged) sb.append("bridge=").append(b).append('\n')
         for (p in placed) {
             sb.append("p=").append(p.kind.name).append(',').append(p.angleDeg).append(',')

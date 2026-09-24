@@ -59,6 +59,10 @@ fun main(args: Array<String>) {
         renderMovementUpdate(File(if (args.size > 1) args[1] else "out"))
         return
     }
+    if (args.isNotEmpty() && args[0] == "events") {
+        renderEventsUpdate(File(if (args.size > 1) args[1] else "out"))
+        return
+    }
     val outDir = File(if (args.isNotEmpty()) args[0] else "out")
     outDir.mkdirs()
     val level = if (args.size > 1) args[1].toIntOrNull() ?: 0 else 0
@@ -494,6 +498,103 @@ private fun renderMovementUpdate(outDir: File) {
         println("飛来の内訳 (1000回): 隕石(鉱石)=${counts[com.example.planetgrow.core.SkyFallKind.METEOR]} " +
             "宇宙のチリ(たね)=${counts[com.example.planetgrow.core.SkyFallKind.COSMIC_DUST]} " +
             "彗星のチリ(氷)=${counts[com.example.planetgrow.core.SkyFallKind.COMET_DUST]} (鉱石は約20%のはず)")
+    }
+
+    println("-> ${outDir.absolutePath}")
+}
+
+/** UFOの家畜さらい・空腹での旅立ち・そのお知らせダイジェストの確認用。 */
+private fun renderEventsUpdate(outDir: File) {
+    outDir.mkdirs()
+
+    // 1) 宇宙船が家畜をさらう時、AlienEvent.abductedAngleDeg が正しく埋まるか
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        repeat(5) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, it * 3.6f)) }
+        var t = birth
+        var checked = 0
+        var confirmed = 0
+        repeat(200) {
+            t += PlanetState.ALIEN_INTERVAL_MILLIS
+            state.advanceTo(t)
+            for (e in state.pendingAlienEvents) {
+                if (e.outcome == com.example.planetgrow.core.AlienOutcome.DAMAGE && e.abductedAnimal) {
+                    checked++
+                    if (e.abductedAngleDeg != null) confirmed++
+                }
+            }
+            state.pendingAlienEvents.clear()
+        }
+        println("略奪イベント: $checked 回のうち $confirmed 回で角度が記録された (全部一致するはず)")
+    }
+
+    // 2) 空腹が FLEE_AFTER_MILLIS 続くごとに、家畜が1頭ずつ旅立つか
+    run {
+        val birth = 0L
+        val state = PlanetState.newPlanet(birth)
+        repeat(3) { state.placed.add(Placed(BuildKind.ANIMAL, 0f, birth, 0, -1, it * 3.6f)) }
+        val hungryStart = birth + PlanetState.FEEDING_STARTS_AFTER
+
+        state.advanceTo(hungryStart + 1000L)
+        println("空腹開始直後: 家畜 ${state.countOf(BuildKind.ANIMAL)}頭 (3のはず) 旅立ち ${state.pendingFlees.size}件 (0のはず)")
+        state.pendingFlees.clear()
+
+        state.advanceTo(hungryStart + PlanetState.FLEE_AFTER_MILLIS + 1000L)
+        val fled = state.pendingFlees.toList()
+        state.pendingFlees.clear()
+        println("空腹${PlanetState.FLEE_AFTER_MILLIS / 3600000}時間後: 家畜 ${state.countOf(BuildKind.ANIMAL)}頭 (2のはず) " +
+            "旅立ち ${fled.size}件 (1のはず) 角度=${fled.firstOrNull()?.angleDeg} dist=${fled.firstOrNull()?.dist}")
+
+        state.advanceTo(hungryStart + PlanetState.FLEE_AFTER_MILLIS * 3 + 1000L)
+        println("さらに2周期分あと: 家畜 ${state.countOf(BuildKind.ANIMAL)}頭 (0のはず、残り全頭が旅立った)")
+    }
+
+    // 3) 見た目: UFOのさらい演出 (飛来→光線→飛び去る)
+    run {
+        val now = System.currentTimeMillis()
+        val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+        state.placed.add(Placed(BuildKind.ANIMAL, 0f, now, 0, -1, 0f))
+        val world = World(state)
+        world.syncFromState(now)
+        world.startAbduction(0f)
+        val viewBlocks = Scene.viewBlocksFor(state, now)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val sky = Sky(0.5f, now)
+        val dt = 1f / 30f
+        var frameNo = 0
+        for ((label, atFrame) in listOf("flyin" to 20, "beam" to 60, "flyout" to 130)) {
+            repeat(atFrame - frameNo) { world.update(dt, sky.sunDirX, sky.sunDirY) }
+            frameNo = atFrame
+            val scene = Scene(size[0], size[1], blockPx)
+            scene.render(world, sky, frameNo * dt, dt)
+            writePng(scene.frame, File(outDir, "abduction_$label.png"))
+            writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "abduction_${label}_zoom.png"))
+        }
+    }
+
+    // 4) 見た目: 空腹での旅立ち (惑星から漂い出て、しだいに消える)
+    run {
+        val now = System.currentTimeMillis()
+        val state = PlanetState.newPlanet(now - 10L * 24 * 3600 * 1000)
+        val world = World(state)
+        world.syncFromState(now)
+        world.startFleeing(0f, 3.6f, 2)
+        val viewBlocks = Scene.viewBlocksFor(state, now)
+        val blockPx = Scene.blockPxFor(viewBlocks)
+        val size = Scene.bufferSize(1080, 1080, viewBlocks, blockPx)
+        val sky = Sky(0.5f, now)
+        val dt = 1f / 30f
+        var frameNo = 0
+        for ((label, atFrame) in listOf("start" to 5, "mid" to 60, "end" to 150)) {
+            repeat(atFrame - frameNo) { world.update(dt, sky.sunDirX, sky.sunDirY) }
+            frameNo = atFrame
+            val scene = Scene(size[0], size[1], blockPx)
+            scene.render(world, sky, frameNo * dt, dt)
+            writePng(scene.frame, File(outDir, "fleeing_$label.png"))
+            writePng(zoom(scene.frame, (viewBlocks - 4) * blockPx, 3), File(outDir, "fleeing_${label}_zoom.png"))
+        }
     }
 
     println("-> ${outDir.absolutePath}")

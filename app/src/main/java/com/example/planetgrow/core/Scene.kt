@@ -73,6 +73,7 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         private val DUSK_TINT = rgbOf(0xFFC08A)
         private val NIGHT_TINT = rgbOf(0x55649C)
         private val WARM_LIGHT = rgbOf(0xFFC46A)
+        private val BEAM_COLOR = rgbOf(0x9CFFEC)
     }
 
     val frame = PixelBuffer(width, height)
@@ -274,9 +275,11 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
         drawPlanet(world, sky, now)
         drawBuildings(world, sky, now)
         drawAnimals(world, sky, now)
+        drawFleeing(world, sky)
         drawResidents(world, sky)
         drawParticles(world)
         drawFalling(world)
+        drawAbduction(world)
         drawMarkers(world, now)
     }
 
@@ -792,6 +795,51 @@ class Scene(val width: Int, val height: Int, val blockPx: Int = Tex.SIZE) {
                 frame.drawRotated(sprite, cx, cy, sprite.w / 2f, sprite.h.toFloat(), rot, false, surfaceTint(an.angle, sky))
             }
         }
+    }
+
+    /** 空腹で旅立つ家畜。惑星から外向きに漂いながら、しだいに透けて消える。 */
+    private fun drawFleeing(world: World, sky: Sky) {
+        for (fl in world.fleeing) {
+            val a = toRad(fl.angleDeg) + fl.angleOffset()
+            val dist = fl.dist()
+            val cx = originX + cos(a) * dist * blockPx
+            val cy = originY + sin(a) * dist * blockPx
+            val rot = a + (PI.toFloat() / 2f)
+            val set = Art.animals[fl.variant % Art.animals.size]
+            val sprite = sp(set[0])
+            val alpha = (fl.alpha() * 255f).toInt()
+            frame.drawRotated(sprite, cx, cy, sprite.w / 2f, sprite.h.toFloat(), rot, false, surfaceTint(a, sky), alpha)
+        }
+    }
+
+    /** 宇宙船が家畜をさらっていく演出。UFO が現れ、光線を出して吸い込み、去っていく。 */
+    private fun drawAbduction(world: World) {
+        val ab = world.abduction ?: return
+        val a = toRad(ab.angleDeg)
+        val nx = cos(a)
+        val ny = sin(a)
+        val surf = world.planet.groundRadius(a, 1.0f)
+        val ufoDist = surf + ab.height()
+        val ufoX = originX + nx * ufoDist * blockPx
+        val ufoY = originY + ny * ufoDist * blockPx
+
+        if (ab.beaming()) {
+            val groundX = originX + nx * surf * blockPx
+            val groundY = originY + ny * surf * blockPx
+            val steps = 8
+            for (i in 0..steps) {
+                val tt = i / steps.toFloat()
+                val x = ufoX + (groundX - ufoX) * tt
+                val y = ufoY + (groundY - ufoY) * tt
+                val radius = (2.5f + 4.5f * tt) * f
+                frame.glow(x, y, radius, BEAM_COLOR, 0.5f * (0.4f + 0.6f * (1f - tt)))
+            }
+        }
+
+        val sprite = sp(Art.ufo)
+        val rot = a + (PI.toFloat() / 2f)
+        frame.glow(ufoX, ufoY, 20f * f, rgbOf(0x9BE8FF), 0.35f)
+        frame.drawRotated(sprite, ufoX, ufoY, sprite.w / 2f, sprite.h / 2f, rot, false, Col.WHITE)
     }
 
     private fun drawParticles(world: World) {

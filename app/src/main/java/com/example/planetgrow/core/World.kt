@@ -340,6 +340,57 @@ class Animal(val onFace: Boolean, homeDist: Float, homeAngle: Float, val variant
     }
 }
 
+/**
+ * 宇宙船が家畜をさらっていく演出。UFO が現れて光線を出し、しばらくして飛び去る。
+ * 家畜が実際に消えるのは PlanetState 側で既に決まっているので、これは見た目だけの後追い。
+ */
+class Abduction(val angleDeg: Float) {
+    companion object {
+        const val FLY_IN = 1.2f
+        const val BEAM = 2.2f
+        const val FLY_OUT = 1.4f
+        const val TOTAL = FLY_IN + BEAM + FLY_OUT
+        // 生まれたての惑星 (半径6.5) でも画面に収まるよう、控えめな高さにしてある
+        // (視野は惑星の半径+7.5ブロックほどしかない)
+        const val HOVER_HEIGHT = 4f
+        const val FAR_HEIGHT = 5.5f
+    }
+
+    var t: Float = 0f
+    val done: Boolean get() = t >= TOTAL
+
+    /** 惑星の表面からの高さ (ブロック)。 */
+    fun height(): Float = when {
+        t < FLY_IN -> FAR_HEIGHT + (HOVER_HEIGHT - FAR_HEIGHT) * smoothstep(0f, FLY_IN, t)
+        t < FLY_IN + BEAM -> HOVER_HEIGHT
+        else -> HOVER_HEIGHT + (FAR_HEIGHT - HOVER_HEIGHT) * smoothstep(FLY_IN + BEAM, TOTAL, t)
+    }
+
+    /** 光線を出している時間帯か。 */
+    fun beaming(): Boolean = t >= FLY_IN * 0.7f && t < FLY_IN + BEAM
+}
+
+/**
+ * 空腹で惑星を離れた家畜。外向きにゆっくり漂いながら、しだいに見えなくなる。
+ * 「数時間さまよう」という設定は、演出としてはこの短い時間に凝縮してある。
+ */
+class Fleeing(val angleDeg: Float, val startDist: Float, val variant: Int, seed: Int) {
+    companion object {
+        const val TOTAL = 5.5f
+        const val DRIFT_SPEED = 0.85f
+    }
+
+    private val rnd = Rnd(seed)
+    var t: Float = 0f
+    val done: Boolean get() = t >= TOTAL
+    private val wobbleSeed = rnd.float() * 100f
+    private val wobbleFreq = 1.1f + rnd.float() * 0.5f
+
+    fun dist(): Float = startDist + DRIFT_SPEED * t
+    fun angleOffset(): Float = sin(wobbleSeed + t * wobbleFreq) * 0.05f
+    fun alpha(): Float = (1f - t / TOTAL).coerceIn(0f, 1f)
+}
+
 /** 煙突から出る煙や、着弾のかけら。位置はワールド座標 (ブロック単位)。 */
 class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, val color: Int) {
     var life: Float = 0f
@@ -454,6 +505,13 @@ class World(val state: PlanetState) {
     val particles = ArrayList<Particle>()
     val falling = ArrayList<FallingObject>()
 
+    /** 宇宙船が家畜をさらっていく演出。同時に1件だけ。 */
+    var abduction: Abduction? = null
+        private set
+
+    /** 空腹で旅立っていく家畜たち。 */
+    val fleeing = ArrayList<Fleeing>()
+
     /** 生きものは Placed そのものを鍵にして紐づける (家畜とペットが同じ配列に混ざっても取り違えないため)。 */
     private val animalByPlaced = HashMap<Placed, Animal>()
 
@@ -558,6 +616,56 @@ class World(val state: PlanetState) {
         updateFalling(dt)
         updateSmoke(dt)
         updateParticles(dt)
+        updateAbduction(dt)
+        updateFleeing(dt)
+    }
+
+    /** 宇宙船が家畜をさらっていく演出を始める。 */
+    fun startAbduction(angleDeg: Float) {
+        abduction = Abduction(angleDeg)
+    }
+
+    private var beamMoteTimer = 0f
+
+    private fun updateAbduction(dt: Float) {
+        val ab = abduction ?: return
+        ab.t += dt
+        if (ab.beaming()) {
+            beamMoteTimer -= dt
+            if (beamMoteTimer <= 0f) {
+                beamMoteTimer = 0.1f
+                spawnAbductionMote(ab.angleDeg)
+            }
+        }
+        if (ab.done) abduction = null
+    }
+
+    private fun spawnAbductionMote(angleDeg: Float) {
+        val a = toRad(angleDeg)
+        val r = planet.groundRadius(a, 1.0f)
+        val nx = cos(a)
+        val ny = sin(a)
+        val jitter = rnd.range(-1.1f, 1.1f)
+        val sx = -ny * jitter
+        val sy = nx * jitter
+        val p = Particle(nx * r + sx * 0.3f, ny * r + sy * 0.3f, nx * 2.4f + sx * 0.2f, ny * 2.4f + sy * 0.2f, rgbOf(0xBFF3E6))
+        p.maxLife = 0.9f
+        p.size = 2f
+        particles.add(p)
+    }
+
+    /** 空腹で家畜が1頭、惑星を離れて宇宙をさまよいはじめる演出。 */
+    fun startFleeing(angleDeg: Float, dist: Float, variant: Int) {
+        fleeing.add(Fleeing(angleDeg, dist, variant, rnd.int(1_000_000)))
+    }
+
+    private fun updateFleeing(dt: Float) {
+        var i = 0
+        while (i < fleeing.size) {
+            val fl = fleeing[i]
+            fl.t += dt
+            if (fl.done) fleeing.removeAt(i) else i++
+        }
     }
 
     private fun updateFalling(dt: Float) {

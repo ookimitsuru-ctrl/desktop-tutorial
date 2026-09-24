@@ -60,6 +60,7 @@ import com.example.planetgrow.core.Sky
 import com.example.planetgrow.core.SkyFall
 import com.example.planetgrow.core.World
 import com.example.planetgrow.core.alienOutcomeText
+import com.example.planetgrow.core.animalFledText
 import com.example.planetgrow.core.formatDuration
 import com.example.planetgrow.core.skyFallLabel
 import com.example.planetgrow.core.volcanoEruptedText
@@ -134,9 +135,18 @@ fun PlanetScreen() {
     var version by remember { mutableIntStateOf(0) }
     var minuteOfDay by remember { mutableIntStateOf(minuteOfDayFor(zone, GameTime.now())) }
     var notice by remember { mutableStateOf<Notice?>(null) }
+    // 表示待ちのお知らせ。1件ずつ、いま出ているものが消えたら次を出す
+    val noticeQueue = remember { ArrayDeque<Pair<String, Long>>() }
+    fun pushNotice(text: String, durationMillis: Long) {
+        if (notice == null) {
+            notice = Notice(text, System.currentTimeMillis() + durationMillis)
+        } else {
+            noticeQueue.addLast(text to durationMillis)
+        }
+    }
     var showBuildPanel by remember { mutableStateOf(false) }
 
-    // 開いた時点で、閉じていた間の飛来と宇宙船の襲来をまとめて受け取る
+    // 開いた時点で、閉じていた間の飛来・宇宙船の襲来・空腹での旅立ちをまとめて受け取る
     LaunchedEffect(Unit) {
         val now = GameTime.now()
         val arrivals = state.advanceTo(now)
@@ -144,17 +154,25 @@ fun PlanetScreen() {
         state.pendingAlienEvents.clear()
         val eruptions = state.pendingEruptions.toList()
         state.pendingEruptions.clear()
+        val flees = state.pendingFlees.toList()
+        state.pendingFlees.clear()
         world.syncFromState(now)
         eruptions.lastOrNull()?.let { world.eruptVolcano(it) }
+        alienEvents.lastOrNull { it.abductedAngleDeg != null }?.abductedAngleDeg?.let { world.startAbduction(it) }
+        flees.lastOrNull()?.let { world.startFleeing(it.angleDeg, it.dist, it.variant) }
         prefs.save(state)
-        val parts = ArrayList<String>()
+
         if (arrivals.isNotEmpty()) {
             for (a in arrivals.takeLast(4)) world.addFalling(a.kind, a.angleDeg, a.amount)
-            parts.add(offlineSummary(arrivals))
+            val shown = arrivals.takeLast(8)
+            if (arrivals.size > shown.size) {
+                pushNotice("留守の間に${arrivals.size}回の飛来がありました", 2600L)
+            }
+            for (a in shown) pushNotice(arrivalDigestText(a, zone), 2600L)
         }
-        if (alienEvents.isNotEmpty()) parts.add(alienOutcomeText(alienEvents.last()))
-        if (eruptions.isNotEmpty()) parts.add(volcanoEruptedText())
-        if (parts.isNotEmpty()) notice = Notice(parts.joinToString("  "), System.currentTimeMillis() + 9000L)
+        for (e in alienEvents) pushNotice(alienOutcomeText(e), 3600L)
+        if (eruptions.isNotEmpty()) pushNotice(volcanoEruptedText(), 3600L)
+        for (fl in flees) pushNotice(animalFledText(), 3200L)
         version++
     }
 
@@ -210,22 +228,33 @@ fun PlanetScreen() {
                     state.pendingAlienEvents.clear()
                     val eruptions = state.pendingEruptions.toList()
                     state.pendingEruptions.clear()
+                    val flees = state.pendingFlees.toList()
+                    state.pendingFlees.clear()
                     if (arrivals.isNotEmpty()) {
                         for (a in arrivals) world.addFalling(a.kind, a.angleDeg, a.amount)
-                        notice = Notice(arrivalText(arrivals.last()), System.currentTimeMillis() + 7000L)
+                        for (a in arrivals) pushNotice(arrivalDigestText(a, zone), 2600L)
                         prefs.save(state)
                         version++
                     }
                     if (alienEvents.isNotEmpty()) {
                         world.syncFromState(nowMs)
-                        notice = Notice(alienOutcomeText(alienEvents.last()), System.currentTimeMillis() + 8000L)
+                        alienEvents.lastOrNull { it.abductedAngleDeg != null }?.abductedAngleDeg
+                            ?.let { world.startAbduction(it) }
+                        for (e in alienEvents) pushNotice(alienOutcomeText(e), 3600L)
                         prefs.save(state)
                         version++
                     }
                     if (eruptions.isNotEmpty()) {
                         world.syncFromState(nowMs)
                         world.eruptVolcano(eruptions.last())
-                        notice = Notice(volcanoEruptedText(), System.currentTimeMillis() + 8000L)
+                        pushNotice(volcanoEruptedText(), 3600L)
+                        prefs.save(state)
+                        version++
+                    }
+                    if (flees.isNotEmpty()) {
+                        world.syncFromState(nowMs)
+                        flees.lastOrNull()?.let { world.startFleeing(it.angleDeg, it.dist, it.variant) }
+                        for (fl in flees) pushNotice(animalFledText(), 3200L)
                         prefs.save(state)
                         version++
                     }
@@ -238,7 +267,7 @@ fun PlanetScreen() {
                             BuildKind.VOLCANO -> volcanoSpawnedText()
                             else -> Recipes.of(done.kind).doneText
                         }
-                        notice = Notice(doneText, System.currentTimeMillis() + 7000L)
+                        pushNotice(doneText, 7000L)
                         prefs.save(state)
                         version++
                     }
@@ -252,7 +281,12 @@ fun PlanetScreen() {
 
                     val mod = minuteOfDayFor(zone, nowMs)
                     if (mod != minuteOfDay) minuteOfDay = mod
-                    notice?.let { if (System.currentTimeMillis() > it.untilRealMillis) notice = null }
+                    notice?.let {
+                        if (System.currentTimeMillis() > it.untilRealMillis) {
+                            notice = noticeQueue.removeFirstOrNull()
+                                ?.let { (text, dur) -> Notice(text, System.currentTimeMillis() + dur) }
+                        }
+                    }
                 }
                 frameTick.longValue = now
             }
@@ -319,26 +353,14 @@ fun PlanetScreen() {
     }
 }
 
-private fun arrivalText(a: Arrival): String =
-    "${skyFallLabel(a.kind)}が落ちてきた  ${com.example.planetgrow.core.resourceLabel(a.kind.resource)}+${a.amount}"
-
-private fun offlineSummary(arrivals: List<Arrival>): String {
-    var mineral = 0
-    var seed = 0
-    var ice = 0
-    for (a in arrivals) {
-        when (a.kind.resource) {
-            com.example.planetgrow.core.ResourceKind.MINERAL -> mineral += a.amount
-            com.example.planetgrow.core.ResourceKind.SEED -> seed += a.amount
-            com.example.planetgrow.core.ResourceKind.ICE -> ice += a.amount
-            else -> {}
-        }
-    }
-    val parts = ArrayList<String>()
-    if (mineral > 0) parts.add("鉱石+$mineral")
-    if (seed > 0) parts.add("たね+$seed")
-    if (ice > 0) parts.add("氷+$ice")
-    return "留守の間に${arrivals.size}回の飛来  " + parts.joinToString(" ")
+/** 「○時○分、○○が飛来」形式の、1件ぶんのダイジェスト文。 */
+private fun arrivalDigestText(a: Arrival, zone: ZoneId): String {
+    val zdt = Instant.ofEpochMilli(a.atMillis).atZone(zone)
+    return "%02d時%02d分、%sが飛来 (%s+%d)".format(
+        zdt.hour, zdt.minute,
+        skyFallLabel(a.kind),
+        com.example.planetgrow.core.resourceLabel(a.kind.resource), a.amount
+    )
 }
 
 @Composable
