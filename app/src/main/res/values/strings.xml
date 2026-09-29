@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">文字起こしカメラ</string>
+
+    <!-- カメラ画面 -->
+    <string name="camera_hint">文字がはっきり写るように撮影してください</string>
+    <string name="capture">撮影</string>
+    <string name="pick_image">ギャラリーから選ぶ</string>
+    <string name="torch_on">ライトをつける</string>
+    <string name="torch_off">ライトを消す</string>
+    <string name="error_capture">撮影に失敗しました</string>
+
+    <!-- 権限 -->
+    <string name="permission_title">カメラへのアクセスが必要です</string>
+    <string name="permission_message">撮影した画像から文字を読み取るために、カメラの使用を許可してください。ギャラリーの画像から読み取ることもできます。</string>
+    <string name="permission_denied_message">カメラの権限がオフになっています。設定アプリから許可してください。</string>
+    <string name="permission_grant">カメラを許可する</string>
+    <string name="permission_open_settings">設定を開く</string>
+
+    <!-- 結果画面 -->
+    <string name="result_title">読み取り結果</string>
+    <string name="retake">撮り直す</string>
+    <string name="copy">コピー</string>
+    <string name="copied">コピーしました</string>
+    <string name="share">共有</string>
+    <string name="join_lines">改行を結合</string>
+    <string name="char_count">%1$d文字</string>
+    <string name="processing">文字を読み取っています…</string>
+    <string name="captured_image">撮影した画像</string>
+    <string name="no_text_found">文字が見つかりませんでした。明るい場所で、文字に近づいて撮影してみてください。</string>
+    <string name="error_load_image">画像を読み込めませんでした</string>
+    <string name="error_recognition">文字の読み取りに失敗しました</string>
+    <string name="clip_label">読み取ったテキスト</string>
+</resources>
