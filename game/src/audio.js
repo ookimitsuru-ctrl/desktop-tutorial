@@ -218,6 +218,7 @@ export class AudioEngine {
     while (this.nextTime < this.ctx.currentTime + ahead) {
       this._playStep(this.step, this.nextTime);
       this.stepQueue.push(this.nextTime);
+      if (this.stepQueue.length > 48) this.stepQueue.shift();
       this.nextTime += this.stepDur;
       this.step++;
     }
@@ -244,10 +245,16 @@ export class AudioEngine {
     return sg.root + sg.prog[bar];
   }
 
+  // 出力レイテンシ: 「今聞こえている音」は latency 秒前にスケジュールされたもの
+  get lat() {
+    const c = this.ctx;
+    return Math.min(0.14, (c && (c.outputLatency || c.baseLatency)) || 0.04);
+  }
+
   // 直近のビートからの減衰パルス (0..1)。画面演出の同期用
   beatPulse() {
     if (!this.ctx || !this.running) return 0;
-    const now = this.ctx.currentTime;
+    const now = this.ctx.currentTime - this.lat;
     const b = this.beats;
     while (b.length > 2 && b[1] <= now) b.shift();
     if (!b.length || b[0] > now) return 0;
@@ -258,7 +265,7 @@ export class AudioEngine {
   // 最寄りのビートまでの秒数 (ビート同期リリース判定用)
   beatOffset() {
     if (!this.ctx || !this.running || !this.beats.length) return 1;
-    const now = this.ctx.currentTime;
+    const now = this.ctx.currentTime - this.lat;
     let best = 1;
     for (const b of this.beats) best = Math.min(best, Math.abs(b - now));
     return best;
@@ -266,7 +273,7 @@ export class AudioEngine {
   // ビート位相 0..1 (直近ビート→次ビート)
   beatPhase() {
     if (!this.ctx || !this.running) return 0;
-    const now = this.ctx.currentTime;
+    const now = this.ctx.currentTime - this.lat;
     let last = -1;
     for (const b of this.beats) if (b <= now) last = b;
     if (last < 0) return 0;

@@ -5,7 +5,7 @@ export const G = {
   time: 0, dt: 0.016, wdt: 0.016, ts: 1, tsTarget: 1,
   V: 62, // レール速度
   diff: 1, // 0 easy / 1 normal / 2 hard
-  settings: { music: 0.7, sfx: 0.9, vib: true, gfx: 0, diff: 1 },
+  settings: { music: 0.7, sfx: 0.9, vib: true, gfx: 0, diff: 1, aim: 1, lefty: false },
   save: { hi: 0, reached: 1 },
 
   // プレイヤー

@@ -277,7 +277,7 @@ export function drawControls(g, t) {
   g.line2(-0.015, 0.9 - 0.02, -0.015, 0.9 + 0.02, 0.4, 0.8, 1, 3, 0.9);
   g.line2(0.015, 0.9 - 0.02, 0.015, 0.9 + 0.02, 0.4, 0.8, 1, 3, 0.9);
   // ロール
-  const rx = -A + G.safeL + 0.24, ry = -0.44;
+  const rx = G.settings.lefty ? A - G.safeR - 0.24 : -A + G.safeL + 0.24, ry = -0.44;
   const cd = G.rollCd > 0 ? 1 - sat(G.rollCd / 0.9) : 1;
   const ready = cd >= 1;
   const rc = ready ? C.cyan : C.dim;
@@ -305,15 +305,16 @@ export function drawHints(g, t) {
   const A = g.aspect;
   const a = Math.min(1, G.hintT / 1.5) * 0.9;
   const bl = 0.7 + 0.3 * Math.sin(t * 4);
-  // 左: 移動
-  drawText(g, 'DRAG', -A * 0.5, -0.25, 0.05, 0.3, 1, 1, 2, a * bl, 'c');
-  drawText(g, 'MOVE', -A * 0.5, -0.32, 0.04, 0.3, 1, 1, 1.8, a, 'c');
-  drawText(g, 'FLICK = ROLL', -A * 0.5, -0.4, 0.035, 0.3, 1, 1, 1.6, a * 0.8, 'c');
-  circle(g, -A * 0.5, -0.1, 0.07, 20, C.cyan, a * 0.6, 2);
-  // 右: ロック
-  drawText(g, 'HOLD  LOCK-ON', A * 0.5, -0.25, 0.05, 1, 0.75, 0.2, 2, a * bl, 'c');
-  drawText(g, 'RELEASE  FIRE', A * 0.5, -0.32, 0.04, 1, 0.75, 0.2, 1.8, a, 'c');
-  drawText(g, 'DRAG TO AIM', A * 0.5, -0.4, 0.035, 1, 0.75, 0.2, 1.6, a * 0.8, 'c');
-  circle(g, A * 0.5, -0.1, 0.07, 20, C.amber, a * 0.6, 2);
+  const mx = G.settings.lefty ? 1 : -1;
+  // 移動側
+  drawText(g, 'DRAG', mx * A * 0.5, -0.25, 0.05, 0.3, 1, 1, 2, a * bl, 'c');
+  drawText(g, 'MOVE', mx * A * 0.5, -0.32, 0.04, 0.3, 1, 1, 1.8, a, 'c');
+  drawText(g, 'FLICK = ROLL', mx * A * 0.5, -0.4, 0.035, 0.3, 1, 1, 1.6, a * 0.8, 'c');
+  circle(g, mx * A * 0.5, -0.1, 0.07, 20, C.cyan, a * 0.6, 2);
+  // 照準側
+  drawText(g, 'HOLD  LOCK-ON', -mx * A * 0.5, -0.25, 0.05, 1, 0.75, 0.2, 2, a * bl, 'c');
+  drawText(g, 'RELEASE  FIRE', -mx * A * 0.5, -0.32, 0.04, 1, 0.75, 0.2, 1.8, a, 'c');
+  drawText(g, 'DRAG TO AIM', -mx * A * 0.5, -0.4, 0.035, 1, 0.75, 0.2, 1.6, a * 0.8, 'c');
+  circle(g, -mx * A * 0.5, -0.1, 0.07, 20, C.amber, a * 0.6, 2);
   drawText(g, 'ROLL BLOCKS & REFLECTS SHOTS', 0, -0.52, 0.036, 0.7, 0.9, 1, 1.6, a * 0.8, 'c');
 }

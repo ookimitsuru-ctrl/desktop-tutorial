@@ -3,6 +3,7 @@ package com.starwire.game;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
@@ -16,6 +17,9 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** STARWIRE: 横画面固定・没入表示の WebView ラッパー。ゲーム本体は assets/www (WebGL + WebAudio)。 */
 public class MainActivity extends Activity {
@@ -102,7 +106,25 @@ public class MainActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) hideSystemUi();
+        if (hasFocus) { hideSystemUi(); excludeEdgeGestures(); }
+    }
+
+    /** 左右の親指操作がシステムの「戻る」エッジスワイプと干渉しないよう、画面端のジェスチャーを除外 (API 29+) */
+    private void excludeEdgeGestures() {
+        if (Build.VERSION.SDK_INT < 29) return;
+        final View v = getWindow().getDecorView();
+        v.post(() -> {
+            int w = v.getWidth(), h = v.getHeight();
+            if (w <= 0 || h <= 0) return;
+            float d = getResources().getDisplayMetrics().density;
+            int edge = (int) (36 * d);
+            int hh = Math.min(h / 2, (int) (190 * d)); // 端ごとの上限は 200dp
+            int top = (h - hh) / 2;
+            List<Rect> rects = new ArrayList<>();
+            rects.add(new Rect(0, top, edge, top + hh));
+            rects.add(new Rect(w - edge, top, w, top + hh));
+            v.setSystemGestureExclusionRects(rects);
+        });
     }
 
     @Override

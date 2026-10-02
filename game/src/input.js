@@ -1,5 +1,6 @@
 // 入力: タッチ(左=移動/ロール, 右=照準+ロックオン)、マウス、キーボード
 import { clamp } from './util.js';
+import { G } from './state.js';
 
 export class Input {
   constructor(canvas, gfx) {
@@ -73,7 +74,7 @@ export class Input {
       if (id) { t.role = 'ui'; t.uiId = id; this.ui.press(id, x, y); this.touches.set(e.pointerId, t); return; }
     }
     const a = this.gfx.aspect;
-    const left = x < 0;
+    const left = G.settings.lefty ? x > 0 : x < 0; // 左利きレイアウトでは左右を入れ替え
     const hasMove = [...this.touches.values()].some((q) => q.role === 'move');
     const hasAim = [...this.touches.values()].some((q) => q.role === 'aim');
     if (left) {
@@ -150,7 +151,8 @@ export class Input {
         mx = vx; my = vy;
         hasMove = true;
       } else if (t.role === 'aim') {
-        this.aimDX += (t.dx || 0) * this.sens; this.aimDY += (t.dy || 0) * this.sens;
+        const sens = this.sens * [0.75, 1, 1.4][G.settings.aim === undefined ? 1 : G.settings.aim];
+        this.aimDX += (t.dx || 0) * sens; this.aimDY += (t.dy || 0) * sens;
         t.dx = 0; t.dy = 0;
         fire = true;
       }

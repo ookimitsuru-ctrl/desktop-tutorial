@@ -177,6 +177,8 @@ function onButton(id) {
     case 'vib': G.settings.vib = !G.settings.vib; vib(40); writeSave(); break;
     case 'diff': G.settings.diff = (G.settings.diff + 1) % 3; G.diff = G.settings.diff; writeSave(); break;
     case 'gfx': G.settings.gfx = (G.settings.gfx + 1) % 4; resize(); writeSave(); break;
+    case 'aim': G.settings.aim = (G.settings.aim + 1) % 3; writeSave(); break;
+    case 'lefty': G.settings.lefty = !G.settings.lefty; writeSave(); break;
     case 'resume': setState('play'); A.resume(); break;
     case 'restart': retryStage(); break;
     case 'quit': A.stopMusic(); A.resume(); setState('title'); break;
@@ -524,12 +526,12 @@ function drawTitle(g, t) {
 const LV = (v) => Math.round(v * 100) + '%';
 function drawOptions(g, t) {
   const s = G.settings;
-  drawText(g, 'OPTIONS', 0, 0.62, 0.09, 0.2, 0.9, 1, 3, 1, 'c');
-  const rows = [
-    ['music', 'MUSIC  ' + LV(s.music)], ['sfx', 'SOUND FX  ' + LV(s.sfx)], ['vib', 'VIBRATION  ' + (s.vib ? 'ON' : 'OFF')],
-    ['diff', 'DIFFICULTY  ' + ['EASY', 'NORMAL', 'HARD'][s.diff]], ['gfx', 'GRAPHICS  ' + ['AUTO', 'LOW', 'MID', 'HIGH'][s.gfx]],
-  ];
-  rows.forEach((r, i) => H.button(g, r[0], r[1], 0, 0.38 - i * 0.2, 0.62, 0.07, { size: 0.058 }));
+  drawText(g, 'OPTIONS', 0, 0.68, 0.09, 0.2, 0.9, 1, 3, 1, 'c');
+  const L = [['music', 'MUSIC  ' + LV(s.music)], ['sfx', 'SOUND FX  ' + LV(s.sfx)], ['vib', 'VIBRATION  ' + (s.vib ? 'ON' : 'OFF')], ['diff', 'DIFFICULTY  ' + ['EASY', 'NORMAL', 'HARD'][s.diff]]];
+  const R = [['gfx', 'GRAPHICS  ' + ['AUTO', 'LOW', 'MID', 'HIGH'][s.gfx]], ['aim', 'AIM SPEED  ' + ['SLOW', 'NORMAL', 'FAST'][s.aim === undefined ? 1 : s.aim]], ['lefty', 'LAYOUT  ' + (s.lefty ? 'LEFT-HAND' : 'RIGHT-HAND')]];
+  L.forEach((r, i) => H.button(g, r[0], r[1], -0.75, 0.38 - i * 0.2, 0.68, 0.07, { size: 0.05 }));
+  R.forEach((r, i) => H.button(g, r[0], r[1], 0.75, 0.38 - i * 0.2, 0.68, 0.07, { size: 0.05 }));
+  drawText(g, s.lefty ? 'LEFT HAND: AIM   RIGHT HAND: MOVE' : 'LEFT HAND: MOVE   RIGHT HAND: AIM', 0.75, -0.26, 0.04, 0.5, 0.8, 1, 1.6, 0.8, 'c');
   H.button(g, 'back', 'BACK', 0, -0.72, 0.3, 0.065, { size: 0.06, col: H.C.amber });
 }
 
