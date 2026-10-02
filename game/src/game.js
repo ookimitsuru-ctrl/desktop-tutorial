@@ -81,6 +81,7 @@ export function resize() {
 // ---------- 状態 ----------
 export function setState(s) {
   G.state = s; G.stateT = 0;
+  if (s === 'title' || s === 'clear' || s === 'ending' || s === 'over') { G.V = s === 'title' || s === 'over' ? 62 : G.V; }
   if (s !== 'play' && s !== 'pause') { G.lasers.length = 0; G.missiles.length = 0; G.locks.length = 0; G.volley.length = 0; G.locking = false; }
   G.pressed = {};
   G.input.reset && G.input.reset();
@@ -116,6 +117,7 @@ export function startStage(idx, fresh) {
   G.banner = { text: G.stage.name, sub: G.stage.sub, t: 0, dur: 2.8, col: H.C.cyan };
   G.hintT = idx === 0 && !G.tutorialDone ? 14 : 0;
   G.camRoll = 0; G.camYaw = 0; G.camPitch = 0;
+  G.warp = 1; G.warpOut = 0;
   setState('play');
 }
 
@@ -331,6 +333,11 @@ function updatePlay(dt, ctrl) {
   updateEnemies(wdt);
   updateFx(wdt);
 
+  // ワープ演出: 開始時はワープイン、ボス撃破後はワープアウト
+  G.warp = Math.max(0, (G.warp || 0) - dt / 2.4);
+  G.warpOut = G.bossState === 3 ? clamp((G.clearT - 1.8) / 1.5, 0, 1) : 0;
+  const wk = Math.max(G.warp * G.warp, G.warpOut * G.warpOut);
+  G.V = 62 * (1 + 5 * wk);
   setCamera(dt, 1);
   updateWeapons(dt, wdt, ctrl);
 
@@ -387,7 +394,7 @@ function setCamera(dt, strength) {
   G.camLean = damp(G.camLean || 0, lean, 6, dt);
   G.camRoll = G.camLean - G.rollAngle + G.shakeR + Math.sin(t * 0.41) * 0.004;
   const od = G.od > 0 ? 1 : 0;
-  const fovT = 0.92 + od * 0.14 + clamp(Math.abs(G.pvx) * 0.0016, 0, 0.05) + (G.rollT > 0 ? 0.07 : 0);
+  const fovT = 0.92 + (G.state === 'play' ? 0.42 * Math.max((G.warp || 0) * (G.warp || 0), (G.warpOut || 0) * (G.warpOut || 0)) : 0) + od * 0.14 + clamp(Math.abs(G.pvx) * 0.0016, 0, 0.05) + (G.rollT > 0 ? 0.07 : 0);
   G.fov = damp(G.fov, fovT, 5, dt);
   // カメラ位置は機体位置にやや遅れて追従 (滑らかさ)
   G.camX = damp(G.camX === undefined ? G.px : G.camX, G.px, 16, dt);
@@ -411,11 +418,16 @@ function render(dt) {
   fx.tint = [od ? 0.8 : 1, od ? 1.0 : 1, od ? 1.3 : 1];
   fx.bloom = (od ? 1.45 : 1.05) + G.beat * 0.28;
   fx.decay = od ? 0.9 : G.ts < 0.9 ? 0.86 : 0.78;
+  if (G.V > 70 && st === 'play') fx.decay = 0.92;
   fx.aber = 0.0013 + G.trauma * 0.004 + (od ? 0.0025 : 0) + (G.rollT > 0 ? 0.002 : 0);
   fx.glitch = G.glitch;
   fx.vig = 0.55 + (G.shield < 30 && !G.dead ? 0.25 + 0.15 * Math.sin(t * 8) : 0);
   const fl = G.flash;
   fx.flash = [fl[0], fl[1], fl[2], fl[3]];
+  // メニュー系の画面では背景を減光して文字を読みやすく
+  const menuLike = st === 'pause' || st === 'over' || st === 'clear' || st === 'ending' || (st === 'title' && G.menu === 'options');
+  const dimT = menuLike ? 0.38 : 1;
+  fx.dim += (dimT - fx.dim) * Math.min(1, 10 * dt);
 
   g.beginWorld();
   g.lineScale = 1;
@@ -455,8 +467,7 @@ function drawPlay(g, t, dt, quiet) {
   } else {
     H.drawHud(g, t, 0.016);
   }
-  if (dt) H.drawBanner(g, t, dt);
-  else if (G.banner) H.drawBanner(g, t, 0);
+  if (!quiet) H.drawBanner(g, t, dt || 0);
 }
 
 // ---------- タイトル ----------
@@ -478,6 +489,7 @@ function drawTitle(g, t) {
   const A = g.aspect;
   const ready = G.titleReady;
   const k = easeOut(G.stateT / 1.2);
+  if (ready && G.menu === 'options') { drawOptions(g, t); return; }
   // ロゴ
   const lx = 0, ly = 0.46;
   const s = 0.3;

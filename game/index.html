@@ -16,7 +16,8 @@
   #howto p,#howto li{font-size:14px;line-height:1.55;margin:3px 0}
   #howto ul{margin:0;padding-left:1.1em}
   #howto b{color:#fff}
-  #howto button{margin:12px 0 4px;background:transparent;color:#38e8ff;border:2px solid #38e8ff;padding:10px 34px;font-size:16px;letter-spacing:.2em;box-shadow:0 0 12px #08c inset}
+  #howto button{position:fixed;top:max(8px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));background:rgba(0,12,24,.9);color:#38e8ff;border:2px solid #38e8ff;padding:7px 22px;font-size:14px;letter-spacing:.2em;box-shadow:0 0 12px #08c inset}
+  @media (max-height:460px){#howto h1{font-size:15px;margin-bottom:4px}#howto p,#howto li{font-size:11.5px;line-height:1.42;margin:2px 0}#howto h2{font-size:12.5px;margin-bottom:3px}#howto .col{padding:6px 10px}#howto .cols{gap:10px}}
   #err{position:fixed;left:0;right:0;top:40%;color:#f66;text-align:center;font:16px sans-serif;z-index:9}
 </style>
 </head>
@@ -30,7 +31,7 @@
       <h2>操作（横持ち）</h2>
       <ul>
         <li><b>左画面をドラッグ</b>：機体を移動（指を離すまで基準点が追従）</li>
-        <li><b>左画面をすばやくフリック</b>（または ROLL ボタン）：<b>バレルロール</b>。ロール中は無敵＋触れた敵弾を<b>反射</b></li>
+        <li><b>左画面をすばやくフリック</b>（または左画面でもう1本の指をタップ）：<b>バレルロール</b>。ロール中は無敵＋触れた敵弾を<b>反射</b></li>
         <li><b>右画面を長押し</b>：照準が出てロックオン開始。指をドラッグして敵に重ねると<b>最大8体</b>まで多重ロック</li>
         <li><b>指を離す</b>：ロックした全ての敵にミサイルを一斉発射！ ちょん押しは通常レーザー</li>
         <li>赤い大きな<b>プラズマ弾</b>もロックして撃ち落とせます</li>
@@ -39,7 +40,7 @@
     <div class="col">
       <h2>STARWIRE のシステム</h2>
       <ul>
-        <li><b>ビート・ロック</b>：ロック音とミサイル発射音がBGMの16分音符に量子化されます。多重ロックの一斉発射が“演奏”になります</li>
+        <li><b>ビート・ロック</b>：ロック音とミサイル発射音がBGMの16分音符に量子化されます。多重ロックの一斉発射が“演奏”に。照準に重なるビートリングに合わせて指を離すと <b>ON BEAT</b>（威力1.5倍）</li>
         <li><b>グレイズ＆リフレクト</b>：弾をギリギリでかわす、ロールで弾き返すと<b>FLOW</b>が溜まります</li>
         <li><b>オーバードライブ</b>：FLOW が MAX になったら画面下の <b>FLOW ボタン</b>。時間が減速し、ロック上限16、火力1.5倍</li>
         <li><b>弱点破壊</b>：大型敵・ボスはひし形の<b>弱点</b>を狙う。壊すとワイヤーが砕け散ります</li>

@@ -38,8 +38,8 @@ void main(){
 
 const FS_PRE = `
 precision mediump float; varying vec2 vUv;
-uniform sampler2D uT, uH; uniform vec2 uTexel; uniform float uThr;
-vec3 s(vec2 uv){ return texture2D(uT,uv).rgb+texture2D(uH,uv).rgb; }
+uniform sampler2D uT, uH; uniform vec2 uTexel; uniform float uThr, uDim;
+vec3 s(vec2 uv){ return texture2D(uT,uv).rgb*uDim+texture2D(uH,uv).rgb; }
 void main(){
   vec3 c = s(vUv+uTexel*vec2(-1.0,-1.0))+s(vUv+uTexel*vec2(1.0,-1.0))+s(vUv+uTexel*vec2(-1.0,1.0))+s(vUv+uTexel*vec2(1.0,1.0));
   c*=0.25;
@@ -76,7 +76,7 @@ precision mediump float;
 varying vec2 vUv;
 uniform sampler2D uT, uH, uB0, uB1, uB2;
 uniform vec4 uFlash; uniform vec3 uTint, uBgA, uBgB;
-uniform float uAber, uGlitch, uTime, uVig, uBloom, uRes;
+uniform float uAber, uGlitch, uTime, uVig, uBloom, uRes, uDim;
 float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 void main(){
   vec2 uv=vUv;
@@ -90,9 +90,9 @@ void main(){
   float r2=dot(d,d);
   vec2 off=d*(uAber*(0.35+r2*2.2));
   vec3 base;
-  base.r=texture2D(uT,uv+off).r+texture2D(uH,uv+off).r;
-  base.g=texture2D(uT,uv).g+texture2D(uH,uv).g;
-  base.b=texture2D(uT,uv-off).b+texture2D(uH,uv-off).b;
+  base.r=texture2D(uT,uv+off).r*uDim+texture2D(uH,uv+off).r;
+  base.g=texture2D(uT,uv).g*uDim+texture2D(uH,uv).g;
+  base.b=texture2D(uT,uv-off).b*uDim+texture2D(uH,uv-off).b;
   vec3 bl=texture2D(uB0,uv).rgb*0.9+texture2D(uB1,uv).rgb*1.05+texture2D(uB2,uv).rgb*1.25;
   vec3 col=base+bl*uBloom;
   // 背景の淡いグラデーション (ステージ色)
@@ -185,7 +185,7 @@ export class Gfx {
     // ポスト設定
     this.fx = {
       flash: [0, 0, 0, 0], aber: 0.0016, glitch: 0, vig: 0.55, bloom: 1.0, tint: [1, 1, 1],
-      bgA: [0, 0, 0], bgB: [0, 0, 0], time: 0, decay: 0.8,
+      bgA: [0, 0, 0], bgB: [0, 0, 0], time: 0, decay: 0.8, dim: 1,
     };
     this.tmpP = [0, 0, 0];
     this.lineCount = 0;
@@ -490,6 +490,7 @@ export class Gfx {
     gl.uniform1i(this.prgPre.u.uT, 0); gl.uniform1i(this.prgPre.u.uH, 1);
     gl.uniform2f(this.prgPre.u.uTexel, 0.5 / b0a.w, 0.5 / b0a.h);
     gl.uniform1f(this.prgPre.u.uThr, 0.12);
+    gl.uniform1f(this.prgPre.u.uDim, fx.dim);
     this._draw();
     this._blur(b0a, b0b, 1.0);
     this._down(b0a, b1a);
@@ -511,6 +512,7 @@ export class Gfx {
     gl.uniform1f(u.uTime, fx.time);
     gl.uniform1f(u.uVig, fx.vig);
     gl.uniform1f(u.uBloom, fx.bloom);
+    gl.uniform1f(u.uDim, fx.dim);
     gl.uniform1f(u.uRes, this.canvas.height);
     this._draw();
   }

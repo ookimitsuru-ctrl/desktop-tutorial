@@ -36,6 +36,7 @@ export function textWidth(str, size) {
 // size: 文字の高さ (HUD単位), (x,y): 文字列の中心高さ, align: 'l' | 'c' | 'r'
 export function drawText(g, str, x, y, size, r, gc, b, w = 2, a = 1, align = 'l', italic = 0) {
   str = String(str).toUpperCase();
+  if (size < 0.042) size = 0.042;
   const s = size / 6;
   let ox = x;
   const tw = textWidth(str, size);

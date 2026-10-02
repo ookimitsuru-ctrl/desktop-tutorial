@@ -31,8 +31,6 @@ function gapRing(ox, oy, oz, n, R, gapN, speedMul = 0.8) {
 function curtain(z, nHoles = 2, speedMul = 0.78) {
   const holes = [];
   for (let i = 0; i < nHoles; i++) holes.push([rand(-9, 9), rand(-4.5, 4.5)]);
-  holes.push([G.px, G.py]);
-  holes.pop();
   for (let i = -3; i <= 3; i++) {
     for (let j = -1; j <= 1; j++) {
       const x = i * 5.2, y = j * 5.4;
@@ -414,4 +412,3 @@ export function spawnBoss(name) {
   return e;
 }
 
-// seeker / worldmine の軌道を HANDLERS 経由で上書きしないよう path を通常扱いに

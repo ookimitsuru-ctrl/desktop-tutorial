@@ -183,7 +183,6 @@ const UPD = {
     if (e.z < -25) e.gone = true;
   },
   seeker(e, dt) {
-    e.t0 = (e.t0 || 0) + dt;
     if (!e.dirInit) { e.dirInit = true; const l = Math.hypot(G.px - e.x, G.py - e.y, -e.z) || 1; e.dx = (G.px - e.x) / l; e.dy = (G.py - e.y) / l; e.dz = -e.z / l; }
     const sp = (30 + Math.min(e.t * 22, 52)) * D().spd;
     const tx = G.px - e.x, ty = G.py - e.y, tz = -e.z;
