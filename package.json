@@ -1,0 +1,15 @@
+{
+  "name": "starwire",
+  "version": "1.0.0",
+  "private": true,
+  "description": "STARWIRE - wireframe cockpit space combat (Android landscape)",
+  "scripts": {
+    "build": "node tools/build-web.js",
+    "build:debug": "node tools/build-web.js --debug",
+    "serve": "node tools/serve.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "playwright-core": "^1.50.0"
+  }
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 外周の菱形 (ワイヤー) -->
+    <path
+        android:pathData="M54,22 L86,54 L54,86 L22,54 Z"
+        android:strokeWidth="1.6"
+        android:strokeColor="#5538E8FF" />
+    <!-- 戦闘機シルエット -->
+    <path
+        android:pathData="M54,30 L66,66 L54,58 L42,66 Z"
+        android:strokeWidth="2.6"
+        android:strokeLineJoin="round"
+        android:strokeColor="#38E8FF" />
+    <path
+        android:pathData="M54,30 L54,58 M42,66 L30,72 L42,56 M66,66 L78,72 L66,56"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:strokeColor="#FF4DA6" />
+    <path
+        android:pathData="M54,38 L58,50 L54,47 L50,50 Z"
+        android:strokeWidth="1.4"
+        android:strokeColor="#FFC13A" />
+</vector>
