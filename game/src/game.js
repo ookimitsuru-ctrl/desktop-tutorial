@@ -8,7 +8,7 @@ import { drawText, textWidth } from './font.js';
 import { clamp, damp, lerp, sat, TAU, PI, rand, fmtScore, easeOut } from './util.js';
 import { initWorld, updateWorld, drawWorld, THEMES } from './world.js';
 import { clearFx, updateFx, drawFx, drawPops, explosion, popup } from './fx.js';
-import { updateEnemies, drawEnemies, targets, buildTargets, COL, spawn, spawnBomber, spawnWall } from './enemies.js';
+import { updateEnemies, drawEnemies, targets, buildTargets, COL, spawn, spawnBomber, spawnWall, damage } from './enemies.js';
 import { spawnBoss } from './bosses.js';
 import { buildStage, updatePending, clearPending } from './stages.js';
 import { resetPlayer, updatePlayerMove, updateWeapons, drawPlayerWorld, activateOverdrive, aimPoint } from './player.js';
@@ -33,6 +33,12 @@ export function boot(canvas) {
     if (document.hidden) { if (G.state === 'play') setState('pause'); G.audio.suspend(); }
     else if (G.state !== 'pause') G.audio.resume();
   });
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); G.glLost = true; if (G.state === 'play') { setState('pause'); } });
+  canvas.addEventListener('webglcontextrestored', () => {
+    G.gfx = new Gfx(canvas); G.input.gfx = G.gfx; resize();
+    initWorld(G.stage && G.state !== 'title' ? G.stage.theme : 'belt');
+    G.glLost = false;
+  });
   G.input.ui = {
     hit: (x, y) => H.hitButton(x, y),
     press: (id) => { G.pressed[id] = true; onButton(id); },
@@ -41,7 +47,7 @@ export function boot(canvas) {
   window.__onBack = onBack;
   initWorld('belt');
   setState('title');
-  window.__sw = { G, startStage, setState, spawn, spawnBomber, spawnWall, spawnBoss, finishStage }; // デバッグ用
+  window.__sw = { G, startStage, setState, spawn, spawnBomber, spawnWall, spawnBoss, finishStage, damage, step: debugStep }; // デバッグ用
   requestAnimationFrame((t) => { last = t; loop(t); });
 }
 
@@ -60,6 +66,7 @@ function writeSave() {
 
 export function resize() {
   const g = G.gfx;
+  measureSafeArea();
   const w = window.innerWidth, h = window.innerHeight;
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   g.canvas.style.width = w + 'px'; g.canvas.style.height = h + 'px';
@@ -74,6 +81,7 @@ export function resize() {
 // ---------- 状態 ----------
 export function setState(s) {
   G.state = s; G.stateT = 0;
+  if (s !== 'play' && s !== 'pause') { G.lasers.length = 0; G.missiles.length = 0; G.locks.length = 0; G.volley.length = 0; G.locking = false; }
   G.pressed = {};
   G.input.reset && G.input.reset();
   if (s === 'title') {
@@ -201,6 +209,7 @@ function loop(ts) {
   // 軽い平滑化 (ヌルヌル感): 急な dt の揺れを緩和
   G.dt = G.dt + (dt - G.dt) * 0.5;
   G.time += G.dt;
+  if (G.glLost) return;
   try {
     const c0 = performance.now();
     update(G.dt);
@@ -366,6 +375,7 @@ function setCamera(dt, strength) {
   const g = G.gfx, R = G.ret, A = g.aspect;
   const t = G.time;
   const sh = G.trauma * G.trauma;
+  const swayX = Math.sin(t * 0.7) * 0.12 + Math.sin(t * 1.9) * 0.04, swayY = Math.sin(t * 0.53 + 1) * 0.09;
   G.shakeX = sh * (Math.sin(t * 43) + Math.sin(t * 71 + 1.3)) * 0.55;
   G.shakeY = sh * (Math.sin(t * 51 + 2) + Math.sin(t * 67)) * 0.45;
   G.shakeR = sh * Math.sin(t * 37) * 0.04;
@@ -375,14 +385,14 @@ function setCamera(dt, strength) {
   G.camPitch = damp(G.camPitch, tpit, 7, dt);
   const lean = -G.pvx * 0.0042 * strength - G.bend.x * 90 * 0.12;
   G.camLean = damp(G.camLean || 0, lean, 6, dt);
-  G.camRoll = G.camLean - G.rollAngle + G.shakeR;
+  G.camRoll = G.camLean - G.rollAngle + G.shakeR + Math.sin(t * 0.41) * 0.004;
   const od = G.od > 0 ? 1 : 0;
   const fovT = 0.92 + od * 0.14 + clamp(Math.abs(G.pvx) * 0.0016, 0, 0.05) + (G.rollT > 0 ? 0.07 : 0);
   G.fov = damp(G.fov, fovT, 5, dt);
   // カメラ位置は機体位置にやや遅れて追従 (滑らかさ)
   G.camX = damp(G.camX === undefined ? G.px : G.camX, G.px, 16, dt);
   G.camY = damp(G.camY === undefined ? G.py : G.camY, G.py, 16, dt);
-  g.setCamera(G.camX + G.shakeX, G.camY + G.shakeY, 0, G.camYaw, G.camPitch, G.camRoll, G.fov);
+  g.setCamera(G.camX + G.shakeX + swayX, G.camY + G.shakeY + swayY, 0, G.camYaw, G.camPitch, G.camRoll, G.fov);
   g.bendX = G.bend.x; g.bendY = G.bend.y;
 }
 
@@ -391,14 +401,15 @@ function render(dt) {
   const g = G.gfx;
   const fx = g.fx;
   const t = G.time;
-  fx.time = t;
+  fx.time = t % 400; // シェーダ側 (mediump) の桁あふれ防止
   const st = G.state;
   // ポスト
   const th = THEMES[(G.stage && st !== 'title') ? G.stage.theme : 'belt'];
   fx.bgA = th.bgA; fx.bgB = th.bgB;
   const od = G.od > 0;
+  G.beat = G.audio.beatPulse();
   fx.tint = [od ? 0.8 : 1, od ? 1.0 : 1, od ? 1.3 : 1];
-  fx.bloom = od ? 1.45 : 1.05;
+  fx.bloom = (od ? 1.45 : 1.05) + G.beat * 0.28;
   fx.decay = od ? 0.9 : G.ts < 0.9 ? 0.86 : 0.78;
   fx.aber = 0.0013 + G.trauma * 0.004 + (od ? 0.0025 : 0) + (G.rollT > 0 ? 0.002 : 0);
   fx.glitch = G.glitch;
@@ -525,7 +536,7 @@ function drawClear(g, t) {
   const k = easeOut(G.stateT / 0.6);
   drawText(g, 'STAGE ' + (G.stageIdx + 1) + ' CLEAR', 0, 0.62, 0.12, 0.2, 1, 0.8, 3.4, k, 'c');
   statRows(g, k);
-  if (G.stateT > 0.8) H.button(g, 'next', 'NEXT STAGE', 0, -0.78, 0.4, 0.07, { size: 0.062, pulse: true });
+  if (G.stateT > 0.8) H.button(g, 'next', 'NEXT STAGE', 0, -0.6, 0.4, 0.07, { size: 0.062, pulse: true });
 }
 function statRows(g, k) {
   const rows = [
@@ -547,9 +558,9 @@ function drawEnding(g, t) {
   const k = easeOut(G.stateT / 0.8);
   drawText(g, 'MISSION COMPLETE', 0, 0.66, 0.12, 0.2, 1, 0.8, 3.4, k, 'c');
   statRows(g, k);
-  drawText(g, 'THANK YOU FOR PLAYING', 0, -0.58, 0.055, 0.8, 0.9, 1, 2, k, 'c');
-  if (G.score >= G.save.hi) drawText(g, 'NEW RECORD', 0, -0.66, 0.05, 1, 0.8, 0.2, 2, 0.6 + 0.4 * Math.sin(t * 6), 'c');
-  if (G.stateT > 1) H.button(g, 'title', 'TITLE', 0, -0.82, 0.3, 0.065, { size: 0.06, pulse: true });
+  drawText(g, 'THANK YOU FOR PLAYING', 0, -0.46, 0.055, 0.8, 0.9, 1, 2, k, 'c');
+  if (G.score >= G.save.hi) drawText(g, 'NEW RECORD', 0, -0.54, 0.05, 1, 0.8, 0.2, 2, 0.6 + 0.4 * Math.sin(t * 6), 'c');
+  if (G.stateT > 1) H.button(g, 'title', 'TITLE', 0, -0.66, 0.3, 0.065, { size: 0.06, pulse: true });
 }
 
 function drawOver(g, t) {
@@ -561,4 +572,30 @@ function drawOver(g, t) {
     H.button(g, 'retry', 'RETRY STAGE', 0, -0.12, 0.42, 0.07, { size: 0.062, pulse: true });
     H.button(g, 'title', 'TITLE', 0, -0.34, 0.42, 0.06, { size: 0.055, col: H.C.cyan });
   }
+}
+
+// デバッグ: 描画なしで n ステップ進める (自動テスト用)
+function debugStep(n, dt = 1 / 60, renderEvery = 0) {
+  for (let i = 0; i < n; i++) {
+    G.time += dt; G.dt = dt;
+    update(dt);
+    if (renderEvery && i % renderEvery === 0) render(dt);
+  }
+}
+
+// ノッチ等のセーフエリア(横画面の左右)を HUD 単位で求める
+function measureSafeArea() {
+  try {
+    let p = document.getElementById('safeprobe');
+    if (!p) {
+      p = document.createElement('div');
+      p.id = 'safeprobe';
+      p.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)';
+      document.body.appendChild(p);
+    }
+    const cs = getComputedStyle(p);
+    const l = parseFloat(cs.paddingLeft) || 0, r = parseFloat(cs.paddingRight) || 0;
+    const h = window.innerHeight || 1;
+    G.safeL = Math.min(0.35, l / (h / 2)); G.safeR = Math.min(0.35, r / (h / 2));
+  } catch (_) { G.safeL = 0; G.safeR = 0; }
 }

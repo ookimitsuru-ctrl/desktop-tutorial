@@ -135,7 +135,7 @@ export function drawWorld(g, t) {
   }
   // ゲート (距離感・速度感を出す)
   for (const z of gates) {
-    const a = 0.35;
+    const a = 0.35 * (1 + G.beat * 0.9);
     if (theme === 'belt') gateRing(g, z, 34, 22, th.accent, a * 0.45);
     else if (theme === 'city') gateRing(g, z, 40, 24, th.accent, a);
   }

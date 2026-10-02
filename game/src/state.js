@@ -27,6 +27,7 @@ export const G = {
   hintT: 0,
   camYaw: 0, camPitch: 0, camRoll: 0, fov: 0.92,
   bend: { x: 0, y: 0 },
+  beat: 0, safeL: 0, safeR: 0, muzzle: [0, 0],
 };
 
 export function vib(ms) {

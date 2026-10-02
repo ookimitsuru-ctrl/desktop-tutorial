@@ -4,22 +4,43 @@ import { M } from './models.js';
 import { rand, clamp, lerp, sat, smooth, TAU, PI, sign } from './util.js';
 import { mk, addPart, HANDLERS, fireBullet, aimShot, D, COL, killTarget, awardKill, spawn } from './enemies.js';
 import { explosion, shatter, burst, ring, popup } from './fx.js';
+import { setTimeout0 } from './stages.js';
 
 // ---- 共通 ----
 function rotY(x, y, z, a) { const c = Math.cos(a), s = Math.sin(a); return [x * c + z * s, y, -x * s + z * c]; }
 function rotX(x, y, z, a) { const c = Math.cos(a), s = Math.sin(a); return [x, y * c - z * s, y * s + z * c]; }
 function rotZ(x, y, z, a) { const c = Math.cos(a), s = Math.sin(a); return [x * c - y * s, x * s + y * c, z]; }
 
-// 発射方向を基準に円錐状に弾を撃つ
-function coneShot(type, ox, oy, oz, angle, half, speedMul = 1) {
-  let dx = G.px - ox, dy = G.py - oy, dz = 0 - oz;
-  const l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l;
-  // 基底
-  let ux = dz, uy = 0, uz = -dx; // cross(d, up(0,1,0)) = (dz*1 - dy*0, ..., ) 近似
-  const ul = Math.hypot(ux, uy, uz) || 1; ux /= ul; uy /= ul; uz /= ul;
-  const vx = dy * uz - dz * uy, vy = dz * ux - dx * uz, vz = dx * uy - dy * ux;
-  const t = Math.tan(half), c = Math.cos(angle) * t, s = Math.sin(angle) * t;
-  return fireBullet(type, ox, oy, oz, dx + ux * c + vx * s, dy + uy * c + vy * s, dz + uz * c + vz * s, speedMul);
+// 自機(の現在位置)を中心とした半径 R の円周上の点を狙って撃つ。
+// リングなら自機が中心にいる限り安全(=その場待機が正解)、螺旋なら動き続ける必要がある。
+function ringShot(type, ox, oy, oz, angle, R, speedMul = 1) {
+  const tx = G.px + Math.cos(angle) * R, ty = G.py + Math.sin(angle) * R;
+  return fireBullet(type, ox, oy, oz, tx - ox, ty - oy, 0 - oz, speedMul);
+}
+// 隙間あり弾幕リング
+function gapRing(ox, oy, oz, n, R, gapN, speedMul = 0.8) {
+  const gap = rand(0, TAU);
+  for (let j = 0; j < n; j++) {
+    const a = (j / n) * TAU;
+    const dd = Math.abs(((a - gap + PI) % TAU + TAU) % TAU - PI);
+    if (dd < (gapN / n) * TAU * 0.5) continue;
+    ringShot('bolt', ox, oy, oz, a, R, speedMul);
+  }
+}
+// 弾の壁 (格子状・穴あり): 穴の位置まで移動して抜ける。レーザーで撃ち抜いても可
+function curtain(z, nHoles = 2, speedMul = 0.78) {
+  const holes = [];
+  for (let i = 0; i < nHoles; i++) holes.push([rand(-9, 9), rand(-4.5, 4.5)]);
+  holes.push([G.px, G.py]);
+  holes.pop();
+  for (let i = -3; i <= 3; i++) {
+    for (let j = -1; j <= 1; j++) {
+      const x = i * 5.2, y = j * 5.4;
+      if (holes.some((h) => Math.hypot(x - h[0], y - h[1]) < 5.4)) continue;
+      fireBullet('bolt', x, y, z, 0, 0, -1, speedMul);
+    }
+  }
+  return holes;
 }
 
 export function bossRatio(e) {
@@ -121,9 +142,10 @@ HANDLERS.warden = {
       e.ringT -= dt;
       if (e.ringT <= 0) {
         e.ringT = 6.5 / f;
-        const n = 14, a0 = rand(0, TAU);
-        for (let j = 0; j < n; j++) coneShot('bolt', e.x, e.y, e.z - 4, a0 + (j / n) * TAU, 0.36, 0.7);
+        gapRing(e.x, e.y, e.z - 4, 16, 8.5, 3, 0.62);
         ring(e.x, e.y, e.z - 4, 12, 0.6, COL.orange, 2.5);
+        // 少し遅れて中心へ狙い撃ち → その場待機を崩す
+        setTimeout0(0.9, () => { if (e.alive) for (let j = -1; j <= 1; j++) { const bb = aimShot({ x: e.x, y: e.y, z: e.z - 4 }, 'needle', 0, 0.6); if (bb) bb.vx += j * 5; } });
         G.audio.warn();
       }
     } else {
@@ -134,14 +156,17 @@ HANDLERS.warden = {
       if (cyc < 3.4 && e.burstT <= 0) {
         e.burstT = 0.1 / f;
         e.sa = (e.sa || 0) + 0.62;
-        coneShot('bolt', e.x, e.y, e.z - 4, e.sa, 0.34, 0.85);
-        coneShot('bolt', e.x, e.y, e.z - 4, e.sa + PI, 0.34, 0.85);
+        const rr = 9 + 5 * Math.sin(e.sa * 0.21);
+        ringShot('bolt', e.x, e.y, e.z - 4, e.sa, rr, 0.85);
+        ringShot('bolt', e.x, e.y, e.z - 4, e.sa + PI, rr, 0.85);
       }
       if (e.atkT <= 0) {
         e.atkT = 3.0 / f;
         aimShot({ x: e.x, y: e.y, z: e.z - 4 }, 'plasma', 0, 0.3);
         if (rage > 1) { const b = aimShot({ x: e.x, y: e.y, z: e.z - 4 }, 'plasma', 0.08, 0.3); }
       }
+      e.curT = (e.curT === undefined ? 6 : e.curT) - dt;
+      if (e.curT <= 0 && cyc > 3.6) { e.curT = 9 / f; curtain(e.z - 4, 2); G.audio.warn(); }
       e.seekT = (e.seekT === undefined ? 5 : e.seekT) - dt;
       if (e.seekT <= 0) {
         e.seekT = 9;
@@ -262,7 +287,9 @@ HANDLERS.leviathan = {
     }
     if (e.phase === 2) {
       e.spT = (e.spT || 0) - dt;
-      if (e.spT <= 0) { e.spT = 0.16 / D().fire; e.sa = (e.sa || 0) + 0.7; coneShot('needle', hx, hy, hz + 4, e.sa, 0.3, 0.7); }
+      if (e.spT <= 0) { e.spT = 0.17 / D().fire; e.sa = (e.sa || 0) + 0.7; ringShot('needle', hx, hy, hz + 4, e.sa, 6 + 4 * Math.sin(e.sa * 0.17), 0.7); }
+      e.curT = (e.curT === undefined ? 5 : e.curT) - dt;
+      if (e.curT <= 0) { e.curT = 11; curtain(hz + 4, 2); G.audio.warn(); }
     }
   },
   draw(e, g, r, gg, b, t) {
@@ -335,7 +362,7 @@ HANDLERS.core = {
       e.spiral = (e.spiral || 0) + dt;
       if (e.spiral % 8 < 4.5 && e.spT <= 0) {
         e.spT = 0.12 / rage; e.sa = (e.sa || 0) + 0.55;
-        coneShot('bolt', e.x, e.y, e.z - 8, e.sa, 0.4, 0.75);
+        ringShot('bolt', e.x, e.y, e.z - 8, e.sa, 4 + 10 * (0.5 + 0.5 * Math.sin(e.sa * 0.19)), 0.75);
       }
       if (e.atkT <= 0) {
         e.atkT = 3.2 / rage;
@@ -348,15 +375,9 @@ HANDLERS.core = {
       // 壁リング (隙間あり) + プラズマ + 螺旋
       e.ringT = (e.ringT === undefined ? 2.5 : e.ringT) - dt;
       if (e.ringT <= 0) {
-        e.ringT = 3.4 / rage;
-        const n = 30, gap = rand(0, TAU), gw = 4;
-        for (let j = 0; j < n; j++) {
-          const a = (j / n) * TAU;
-          let dd = Math.abs(((a - gap + PI) % TAU + TAU) % TAU - PI);
-          if (dd < (gw / n) * TAU * 0.5) continue;
-          coneShot('bolt', e.x, e.y, e.z - 8, a, 0.34, 0.62);
-        }
-        ring(e.x, e.y, e.z - 8, 16, 0.7, COL.violet, 3);
+        e.ringT = 4.2 / rage; e.rn = (e.rn || 0) + 1;
+        if (e.rn % 2) { gapRing(e.x, e.y, e.z - 8, 28, 9, 4, 0.66); ring(e.x, e.y, e.z - 8, 16, 0.7, COL.violet, 3); }
+        else curtain(e.z - 8, bossRatio(e) < 0.4 ? 1 : 2, 0.8);
         G.audio.warn();
       }
       if (e.atkT <= 0) {
@@ -366,7 +387,7 @@ HANDLERS.core = {
       }
       if (bossRatio(e) < 0.45) {
         e.spT = (e.spT || 0) - dt;
-        if (e.spT <= 0) { e.spT = 0.2 / rage; e.sa = (e.sa || 0) - 0.8; coneShot('needle', e.x, e.y, e.z - 8, e.sa, 0.3, 0.65); }
+        if (e.spT <= 0) { e.spT = 0.2 / rage; e.sa = (e.sa || 0) - 0.8; ringShot('needle', e.x, e.y, e.z - 8, e.sa, 5 + 6 * (0.5 + 0.5 * Math.sin(e.sa * 0.23)), 0.65); }
       }
     }
   },

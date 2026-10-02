@@ -28,6 +28,7 @@ export class AudioEngine {
     this.last = {}; // SFXレート制限
     this.timer = null;
     this.slowT = 0;
+    this.beats = [];
   }
 
   init() {
@@ -35,7 +36,7 @@ export class AudioEngine {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     const ctx = (this.ctx = new AC({ latencyHint: 'interactive' }));
-    this.master = ctx.createGain(); this.master.gain.value = 0.9;
+    this.master = ctx.createGain(); this.master.gain.value = 1.55;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.004; comp.release.value = 0.18;
     this.master.connect(comp); comp.connect(ctx.destination);
@@ -184,7 +185,7 @@ export class AudioEngine {
       this.arpPat.push(arp); this.leadPat.push(lead); this.bassPat.push(bass);
     }
     this.step = 0; this.nextTime = this.ctx.currentTime + 0.08; this.running = true;
-    this.stepQueue.length = 0;
+    this.stepQueue.length = 0; this.beats.length = 0;
     this.echo.delayTime.value = (60 / sg.bpm) * 0.75;
     this.intensity = 0;
     this.setIntensity(sg.drums ? 1 : 0, true);
@@ -243,28 +244,63 @@ export class AudioEngine {
     return sg.root + sg.prog[bar];
   }
 
+  // 直近のビートからの減衰パルス (0..1)。画面演出の同期用
+  beatPulse() {
+    if (!this.ctx || !this.running) return 0;
+    const now = this.ctx.currentTime;
+    const b = this.beats;
+    while (b.length > 2 && b[1] <= now) b.shift();
+    if (!b.length || b[0] > now) return 0;
+    const ph = (now - b[0]) / (this.stepDur * 4);
+    return Math.exp(-ph * 4.5);
+  }
+
+  // 最寄りのビートまでの秒数 (ビート同期リリース判定用)
+  beatOffset() {
+    if (!this.ctx || !this.running || !this.beats.length) return 1;
+    const now = this.ctx.currentTime;
+    let best = 1;
+    for (const b of this.beats) best = Math.min(best, Math.abs(b - now));
+    return best;
+  }
+  // ビート位相 0..1 (直近ビート→次ビート)
+  beatPhase() {
+    if (!this.ctx || !this.running) return 0;
+    const now = this.ctx.currentTime;
+    let last = -1;
+    for (const b of this.beats) if (b <= now) last = b;
+    if (last < 0) return 0;
+    return Math.min(1, (now - last) / (this.stepDur * 4));
+  }
+  perfect() {
+    if (!this.ctx) return; const t = this._now();
+    [0, 7, 12, 19].forEach((iv, i) => this._osc('sine', mtof(84 + iv), t + i * 0.025, 0.35, 0.09, this.sfxBus, { rev: 0.5, echo: 0.3 }));
+    this._noise(t, 0.05, 0.12, this.sfxBus, { type: 'highpass', f: 6000 });
+  }
+
   _playStep(step, t) {
     const sg = this.song, ctx = this.ctx;
     const s16 = step & 15, bar = (step >> 4) & 3;
+    if (s16 % 4 === 0) this.beats.push(t);
     const root = sg.root + sg.prog[bar];
     const L = this.layerGain;
     const dur = this.stepDur;
     // L0: パッド + ベース
     if (s16 === 0) {
       for (const iv of [0, 7, 12, 15]) {
-        this._osc('sawtooth', mtof(root + 12 + iv), t, dur * 16 * 1.02, 0.028, L[0], { a: 0.5, lp: 900, lp2: 500, detune: (iv - 7) * 3, rev: 0.4 });
+        this._osc('sawtooth', mtof(root + 24 + iv), t, dur * 16 * 1.02, 0.03, L[0], { a: 0.5, lp: 1600, lp2: 700, detune: (iv - 7) * 3, rev: 0.45 });
       }
     }
     const bn = this.bassPat[bar][s16];
-    if (bn >= 0) this._osc('sawtooth', mtof(root + bn), t, dur * 1.7, 0.16, L[0], { lp: 1200, lp2: 180, q: 4, a: 0.004 });
-    if (s16 === 0 && this.intensity >= 0) this._osc('sine', mtof(root - 12), t, dur * 3.5, 0.12, L[0], { a: 0.01 });
+    if (bn >= 0) this._osc('sawtooth', mtof(root + bn + 12), t, dur * 1.7, 0.15, L[0], { lp: 1800, lp2: 260, q: 5, a: 0.004 });
+    if (s16 === 0 && this.intensity >= 0) this._osc('sine', mtof(root), t, dur * 3.5, 0.1, L[0], { a: 0.01 });
     // L1: ドラム
     if (s16 % 4 === 0) {
       this._osc('sine', 160, t, 0.22, 0.55, L[1], { f2: 42, fd: 0.14, a: 0.002 });
       this._noise(t, 0.02, 0.1, L[1], { type: 'highpass', f: 2500 });
     }
     if (s16 === 4 || s16 === 12) this._noise(t, 0.16, 0.22, L[1], { type: 'bandpass', f: 1900, q: 0.8, rev: 0.25 });
-    if (s16 % 2 === 0) this._noise(t, s16 % 4 === 2 ? 0.07 : 0.03, s16 % 4 === 2 ? 0.07 : 0.045, L[1], { type: 'highpass', f: 7500 });
+    if (s16 % 2 === 0) this._noise(t, s16 % 4 === 2 ? 0.08 : 0.035, s16 % 4 === 2 ? 0.11 : 0.07, L[1], { type: 'highpass', f: 7000 });
     // L2: アルペジオ
     const an = this.arpPat[bar][s16];
     if (an >= 0) {

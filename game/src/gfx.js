@@ -68,7 +68,12 @@ void main(){
 }`;
 
 const FS_FINAL = `
-precision mediump float; varying vec2 vUv;
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vUv;
 uniform sampler2D uT, uH, uB0, uB1, uB2;
 uniform vec4 uFlash; uniform vec3 uTint, uBgA, uBgB;
 uniform float uAber, uGlitch, uTime, uVig, uBloom, uRes;

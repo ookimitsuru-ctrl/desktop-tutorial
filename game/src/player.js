@@ -181,7 +181,18 @@ export function updateWeapons(dt, wdt, ctrl) {
       G.volley = G.locks.slice(); G.vcount = 0; G.vstep = 0;
       G.volleyBonus = G.volley.length;
       G.lockCd = 0.3;
-      if (G.volley.length >= 4) popup(R.dx * 10, R.dy * 6, 30, 'x' + G.volley.length, COL.amber, 0.06, 0.8);
+      // ビートに合わせてリリース → ON BEAT ボーナス (威力1.5倍 + FLOW)
+      const perfect = G.audio.beatOffset() < 0.08 && G.volley.length >= 2;
+      if (perfect) {
+        for (const l of G.volley) l.perfect = true;
+        aimPoint(R.dx, R.dy, 34, _a);
+        popup(_a[0], _a[1] + 2, _a[2], 'ON BEAT', COL.pink, 0.07, 1.0);
+        addFlow(4 + G.volley.length);
+        G.audio.perfect();
+        G.flash[0] = Math.max(G.flash[0], 1); G.flash[1] = Math.max(G.flash[1], 0.3); G.flash[2] = Math.max(G.flash[2], 0.7); G.flash[3] = Math.max(G.flash[3], 0.06);
+        G.perfects = (G.perfects || 0) + 1;
+        vib(25);
+      } else if (G.volley.length >= 4) { aimPoint(R.dx, R.dy, 34, _a); popup(_a[0], _a[1] + 2, _a[2], 'x' + G.volley.length, COL.amber, 0.06, 0.8); }
     }
     G.locks.length = 0;
   }
@@ -200,7 +211,7 @@ export function updateWeapons(dt, wdt, ctrl) {
     for (let s = 0; s < steps && G.volley.length; s++) {
       for (let k = 0; k < per && G.volley.length; k++) {
         const l = G.volley.shift();
-        if (l.tg.alive) launchMissile(l.tg, G.vcount++);
+        if (l.tg.alive) launchMissile(l.tg, G.vcount++, l.perfect);
       }
     }
   } else if (G.audio.running) G.audio.pollSteps();
@@ -241,6 +252,7 @@ function fireLaser() {
   const sp = 320;
   G.lasers.push({ x: mx, y: my, z: mz, vx: dx / l * sp, vy: dy / l * sp, vz: dz / l * sp, t: 0 });
   G.shotsFired++;
+  G.muzzle[side > 0 ? 1 : 0] = 1;
   G.audio.laser(side * 0.3);
 }
 
@@ -289,10 +301,10 @@ function updateLasers(dt) {
   }
 }
 
-function launchMissile(tg, idx) {
+function launchMissile(tg, idx, perfect) {
   if (G.missiles.length > 60) return;
   const s = idx % 2 ? 1 : -1;
-  const m = { x: G.px + s * 3, y: G.py - 1.6, z: 3, vx: 0, vy: 0, vz: 0, tg, t: 0, sp: 70, dx: 0, dy: 0, dz: 1, trail: [], idx };
+  const m = { x: G.px + s * 3, y: G.py - 1.6, z: 3, vx: 0, vy: 0, vz: 0, tg, t: 0, sp: 70, dx: 0, dy: 0, dz: 1, trail: [], idx, mul: perfect ? 1.5 : 1, perfect };
   // 外へ弧を描くよう初期方向を散らす
   const a = rand(0, TAU);
   const spread = 0.9 + Math.random() * 0.6;
@@ -330,7 +342,7 @@ function updateMissiles(dt) {
       m.sp = Math.min(260, 70 + m.t * 330);
       if (l < tg.r + 1.4) {
         // 命中
-        const killed = damage(tg, 3 * od, 'missile');
+        const killed = damage(tg, 3 * od * m.mul, 'missile');
         G.hits++;
         if (!killed) { explosion(m.x, m.y, m.z, 0.45, COL.amber); }
         G.missiles.splice(i, 1);
@@ -352,11 +364,12 @@ export function drawPlayerWorld(g, t) {
   }
   for (const m of G.missiles) {
     const yaw = Math.atan2(m.dx, m.dz), pitch = -Math.asin(clamp(m.dy, -1, 1));
-    g.mesh(M.missile, m.x, m.y, m.z, yaw, pitch, m.t * 12, 1, 1, 0.85, 0.4, 1.8);
+    const pc = m.perfect;
+    g.mesh(M.missile, m.x, m.y, m.z, yaw, pitch, m.t * 12, pc ? 1.3 : 1, 1, pc ? 0.5 : 0.85, pc ? 0.9 : 0.4, 1.8);
     const tr = m.trail;
     for (let i = 3; i < tr.length; i += 3) {
       const f = i / tr.length;
-      g.line3(tr[i - 3], tr[i - 2], tr[i - 1], tr[i], tr[i + 1], tr[i + 2], 1 * f, 0.7 * f, 0.25 * f, 2.0);
+      g.line3(tr[i - 3], tr[i - 2], tr[i - 1], tr[i], tr[i + 1], tr[i + 2], 1 * f, (m.perfect ? 0.35 : 0.7) * f, (m.perfect ? 0.85 : 0.25) * f, 2.0);
     }
     if (tr.length >= 3) g.line3(tr[tr.length - 3], tr[tr.length - 2], tr[tr.length - 1], m.x, m.y, m.z, 1, 0.8, 0.3, 2.2);
   }

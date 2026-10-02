@@ -459,10 +459,10 @@ export function drawEnemies(g, t) {
     const col = T.col;
     if (b.type === 'needle') {
       const yaw = Math.atan2(b.vx, b.vz), pitch = -Math.asin(clamp(b.vy / (Math.hypot(b.vx, b.vy, b.vz) || 1), -1, 1));
-      g.mesh(T.mesh, b.x, b.y, b.z, yaw, pitch, b.spin, 1, col[0], col[1], col[2], T.w);
+      g.mesh(T.mesh, b.x, b.y, b.z, yaw, pitch, b.spin, 1.5, col[0], col[1], col[2], T.w);
     } else {
       const hp = b.hp / b.maxhp;
-      g.mesh(T.mesh, b.x, b.y, b.z, b.spin, b.spin * 0.7, 0, 1, col[0], col[1] * (b.type === 'plasma' ? hp : 1), col[2], T.w);
+      g.mesh(T.mesh, b.x, b.y, b.z, b.spin, b.spin * 0.7, 0, b.type === 'plasma' ? 1.15 : 1.7, col[0], col[1] * (b.type === 'plasma' ? hp : 1), col[2], T.w);
       if (b.type === 'plasma') g.mesh(M.octa1, b.x, b.y, b.z, -b.spin * 1.3, b.spin, 0, 2.0, col[0] * 0.7, col[1] * 0.3, col[2] * 0.4, 1.4);
     }
     // 残光

@@ -78,7 +78,11 @@ export class Input {
     const hasAim = [...this.touches.values()].some((q) => q.role === 'aim');
     if (left) {
       if (!hasMove) t.role = 'move';
-      else { t.role = 'tap'; this.rollDir = x > this.moveX ? 1 : -1; }
+      else {
+        t.role = 'tap';
+        const mt = [...this.touches.values()].find((q) => q.role === 'move');
+        this.rollDir = x >= mt.x ? 1 : -1; // 親指より右をタップ → 右ロール
+      }
     } else if (!hasAim) t.role = 'aim';
     else t.role = 'tap';
     this.touches.set(e.pointerId, t);
@@ -92,7 +96,7 @@ export class Input {
     if (!t) return;
     const now = performance.now();
     t.hist.push([now, x, y]);
-    while (t.hist.length > 2 && now - t.hist[0][0] > 120) t.hist.shift();
+    while (t.hist.length > 2 && now - t.hist[0][0] > 170) t.hist.shift();
     if (t.role === 'aim') {
       t.dx = (t.dx || 0) + (x - t.x); t.dy = (t.dy || 0) + (y - t.y);
       t.moved += Math.abs(x - t.x) + Math.abs(y - t.y);
@@ -102,7 +106,7 @@ export class Input {
       const h0 = t.hist[0];
       const ddx = x - h0[1], ddy = y - h0[2];
       if (now - t.lastFlick > 350 || !t.lastFlick) {
-        if (Math.abs(ddx) > 0.42 && Math.abs(ddx) > Math.abs(ddy) * 1.4 && now - h0[0] < 130) {
+        if (Math.abs(ddx) > 0.42 && Math.abs(ddx) > Math.abs(ddy) * 1.4 && now - h0[0] < 175) {
           this.rollDir = ddx > 0 ? 1 : -1; t.lastFlick = now;
         }
       }
