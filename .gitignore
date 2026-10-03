@@ -7,3 +7,4 @@ android/app/src/main/assets/www/
 android/local.properties
 *.log
 .DS_Store
+music/out/
