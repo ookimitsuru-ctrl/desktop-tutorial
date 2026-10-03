@@ -4,7 +4,8 @@
 「スターブレード」のようなロックオン一斉射撃を軸に、**音楽と同期する攻撃**・**弾き返すロール**・**時間を減速させるオーバードライブ**を組み合わせた Android（横画面）向けゲームです。
 
 - 描画は自前の WebGL ワイヤーフレームレンダラ（発光ライン・残光トレイル・ブルーム）
-- 音はすべて WebAudio による手続き生成（外部の音声ファイル不要）
+- ステージ BGM（1〜3 面共通）は `music/` の Python スクリプトでオフライン合成したメロディックメタル（160BPM）。ロックオン音・ミサイル発射音・ON BEAT 判定はこの曲の 16 分音符グリッドに同期
+- タイトル曲と効果音は WebAudio による手続き生成
 - Android 版は WebView ラッパー（`android/`）。APK は **`dist/WIRED.apk`**（Android 8.0+ / 横画面固定 / 通信権限なし）
 
 ## 遊び方（タッチ）
@@ -47,6 +48,15 @@ tools/build-apk.sh     # → dist/WIRED.apk
 CI（`.github/workflows/android.yml`）でも APK を生成し、Artifact として取得できます。
 
 APK はデバッグ鍵で署名した個人配布用です（提供元不明のアプリのインストールを許可して導入）。
+
+## BGM の作り直し
+
+```bash
+pip install numpy scipy soundfile lameenc
+python3 music/stage1.py        # music/out/stage1.wav を合成 (約2分)
+python3 music/export_game.py   # → game/assets/bgm_stage.ogg (ループ用レイアウト)
+python3 music/make_preview.py  # 試聴用 MP3
+```
 
 ## 構成
 

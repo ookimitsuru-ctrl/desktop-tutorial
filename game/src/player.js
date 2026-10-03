@@ -205,13 +205,15 @@ export function updateWeapons(dt, wdt, ctrl) {
 
   // --- ビート同期ミサイル発射 ---
   if (G.volley.length) {
-    let steps = G.audio.running ? G.audio.pollSteps() : 0;
+    // 1 フレーム先までの拍を先取りし、発射音は正確な拍の時刻に予約する
+    let steps = G.audio.running ? G.audio.pollSteps(Math.min(0.05, dt * 1.2)) : 0;
+    const times = G.audio.polled || [];
     if (!G.audio.running) { G.vstep += dt; while (G.vstep > 0.11) { G.vstep -= 0.11; steps++; } }
     const per = od ? Math.ceil(G.volley.length / 5) : G.volley.length > 8 ? 2 : 1;
     for (let s = 0; s < steps && G.volley.length; s++) {
       for (let k = 0; k < per && G.volley.length; k++) {
         const l = G.volley.shift();
-        if (l.tg.alive) launchMissile(l.tg, G.vcount++, l.perfect);
+        if (l.tg.alive) launchMissile(l.tg, G.vcount++, l.perfect, times[s] || 0);
       }
     }
   } else if (G.audio.running) G.audio.pollSteps();
@@ -301,7 +303,7 @@ function updateLasers(dt) {
   }
 }
 
-function launchMissile(tg, idx, perfect) {
+function launchMissile(tg, idx, perfect, when) {
   if (G.missiles.length > 60) return;
   const s = idx % 2 ? 1 : -1;
   const m = { x: G.px + s * 3, y: G.py - 1.6, z: 3, vx: 0, vy: 0, vz: 0, tg, t: 0, sp: 70, dx: 0, dy: 0, dz: 1, trail: [], idx, mul: perfect ? 1.5 : 1, perfect };
@@ -312,7 +314,7 @@ function launchMissile(tg, idx, perfect) {
   const l = Math.hypot(dx, dy, dz);
   m.dx = dx / l; m.dy = dy / l; m.dz = dz / l;
   G.missiles.push(m);
-  G.audio.missileNote(idx, clamp((m.x - G.px) / 6, -1, 1) * 0.5);
+  G.audio.missileNote(idx, clamp((m.x - G.px) / 6, -1, 1) * 0.5, when);
   G.shotsFired++;
   spark(m.x, m.y, m.z, 0, 0, 20, 0.2, 1, 0.7, 0.3, 0.05);
 }
