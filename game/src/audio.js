@@ -79,18 +79,6 @@ export class AudioEngine {
     const nd = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < nl; i++) nd[i] = Math.random() * 2 - 1;
 
-    // エンジン音 (常時)
-    this.engNoise = ctx.createBufferSource(); this.engNoise.buffer = this.noiseBuf; this.engNoise.loop = true;
-    this.engBP = ctx.createBiquadFilter(); this.engBP.type = 'bandpass'; this.engBP.frequency.value = 500; this.engBP.Q.value = 0.8;
-    this.engGain = ctx.createGain(); this.engGain.gain.value = 0;
-    this.engNoise.connect(this.engBP); this.engBP.connect(this.engGain); this.engGain.connect(this.sfxBus);
-    this.engNoise.start();
-    this.engOsc = ctx.createOscillator(); this.engOsc.type = 'sawtooth'; this.engOsc.frequency.value = 52;
-    this.engOscG = ctx.createGain(); this.engOscG.gain.value = 0;
-    const eof = ctx.createBiquadFilter(); eof.type = 'lowpass'; eof.frequency.value = 160;
-    this.engOsc.connect(eof); eof.connect(this.engOscG); this.engOscG.connect(this.sfxBus);
-    this.engOsc.start();
-
     this.timer = setInterval(() => this._tick(), 25);
   }
 
@@ -428,13 +416,37 @@ export class AudioEngine {
   }
   tick() { if (!this.ctx || !this._rl('tk', 40)) return; this._osc('square', 1500, this._now(), 0.025, 0.05, this.sfxBus); }
 
-  // エンジン音: speed 0..1.5, roll 0..1
-  setEngine(speed, boost, dt) {
+  // エンジン常時音は廃止 (互換用の空実装)
+  setEngine() {}
+
+  // 敵機が真横を通過する音 (ドップラー風: 高→低)。closeness 0..1, pan -1..1, size 0.5..3
+  flyby(pan, closeness, size = 1) {
+    if (!this.ctx || !this._rl('fb', 70)) return;
+    const t = this._now();
+    const v = (0.12 + 0.3 * closeness) * Math.min(1.6, 0.7 + size * 0.3);
+    const f0 = 1500 + 600 * (1 - size * 0.2), f1 = 220 + 80 * size;
+    this._noise(t, 0.55 + size * 0.1, v, this.sfxBus, { type: 'bandpass', f: f0, f2: f1, q: 1.4, a: 0.12, pan, rev: 0.2 });
+    this._osc('sawtooth', 340 + 60 * size, t, 0.6, v * 0.35, this.sfxBus, { f2: 95, fd: 0.55, lp: 1400, lp2: 300, a: 0.1, pan });
+  }
+
+  // 敵弾が脇を通り過ぎる音 (短いヒュッ)
+  bulletPass(pan, closeness) {
+    if (!this.ctx || !this._rl('bp', 55)) return;
+    const t = this._now();
+    const v = 0.05 + 0.13 * closeness;
+    this._noise(t, 0.22, v, this.sfxBus, { type: 'bandpass', f: 4200, f2: 900, q: 2.2, a: 0.04, pan });
+    this._osc('sine', 1700, t, 0.2, v * 0.5, this.sfxBus, { f2: 520, a: 0.03, pan });
+  }
+
+  // ボス出現時の警報サイレン (約3.2秒)
+  bossWarning() {
     if (!this.ctx) return;
-    const t = this.ctx.currentTime;
-    this.engGain.gain.setTargetAtTime(0.06 + 0.1 * speed + 0.1 * boost, t, 0.1);
-    this.engBP.frequency.setTargetAtTime(380 + 900 * speed + 900 * boost, t, 0.1);
-    this.engOscG.gain.setTargetAtTime(0.08 + 0.05 * boost, t, 0.1);
-    this.engOsc.frequency.setTargetAtTime(48 + 22 * speed + 40 * boost, t, 0.1);
+    const t = this._now();
+    for (let i = 0; i < 4; i++) {
+      const t0 = t + i * 0.8;
+      this._osc('sawtooth', 420, t0, 0.78, 0.2, this.sfxBus, { f2: 980, fd: 0.38, lp: 2200, lp2: 1800, a: 0.03, rev: 0.35 });
+      this._osc('square', 210, t0, 0.78, 0.1, this.sfxBus, { f2: 490, fd: 0.38, lp: 1200, a: 0.03 });
+      this._osc('sine', 62, t0, 0.5, 0.35, this.sfxBus, { f2: 44, a: 0.01 });
+    }
   }
 }

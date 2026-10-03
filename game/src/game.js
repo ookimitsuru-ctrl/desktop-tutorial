@@ -269,7 +269,6 @@ function updateTitle(dt, ctrl, taps) {
   G.px = Math.sin(t * 0.3) * 3; G.py = Math.sin(t * 0.21) * 1.6; G.pvx = Math.cos(t * 0.3) * 0.9; G.pvy = 0;
   G.bend.x = 0.0002 * Math.sin(t * 0.17); G.bend.y = -0.00008;
   setCamera(dt, 0.4);
-  if (G.audio.ctx) G.audio.setEngine(0.3, 0, dt);
   if (G.audio.running) G.audio.pollSteps();
 }
 
@@ -344,8 +343,6 @@ function updatePlay(dt, ctrl) {
   updateWeapons(dt, wdt, ctrl);
 
   // 音: エンジン・強度
-  const boost = clamp((1 - G.ts) * 1.2, 0, 1);
-  G.audio.setEngine(0.6 + (G.od > 0 ? 0.4 : 0), boost, dt);
   if (G.audio.ctx) {
     const inten = G.bossState === 2 ? 3 : G.od > 0 ? 3 : G.st < 14 ? 1 : G.st < 50 ? 2 : 3;
     if (G.audio.intensity !== inten) G.audio.setIntensity(inten);
@@ -369,7 +366,7 @@ function updateBossFlow(dt, wdt) {
     if (n <= 1 || G.st >= s.bossAt + 14) {
       G.bossState = 1; G.bossT = 3.4;
       G.banner = { text: 'WARNING', sub: 'BOSS APPROACHING', t: 0, dur: 3.2, col: H.C.red };
-      G.audio.warn();
+      G.audio.bossWarning();
       G.audio.setIntensity(3);
       vib(80);
     }

@@ -37,7 +37,7 @@ G.addFlow = addFlow;
 
 export function hurt(dmg, x, y, z) {
   if (G.dead || G.rollT > 0 || G.invuln > 0) return;
-  const m = G.diff === 0 ? 0.7 : G.diff === 2 ? 1.25 : 1;
+  const m = G.diff === 0 ? 0.9 : G.diff === 2 ? 1.8 : 1.45; // 被ダメージ倍率
   G.shield -= dmg * m; G.dmgTaken += dmg * m; G.invuln = 0.9; G.chain = 0; G.chainT = 0;
   if (G.od <= 0) G.flow = Math.max(0, G.flow - 14);
   G.flowReady = G.flow >= 100;

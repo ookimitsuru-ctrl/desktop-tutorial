@@ -359,9 +359,13 @@ export function updateEnemies(dt) {
     if (!e.alive) { G.enemies.splice(i, 1); continue; }
     e.t += dt;
     if (e.hitT > 0) e.hitT -= dt;
+    const pz0 = e.z;
     const h = HANDLERS[e.kind];
     if (h && h.update) h.update(e, dt); else if (UPD[e.kind]) UPD[e.kind](e, dt);
-    if (e.parts && !h) { /* parts updated in kind updater */ }
+    if (pz0 > 0 && e.z <= 0 && e.alive && !e.noFlyby && e.kind !== 'wall' && !e.isBoss) {
+      const d = Math.hypot(e.x - G.px, e.y - G.py);
+      if (d < 45) G.audio.flyby(clamp((e.x - G.px) / 14, -1, 1), 1 - d / 45, (e.size || 1) * (e.kind === 'bomber' ? 2 : 1));
+    }
     if (e.parts) for (const p of e.parts) if (p.hitT > 0) p.hitT -= dt;
     if (e.gone) { e.alive = false; G.enemies.splice(i, 1); }
   }
@@ -410,9 +414,9 @@ export function updateEnemies(dt) {
         b.alive = false;
         G.hurt(b.type === 'plasma' ? 22 : b.type === 'needle' ? 10 : 12, b.x, b.y, 2);
         burst(b.x, b.y, 2, 10, 18, COL.red, 0.4);
-      } else if (d < b.hit + 5.0 && !b.grazed) {
-        b.grazed = true;
-        G.graze(b);
+      } else {
+        if (d < b.hit + 5.0 && !b.grazed) { b.grazed = true; G.graze(b); }
+        if (d < 18) G.audio.bulletPass(clamp((cx - G.px) / 12, -1, 1), 1 - d / 18);
       }
     }
     if (b.z < -10 || b.z > 460 || Math.abs(b.x) > 320 || Math.abs(b.y) > 240) b.alive = false;
