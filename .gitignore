@@ -8,3 +8,4 @@ android/local.properties
 *.log
 .DS_Store
 music/out/
+__pycache__/
