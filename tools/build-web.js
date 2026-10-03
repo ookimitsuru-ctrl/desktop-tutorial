@@ -15,11 +15,14 @@ esbuild.buildSync({
   legalComments: 'none',
 });
 fs.copyFileSync(path.join(root, 'game/index.html'), path.join(out, 'index.html'));
-// BGM: file:// でも確実に読めるよう base64 の JS として同梱
-const bgm = path.join(root, 'game/assets/bgm_stage.ogg');
-if (fs.existsSync(bgm)) {
-  fs.writeFileSync(path.join(out, 'bgm_stage.js'), 'window.__BGM_STAGE="' + fs.readFileSync(bgm).toString('base64') + '";');
-} else {
-  fs.writeFileSync(path.join(out, 'bgm_stage.js'), 'window.__BGM_STAGE=null;');
+// BGM: file:// でも確実に読めるよう base64 の JS (window.__BGM[name]) として同梱
+const assets = path.join(root, 'game/assets');
+let bgm = 'window.__BGM={};';
+if (fs.existsSync(assets)) {
+  for (const f of fs.readdirSync(assets).sort()) {
+    const m = f.match(/^bgm_(.+)\.ogg$/);
+    if (m) bgm += 'window.__BGM[' + JSON.stringify(m[1]) + ']="' + fs.readFileSync(path.join(assets, f)).toString('base64') + '";';
+  }
 }
+fs.writeFileSync(path.join(out, 'bgm.js'), bgm);
 console.log('built', fs.statSync(path.join(out, 'game.js')).size, 'bytes');

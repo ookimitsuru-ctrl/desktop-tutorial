@@ -5,9 +5,14 @@ import { rng, clamp } from './util.js';
 
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const PENTA = [0, 3, 5, 7, 10];
-// 収録BGM (ステージ 1〜3 共通)。music/stage1.py で生成した 160BPM・Eマイナーの曲
-// ファイル構成は music/export_game.py 参照: 9.0〜111.0 秒をシームレスにループ
-const TRACK = { bpm: 160, loopStart: 9.0, loopEnd: 111.0, gain: 0.36, root: 40 };
+// 収録BGM (music/*.py で生成)。ファイル構成は music/export_game.py 参照
+//   stage1: メロディックメタル 160BPM E マイナー (1面・3面)
+//   stage2: テクノ 140BPM F マイナー (2面)
+const TRACKS = {
+  stage1: { bpm: 160, loopStart: 9.0, loopEnd: 111.0, gain: 0.36, root: 40 },
+  stage2: { bpm: 140, loopStart: 16.714286, loopEnd: 123.0, gain: 0.36, root: 41 },
+};
+const STAGE_TRACK = { 1: 'stage1', 2: 'stage2', 3: 'stage1' };
 
 const SONGS = [
   // title
@@ -83,7 +88,8 @@ export class AudioEngine {
     for (let i = 0; i < nl; i++) nd[i] = Math.random() * 2 - 1;
 
     this.timer = setInterval(() => this._tick(), 25);
-    this._loadTrack();
+    this.tracks = {}; this.trackLoading = {};
+    this._loadTrack('stage1');
   }
 
   resume() {
@@ -159,28 +165,28 @@ export class AudioEngine {
   }
 
   // ---------- 音楽 ----------
-  // base64 で同梱された BGM をデコード (起動時に一度だけ)
-  _loadTrack() {
-    const b64 = window.__BGM_STAGE;
-    if (!b64 || this.track || this.trackLoading) return;
-    this.trackLoading = true;
+  // base64 で同梱された BGM をデコード (曲ごとに一度だけ)
+  _loadTrack(name) {
+    const b64 = window.__BGM && window.__BGM[name];
+    if (!b64 || this.tracks[name] || this.trackLoading[name]) return;
+    this.trackLoading[name] = true;
     try {
       const bin = atob(b64);
       const u = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
       this.ctx.decodeAudioData(u.buffer, (buf) => {
-        this.track = buf; this.trackLoading = false;
-        if (this.pendingTrack) this._startTrack();
-      }, (e) => { this.trackLoading = false; console.warn('BGM decode failed', e); });
-    } catch (e) { this.trackLoading = false; console.warn('BGM load failed', e); }
+        this.tracks[name] = buf; this.trackLoading[name] = false;
+        if (this.pendingTrack === name) this._startTrack(name);
+      }, (e) => { this.trackLoading[name] = false; console.warn('BGM decode failed', name, e); });
+    } catch (e) { this.trackLoading[name] = false; console.warn('BGM load failed', name, e); }
   }
-  _startTrack() {
-    this.pendingTrack = false;
-    const ctx = this.ctx;
+  _startTrack(name) {
+    this.pendingTrack = null;
+    const ctx = this.ctx, cfg = TRACKS[name], buf = this.tracks[name];
     const src = ctx.createBufferSource();
-    src.buffer = this.track; src.loop = true;
-    src.loopStart = TRACK.loopStart; src.loopEnd = Math.min(TRACK.loopEnd, this.track.duration);
-    const g = ctx.createGain(); g.gain.value = TRACK.gain;
+    src.buffer = buf; src.loop = true;
+    src.loopStart = cfg.loopStart; src.loopEnd = Math.min(cfg.loopEnd, buf.duration);
+    const g = ctx.createGain(); g.gain.value = cfg.gain;
     src.connect(g); g.connect(this.musicBus);
     const t0 = ctx.currentTime + 0.05;
     src.start(t0);
@@ -188,7 +194,7 @@ export class AudioEngine {
     this.step = 0; this.nextTime = t0;  // ビートグリッドは再生開始時刻から 16 分音符刻み
   }
   _stopTrack() {
-    this.pendingTrack = false;
+    this.pendingTrack = null;
     if (!this.trackSrc) return;
     const t = this.ctx.currentTime;
     this.trackGain.gain.setTargetAtTime(0, t, 0.08);
@@ -199,17 +205,21 @@ export class AudioEngine {
   startMusic(idx) {
     if (!this.ctx) return;
     this._stopTrack();
-    if (idx >= 1 && window.__BGM_STAGE) {
+    const name = STAGE_TRACK[idx];
+    if (name && window.__BGM && window.__BGM[name]) {
       // 収録BGMモード: シーケンサーは鳴らさず、ビートグリッドだけ刻む
-      this.mode = 'track';
-      this.song = { bpm: TRACK.bpm, root: TRACK.root, prog: [0, 0, 0, 0] };
+      const cfg = TRACKS[name];
+      this.mode = 'track'; this.cur = cfg;
+      this.song = { bpm: cfg.bpm, root: cfg.root, prog: [0, 0, 0, 0] };
       this.songIdx = idx;
       this.running = true;
       this.stepQueue.length = 0; this.beats.length = 0;
       this.nextTime = Infinity;
       for (const g of this.layerGain) g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
       this.intensity = 0;
-      if (this.track) this._startTrack(); else { this.pendingTrack = true; this._loadTrack(); }
+      if (this.tracks[name]) this._startTrack(name); else { this.pendingTrack = name; this._loadTrack(name); }
+      const next = STAGE_TRACK[idx + 1];  // 次の面の曲を先読み
+      if (next) this._loadTrack(next);
       return;
     }
     this.mode = 'seq';
@@ -249,7 +259,7 @@ export class AudioEngine {
   }
   setTimeScale(s) { this.targetScale = s; }
   get stepDur() {
-    if (this.mode === 'track') return 60 / TRACK.bpm / 4;
+    if (this.mode === 'track') return 60 / this.cur.bpm / 4;
     return 60 / (this.song ? this.song.bpm : 130) / 4 / this.timeScale;
   }
 

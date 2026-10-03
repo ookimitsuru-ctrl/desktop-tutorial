@@ -4,7 +4,7 @@
 「スターブレード」のようなロックオン一斉射撃を軸に、**音楽と同期する攻撃**・**弾き返すロール**・**時間を減速させるオーバードライブ**を組み合わせた Android（横画面）向けゲームです。
 
 - 描画は自前の WebGL ワイヤーフレームレンダラ（発光ライン・残光トレイル・ブルーム）
-- ステージ BGM（1〜3 面共通）は `music/` の Python スクリプトでオフライン合成したメロディックメタル（160BPM）。ロックオン音・ミサイル発射音・ON BEAT 判定はこの曲の 16 分音符グリッドに同期
+- ステージ BGM は `music/` の Python スクリプトでオフライン合成: 1・3 面はメロディックメタル（160BPM）、2 面はテクノ（140BPM、TB-303 風アシッド）。ロックオン音・ミサイル発射音・ON BEAT 判定は再生中の曲の 16 分音符グリッドに同期
 - タイトル曲と効果音は WebAudio による手続き生成
 - Android 版は WebView ラッパー（`android/`）。APK は **`dist/WIRED.apk`**（Android 8.0+ / 横画面固定 / 通信権限なし）
 
@@ -53,9 +53,11 @@ APK はデバッグ鍵で署名した個人配布用です（提供元不明の�
 
 ```bash
 pip install numpy scipy soundfile lameenc
-python3 music/stage1.py        # music/out/stage1.wav を合成 (約2分)
-python3 music/export_game.py   # → game/assets/bgm_stage.ogg (ループ用レイアウト)
-python3 music/make_preview.py  # 試聴用 MP3
+python3 music/stage1.py                                  # → music/out/stage1.wav (約2分)
+python3 music/export_game.py stage1 108.0 6.0            # → game/assets/bgm_stage1.ogg
+python3 music/stage2.py                                  # → music/out/stage2.wav (約1分)
+python3 music/export_game.py stage2 120.0 13.714285714   # → game/assets/bgm_stage2.ogg
+python3 music/make_preview.py stage2 120.0 13.714285714  # 試聴用 MP3
 ```
 
 ## 構成
