@@ -130,7 +130,7 @@ function retryStage() {
 
 G.onBossDefeated = () => {
   G.bossState = 3; G.clearT = 0;
-  G.audio.setIntensity(1);
+  G.audio.fadeOutMusic(1.2);
 };
 
 function finishStage() {
@@ -388,7 +388,7 @@ function updateBossFlow(dt, wdt) {
       G.bossState = 1; G.bossT = 3.4;
       G.banner = { text: 'WARNING', sub: 'BOSS APPROACHING', t: 0, dur: 3.2, col: H.C.red };
       G.audio.bossWarning();
-      G.audio.setIntensity(3);
+      G.audio.playBoss();
       vib(80);
     }
   } else if (G.bossState === 1) {

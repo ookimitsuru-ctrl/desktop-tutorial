@@ -8,9 +8,11 @@ const PENTA = [0, 3, 5, 7, 10];
 // 収録BGM (music/*.py で生成)。ファイル構成は music/export_game.py 参照
 //   stage1: メロディックメタル 160BPM E マイナー (1面・3面)
 //   stage2: テクノ 140BPM F マイナー (2面)
+//   boss:   メタル×テクノ 172BPM D マイナー (ボス戦)
 const TRACKS = {
   stage1: { bpm: 160, loopStart: 9.0, loopEnd: 111.0, gain: 0.36, root: 40 },
   stage2: { bpm: 140, loopStart: 16.714286, loopEnd: 123.0, gain: 0.36, root: 41 },
+  boss: { bpm: 172, loopStart: 8.581395, loopEnd: 64.395349, gain: 0.36, root: 38 },  // ボス戦 (全ボス共通)
 };
 const STAGE_TRACK = { 1: 'stage1', 2: 'stage2', 3: 'stage1' };
 
@@ -89,7 +91,7 @@ export class AudioEngine {
 
     this.timer = setInterval(() => this._tick(), 25);
     this.tracks = {}; this.trackLoading = {};
-    this._loadTrack('stage1');
+    this._loadTrack('stage1'); this._loadTrack('boss');
   }
 
   resume() {
@@ -193,31 +195,48 @@ export class AudioEngine {
     this.trackSrc = src; this.trackGain = g;
     this.step = 0; this.nextTime = t0;  // ビートグリッドは再生開始時刻から 16 分音符刻み
   }
-  _stopTrack() {
+  _stopTrack(tau = 0.08) {
     this.pendingTrack = null;
     if (!this.trackSrc) return;
     const t = this.ctx.currentTime;
-    this.trackGain.gain.setTargetAtTime(0, t, 0.08);
-    try { this.trackSrc.stop(t + 0.5); } catch (_) { /* noop */ }
+    this.trackGain.gain.setTargetAtTime(0, t, tau);
+    try { this.trackSrc.stop(t + tau * 6 + 0.1); } catch (_) { /* noop */ }
     this.trackSrc = null; this.trackGain = null;
+  }
+
+  // 収録BGMモードで曲を再生。シーケンサーは鳴らさず、ビートグリッドだけ刻む
+  _playTrack(name) {
+    if (!name || !window.__BGM || !window.__BGM[name]) return false;
+    const cfg = TRACKS[name];
+    this.mode = 'track'; this.cur = cfg;
+    this.song = { bpm: cfg.bpm, root: cfg.root, prog: [0, 0, 0, 0] };
+    this.running = true;
+    this.stepQueue.length = 0; this.beats.length = 0;
+    this.nextTime = Infinity;
+    for (const g of this.layerGain) g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    this.intensity = 0;
+    if (this.tracks[name]) this._startTrack(name); else { this.pendingTrack = name; this._loadTrack(name); }
+    return true;
+  }
+  // ボス戦の曲へ切り替え (WARNING と同時)
+  playBoss() {
+    if (!this.ctx) return;
+    this._stopTrack(0.25);
+    this._playTrack('boss');
+  }
+  // 曲をフェードアウト (ボス撃破時など)
+  fadeOutMusic(sec = 1.2) {
+    if (!this.ctx) return;
+    this.running = false;
+    this._stopTrack(sec / 3);
   }
 
   startMusic(idx) {
     if (!this.ctx) return;
     this._stopTrack();
     const name = STAGE_TRACK[idx];
-    if (name && window.__BGM && window.__BGM[name]) {
-      // 収録BGMモード: シーケンサーは鳴らさず、ビートグリッドだけ刻む
-      const cfg = TRACKS[name];
-      this.mode = 'track'; this.cur = cfg;
-      this.song = { bpm: cfg.bpm, root: cfg.root, prog: [0, 0, 0, 0] };
+    if (this._playTrack(name)) {
       this.songIdx = idx;
-      this.running = true;
-      this.stepQueue.length = 0; this.beats.length = 0;
-      this.nextTime = Infinity;
-      for (const g of this.layerGain) g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-      this.intensity = 0;
-      if (this.tracks[name]) this._startTrack(name); else { this.pendingTrack = name; this._loadTrack(name); }
       const next = STAGE_TRACK[idx + 1];  // 次の面の曲を先読み
       if (next) this._loadTrack(next);
       return;
