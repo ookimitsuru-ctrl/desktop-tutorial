@@ -62,12 +62,13 @@ slam(start['op'] + 2.7)
 # 各面: BGM の聴かせどころ
 place(excerpt('stage1', 6.0, dur['s1_intro'] + dur['s1']), start['s1_intro'])
 place(excerpt('stage2', 40 * 60 / 140 * 4, dur['s2_intro'] + dur['s2']), start['s2_intro'])
-place(excerpt('stage3', 40 * 60 / 132 * 4, dur['s3_intro'] + dur['s3']), start['s3_intro'])
+S3BAR = 60 / 190 * 4   # 3 面 (パンク 190BPM) の 1 小節
+place(excerpt('stage3', 68 * S3BAR, dur['s3_intro'] + dur['s3']), start['s3_intro'])   # ラストサビ頭の VIC-TO-RY!
 place(excerpt('boss', 20 * 60 / 172 * 4, dur['boss'] + 0.6), start['boss'], 1.0, 0.04, 0.6)
-# ボス撃破: 爆発 + 3 面の凱歌の最後の和音
+# ボス撃破: 爆発 + 3 面アウトロのキメ (VIC-TO-RY!)
 im = impact(rng, 2.0)
 place(np.stack([im, im], 1), start['boss_die'], 0.5, 0.0, 0.3)
-place(excerpt('stage3', 47 * 60 / 132 * 4, dur['boss_die'] + 0.3, -15), start['boss_die'] + 0.25, 1.0, 0.25, 0.4)
+place(excerpt('stage3', 84 * S3BAR, dur['boss_die'] + 0.3, -15), start['boss_die'] + 0.25, 1.0, 0.02, 0.4)
 # エンド: ロゴ着地 (end 開始 + 0.25 秒で着地)
 slam(start['end'] + 0.25, 0.9)
 
