@@ -270,6 +270,12 @@ export function drawBanner(g, t, dt) {
 }
 
 // ---------- 操作ボタン ----------
+// 移動スティックの定位置 (画面下寄り)。ROLL ボタンはこの真上
+export function joyHome(A) {
+  const x = A * 0.6;
+  return [G.settings.lefty ? x : -x, -0.5];
+}
+const JOY_R = 0.2;
 export function drawControls(g, t) {
   const A = g.aspect;
   // ポーズ
@@ -277,8 +283,28 @@ export function drawControls(g, t) {
   g.line2(-0.015, 0.9 - 0.02, -0.015, 0.9 + 0.02, 0.4, 0.8, 1, 3, 0.9);
   g.line2(0.015, 0.9 - 0.02, 0.015, 0.9 + 0.02, 0.4, 0.8, 1, 3, 0.9);
   // ロール専用ボタン (移動エリアとは分離)。左半分=左ロール / 右半分=右ロール
+  // 移動スティック: 触れていない時は定位置、触れると指を置いた所が中心 (フローティング)
+  const [jx, jy] = joyHome(A);
+  let bx = jx, by = jy, kx = jx, ky = jy, act = false;
+  for (const tc of G.input.touches.values()) {
+    if (tc.role !== 'move') continue;
+    act = true; bx = tc.ax; by = tc.ay;
+    let vx = tc.x - tc.ax, vy = tc.y - tc.ay;
+    const l = Math.hypot(vx, vy), R = 0.25;
+    if (l > R) { vx *= R / l; vy *= R / l; }
+    kx = bx + vx * (JOY_R / R); ky = by + vy * (JOY_R / R);
+  }
+  const jc = C.cyan;
+  circle(g, bx, by, JOY_R, 40, jc, act ? 0.7 : 0.35, 2);
+  circle(g, bx, by, JOY_R * 0.55, 28, jc, act ? 0.3 : 0.15, 1.2, 0, TAU, 2);
+  circle(g, kx, ky, 0.065, 20, jc, act ? 1 : 0.5, 2.6);
+  for (let i = 0; i < 4; i++) { // 方向の刻み
+    const an = i * PI / 2;
+    g.line2(bx + Math.cos(an) * (JOY_R + 0.015), by + Math.sin(an) * (JOY_R + 0.015), bx + Math.cos(an) * (JOY_R + 0.045), by + Math.sin(an) * (JOY_R + 0.045), jc[0], jc[1], jc[2], 2, act ? 0.8 : 0.4);
+  }
+  // ROLL: スティック定位置の真上
   const hw = 0.23, hh = 0.11;
-  const rx = G.settings.lefty ? A - G.safeR - hw - 0.06 : -A + G.safeL + hw + 0.06, ry = 0.22;
+  const rx = jx, ry = jy + JOY_R + 0.07 + hh;
   const cd = G.rollCd > 0 ? 1 - sat(G.rollCd / 0.9) : 1;
   const ready = cd >= 1;
   const rc = ready ? C.cyan : C.dim;
@@ -318,10 +344,10 @@ export function drawHints(g, t) {
   const bl = 0.7 + 0.3 * Math.sin(t * 4);
   const mx = G.settings.lefty ? 1 : -1;
   // 移動側
-  drawText(g, 'DRAG', mx * A * 0.5, -0.25, 0.05, 0.3, 1, 1, 2, a * bl, 'c');
-  drawText(g, 'MOVE', mx * A * 0.5, -0.32, 0.04, 0.3, 1, 1, 1.8, a, 'c');
-  drawText(g, 'ROLL = BUTTON', mx * A * 0.5, -0.4, 0.035, 0.3, 1, 1, 1.6, a * 0.8, 'c');
-  circle(g, mx * A * 0.5, -0.1, 0.07, 20, C.cyan, a * 0.6, 2);
+  const [jx, jy] = joyHome(A);
+  const hx = jx - mx * 0.5;
+  drawText(g, 'DRAG', hx, jy + 0.05, 0.05, 0.3, 1, 1, 2, a * bl, 'c');
+  drawText(g, 'MOVE', hx, jy - 0.02, 0.04, 0.3, 1, 1, 1.8, a, 'c');
   // 照準側
   drawText(g, 'HOLD  LOCK-ON', -mx * A * 0.5, -0.25, 0.05, 1, 0.75, 0.2, 2, a * bl, 'c');
   drawText(g, 'RELEASE  FIRE', -mx * A * 0.5, -0.32, 0.04, 1, 0.75, 0.2, 1.8, a, 'c');
