@@ -159,7 +159,7 @@ function cycle(arr, v) { return arr[(arr.indexOf(v) + 1) % arr.length]; }
 
 function onButton(id) {
   const A = G.audio;
-  if (id === 'roll') { G.pendingRoll = G.pvx > 2 ? 1 : G.pvx < -2 ? -1 : (G.px > 0 ? -1 : 1); return; }
+  if (id === 'rollL' || id === 'rollR') { G.pendingRoll = id === 'rollL' ? -1 : 1; return; }
   if (id === 'flow') { G.pendingFlow = true; return; }
   if (id === 'pause') { if (G.state === 'play') { setState('pause'); A.suspend(); } return; }
   if (!G.titleReady && G.state === 'title') return;

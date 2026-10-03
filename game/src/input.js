@@ -81,8 +81,6 @@ export class Input {
       if (!hasMove) t.role = 'move';
       else {
         t.role = 'tap';
-        const mt = [...this.touches.values()].find((q) => q.role === 'move');
-        this.rollDir = x >= mt.x ? 1 : -1; // 親指より右をタップ → 右ロール
       }
     } else if (!hasAim) t.role = 'aim';
     else t.role = 'tap';
@@ -103,14 +101,6 @@ export class Input {
       t.moved += Math.abs(x - t.x) + Math.abs(y - t.y);
     } else if (t.role === 'move') {
       t.moved += Math.abs(x - t.x) + Math.abs(y - t.y);
-      // フリック判定: 短時間に大きく横移動
-      const h0 = t.hist[0];
-      const ddx = x - h0[1], ddy = y - h0[2];
-      if (now - t.lastFlick > 350 || !t.lastFlick) {
-        if (Math.abs(ddx) > 0.42 && Math.abs(ddx) > Math.abs(ddy) * 1.4 && now - h0[0] < 175) {
-          this.rollDir = ddx > 0 ? 1 : -1; t.lastFlick = now;
-        }
-      }
       // フローティングスティック
       const R = 0.25;
       let vx = x - t.ax, vy = y - t.ay;

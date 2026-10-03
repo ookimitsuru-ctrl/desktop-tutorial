@@ -276,15 +276,26 @@ export function drawControls(g, t) {
   button(g, 'pause', '', 0, 0.9, 0.06, 0.05, { col: C.dim, size: 0.04 });
   g.line2(-0.015, 0.9 - 0.02, -0.015, 0.9 + 0.02, 0.4, 0.8, 1, 3, 0.9);
   g.line2(0.015, 0.9 - 0.02, 0.015, 0.9 + 0.02, 0.4, 0.8, 1, 3, 0.9);
-  // ロール
-  const rx = G.settings.lefty ? A - G.safeR - 0.24 : -A + G.safeL + 0.24, ry = -0.44;
+  // ロール専用ボタン (移動エリアとは分離)。左半分=左ロール / 右半分=右ロール
+  const hw = 0.23, hh = 0.11;
+  const rx = G.settings.lefty ? A - G.safeR - hw - 0.06 : -A + G.safeL + hw + 0.06, ry = 0.22;
   const cd = G.rollCd > 0 ? 1 - sat(G.rollCd / 0.9) : 1;
   const ready = cd >= 1;
   const rc = ready ? C.cyan : C.dim;
-  circle(g, rx, ry, 0.11, 28, rc, ready ? 0.8 : 0.4, 2.2);
-  circle(g, rx, ry, 0.085, 24, rc, 0.4, 1.4, -PI / 2, TAU * cd);
-  drawText(g, 'ROLL', rx, ry, 0.038, rc[0], rc[1], rc[2], 2, ready ? 0.95 : 0.5, 'c');
-  // ロールは「左画面のフリック / 2本目の指タップ」で発動 (ボタンは表示専用)
+  const pL = G.pressed.rollL, pR = G.pressed.rollR;
+  rect(g, rx, ry, hw, hh, rc, ready ? 0.85 : 0.4, 2.2);
+  g.line2(rx, ry - hh * 0.7, rx, ry + hh * 0.7, rc[0], rc[1], rc[2], 1.4, 0.5);
+  if (pL) g.line2(rx - hw, ry, rx, ry, rc[0], rc[1], rc[2], 22, 0.25);
+  if (pR) g.line2(rx, ry, rx + hw, ry, rc[0], rc[1], rc[2], 22, 0.25);
+  for (const sgn of [-1, 1]) { // 矢印
+    const ax = rx + sgn * hw * 0.62;
+    g.line2(ax + sgn * 0.045, ry, ax - sgn * 0.02, ry + 0.05, rc[0], rc[1], rc[2], 2.6, ready ? 1 : 0.5);
+    g.line2(ax + sgn * 0.045, ry, ax - sgn * 0.02, ry - 0.05, rc[0], rc[1], rc[2], 2.6, ready ? 1 : 0.5);
+  }
+  drawText(g, 'ROLL', rx, ry + hh + 0.045, 0.042, rc[0], rc[1], rc[2], 1.8, ready ? 0.9 : 0.5, 'c');
+  if (!ready) g.line2(rx - hw, ry - hh - 0.025, rx - hw + 2 * hw * cd, ry - hh - 0.025, rc[0], rc[1], rc[2], 3, 0.7);
+  G.buttons.push({ id: 'rollL', x: rx - hw / 2, y: ry, hw: hw / 2 + 0.02, hh: hh + 0.05 });
+  G.buttons.push({ id: 'rollR', x: rx + hw / 2, y: ry, hw: hw / 2 + 0.02, hh: hh + 0.05 });
   // フロー
   const fy = -0.68;
   if (G.flow >= 100 && G.od <= 0) {
@@ -309,7 +320,7 @@ export function drawHints(g, t) {
   // 移動側
   drawText(g, 'DRAG', mx * A * 0.5, -0.25, 0.05, 0.3, 1, 1, 2, a * bl, 'c');
   drawText(g, 'MOVE', mx * A * 0.5, -0.32, 0.04, 0.3, 1, 1, 1.8, a, 'c');
-  drawText(g, 'FLICK = ROLL', mx * A * 0.5, -0.4, 0.035, 0.3, 1, 1, 1.6, a * 0.8, 'c');
+  drawText(g, 'ROLL = BUTTON', mx * A * 0.5, -0.4, 0.035, 0.3, 1, 1, 1.6, a * 0.8, 'c');
   circle(g, mx * A * 0.5, -0.1, 0.07, 20, C.cyan, a * 0.6, 2);
   // 照準側
   drawText(g, 'HOLD  LOCK-ON', -mx * A * 0.5, -0.25, 0.05, 1, 0.75, 0.2, 2, a * bl, 'c');
