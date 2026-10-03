@@ -214,7 +214,7 @@ function loop(ts) {
   // 軽い平滑化 (ヌルヌル感): 急な dt の揺れを緩和
   G.dt = G.dt + (dt - G.dt) * 0.5;
   G.time += G.dt;
-  if (G.glLost) return;
+  if (G.glLost || G.freeze) return; // freeze: PV 撮影などで外部からコマ送りする時
   try {
     const c0 = performance.now();
     update(G.dt);
