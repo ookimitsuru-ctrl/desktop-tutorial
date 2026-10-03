@@ -59,3 +59,29 @@ export function drawText(g, str, x, y, size, r, gc, b, w = 2, a = 1, align = 'l'
     ox += ADV * size;
   }
 }
+
+// 文字列を「描き順」に沿って途中まで描く (prog 0..1)。ペン先の座標を返す
+export function drawTextProgress(g, str, x, y, size, prog, r, gc, b, w = 2, a = 1) {
+  str = String(str).toUpperCase();
+  const s = size / 6;
+  const tw = textWidth(str, size);
+  const y0 = y - size / 2;
+  const segs = [];
+  let ox = x - tw / 2;
+  for (let i = 0; i < str.length; i++) {
+    const gl = GLYPHS[str[i]];
+    if (gl) for (const st of gl) for (let p = 0; p + 1 < st.length; p++) {
+      segs.push([ox + st[p][0] * s, y0 + st[p][1] * s, ox + st[p + 1][0] * s, y0 + st[p + 1][1] * s]);
+    }
+    ox += ADV * size;
+  }
+  const n = segs.length * Math.max(0, Math.min(1, prog));
+  let tip = null;
+  for (let i = 0; i < segs.length && i < n; i++) {
+    const q = segs[i], u = Math.min(1, n - i);
+    const ex = q[0] + (q[2] - q[0]) * u, ey = q[1] + (q[3] - q[1]) * u;
+    g.line2(q[0], q[1], ex, ey, r, gc, b, w, a);
+    tip = [ex, ey, i];
+  }
+  return tip;
+}

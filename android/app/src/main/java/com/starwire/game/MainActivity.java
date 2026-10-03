@@ -21,7 +21,7 @@ import android.webkit.WebViewClient;
 import java.util.ArrayList;
 import java.util.List;
 
-/** STARWIRE: 横画面固定・没入表示の WebView ラッパー。ゲーム本体は assets/www (WebGL + WebAudio)。 */
+/** WIRED: 横画面固定・没入表示の WebView ラッパー。ゲーム本体は assets/www (WebGL + WebAudio)。 */
 public class MainActivity extends Activity {
     private WebView web;
     private Vibrator vibrator;

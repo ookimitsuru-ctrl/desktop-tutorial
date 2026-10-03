@@ -4,7 +4,7 @@ import { Gfx } from './gfx.js';
 import { AudioEngine } from './audio.js';
 import { Input } from './input.js';
 import { M } from './models.js';
-import { drawText, textWidth } from './font.js';
+import { drawText, textWidth, drawTextProgress } from './font.js';
 import { clamp, damp, lerp, sat, TAU, PI, rand, fmtScore, easeOut } from './util.js';
 import { initWorld, updateWorld, drawWorld, THEMES } from './world.js';
 import { clearFx, updateFx, drawFx, drawPops, explosion, popup } from './fx.js';
@@ -14,7 +14,7 @@ import { buildStage, updatePending, clearPending } from './stages.js';
 import { resetPlayer, updatePlayerMove, updateWeapons, drawPlayerWorld, activateOverdrive, aimPoint } from './player.js';
 import * as H from './hud.js';
 
-const SAVE_KEY = 'starwire.save.v1';
+const SAVE_KEY = 'starwire.save.v1'; // 互換のためキー名は据え置き
 let last = 0, evIdx = 0, fpsAvg = 16.7, fpsN = 0, startScale = 1, lowCount = 0;
 let stageStartScore = 0;
 
@@ -89,8 +89,9 @@ export function setState(s) {
     G.menu = 'main'; G.titleReady = G.titleReady || false;
     clearArrays(); initWorld('belt'); G.gfx.fx.tint = [1, 1, 1];
     G.tsTarget = 1; G.ts = 1; G.od = 0;
-    if (G.audio.ctx) G.audio.startMusic(0);
+    if (G.audio.ctx) { G.audio.startMusic(0); G.audio.setIntensity(2); }
     G.audio.setTimeScale(1);
+    if (G.opT === undefined) G.opT = -1; else G.opT = 99; // 2回目以降はOPを省略
   }
 }
 
@@ -252,17 +253,37 @@ function update(dt) {
   if (G.hintT > 0) G.hintT -= dt;
 }
 
+const OP_SLAM = 3.2, OP_END = 4.4;
+function opSlam() {
+  G.opSlammed = true;
+  G.flash = [1, 1, 1, 0.85]; G.glitch = 1; G.trauma = 0.9;
+  G.audio.cancelOpening(); G.audio.slam();
+  G.audio.startMusic(0); G.audio.setIntensity(2);
+  vib(80);
+}
 function updateTitle(dt, ctrl, taps) {
+  const pressed = taps.length || G.input.takeAnyPress();
   if (!G.titleReady) {
-    if (taps.length || G.input.takeAnyPress()) {
+    if (pressed) {
       G.titleReady = true;
       G.audio.init(); G.audio.resume();
       G.audio.setVolumes(G.settings.music, G.settings.sfx);
-      G.audio.startMusic(0);
-      G.audio.uiClick();
+      G.audio.stopMusic();
+      G.audio.opening();
+      G.opT = 0; G.opSlammed = false; G.opStroke = -1;
       G.input.reset();
     }
+  } else if (G.opT >= 0 && G.opT < OP_END) {
+    G.opT += dt;
+    if (pressed && G.opT > 0.15) { // タップでスキップ
+      if (!G.opSlammed) opSlam();
+      G.opT = OP_END; G.input.reset(); G.pressed = {};
+    }
+    if (G.opT >= OP_SLAM && !G.opSlammed) opSlam();
   }
+  // OP中はワープで突き進み、ロゴ着地で減速
+  const op = G.opT >= 0 && G.opT < OP_SLAM ? Math.min(1, G.opT / 1.2) : 0;
+  G.warp = op; G.V = 62 * (1 + 6 * op * op);
   G.wdt = dt; G.ts = 1;
   updateWorld(dt);
   const t = G.time;
@@ -393,7 +414,7 @@ function setCamera(dt, strength) {
   G.camLean = damp(G.camLean || 0, lean, 6, dt);
   G.camRoll = G.camLean - G.rollAngle + G.shakeR + Math.sin(t * 0.41) * 0.004;
   const od = G.od > 0 ? 1 : 0;
-  const fovT = 0.92 + (G.state === 'play' ? 0.42 * Math.max((G.warp || 0) * (G.warp || 0), (G.warpOut || 0) * (G.warpOut || 0)) : 0) + od * 0.14 + clamp(Math.abs(G.pvx) * 0.0016, 0, 0.05) + (G.rollT > 0 ? 0.07 : 0);
+  const fovT = 0.92 + (G.state === 'play' || G.state === 'title' ? 0.42 * Math.max((G.warp || 0) * (G.warp || 0), (G.warpOut || 0) * (G.warpOut || 0)) : 0) + od * 0.14 + clamp(Math.abs(G.pvx) * 0.0016, 0, 0.05) + (G.rollT > 0 ? 0.07 : 0);
   G.fov = damp(G.fov, fovT, 5, dt);
   // カメラ位置は機体位置にやや遅れて追従 (滑らかさ)
   G.camX = damp(G.camX === undefined ? G.px : G.camX, G.px, 16, dt);
@@ -487,23 +508,49 @@ function drawTitleWorld(g, t) {
 function drawTitle(g, t) {
   const A = g.aspect;
   const ready = G.titleReady;
-  const k = easeOut(G.stateT / 1.2);
   if (ready && G.menu === 'options') { drawOptions(g, t); return; }
-  // ロゴ
-  const lx = 0, ly = 0.46;
-  const s = 0.3;
-  const jit = (Math.sin(t * 31) > 0.985) ? 0.01 : 0;
-  drawText(g, 'STARWIRE', lx + jit, ly, s, 0.2, 0.9, 1, 4, k, 'c');
-  drawText(g, 'STARWIRE', lx + 0.006, ly - 0.006, s, 1, 0.2, 0.6, 2, 0.35 * k, 'c');
-  const w = textWidth('STARWIRE', s) / 2 + 0.05;
-  g.line2(-w, ly - 0.22, w, ly - 0.22, 0.2, 0.9, 1, 2, 0.8 * k);
-  drawText(g, 'WIREFRAME COCKPIT COMBAT', 0, ly - 0.3, 0.048, 0.7, 0.9, 1, 2, 0.9 * k, 'c');
+  // 起動前: 接続待ち
   if (!ready) {
     const b = 0.5 + 0.5 * Math.sin(t * 4);
-    drawText(g, 'TOUCH SCREEN', 0, -0.45, 0.075, 1, 1, 1, 2.6, 0.3 + 0.7 * b, 'c');
+    drawText(g, 'TOUCH TO CONNECT' + (Math.sin(t * 6) > 0 ? '_' : ' '), 0, -0.05, 0.075, 0.3, 1, 1, 2.6, 0.35 + 0.65 * b, 'c');
+    g.line2(-0.6, -0.16, 0.6, -0.16, 0.2, 0.9, 1, 1.5, 0.4);
     drawText(g, 'HI ' + fmtScore(G.save.hi), 0, -0.85, 0.045, 0.5, 0.8, 1, 1.8, 0.8, 'c');
     return;
   }
+  const T = G.opT;
+  const ly = 0.42, s = 0.42;
+  // ブートログ
+  if (T < OP_SLAM) {
+    const lines = ['> LINK ESTABLISHED', '> WIREFRAME CORE ONLINE', '> SYNCING TO THE BEAT', '> ARMING LOCK SYSTEM'];
+    lines.forEach((ln, i) => {
+      const n = Math.floor(Math.max(0, (T - i * 0.3) * 40));
+      if (n > 0) drawText(g, ln.slice(0, n), -A + 0.15 + G.safeL, 0.82 - i * 0.08, 0.045, 0.3, 1, 0.6, 1.8, 0.85, 'l');
+    });
+  }
+  // ロゴを一筆ずつ描く → 着地
+  const prog = T >= OP_SLAM ? 1 : Math.max(0, (T - 1.2) / (OP_SLAM - 1.2 - 0.15));
+  if (T < OP_SLAM) {
+    const tip = drawTextProgress(g, 'WIRED', 0, ly, s, prog, 0.3, 1, 1, 3.2, 1);
+    if (tip) {
+      g.dot2(tip[0], tip[1], 1, 1, 1, 18, 1);
+      g.dot2(tip[0], tip[1], 0.3, 0.9, 1, 40, 0.4);
+      if (tip[2] !== G.opStroke) { G.opStroke = tip[2]; G.audio.tick(); }
+    }
+    return;
+  }
+  const k = easeOut((T - OP_SLAM) / 0.5);
+  const sc = 1 + 0.25 * (1 - k); // 着地時に少し大きい → 締まる
+  const jit = (Math.sin(t * 31) > 0.985) ? 0.012 : 0;
+  drawText(g, 'WIRED', jit, ly, s * sc, 0.25, 0.95, 1, 4.4, 1, 'c');
+  drawText(g, 'WIRED', 0.008 - jit, ly - 0.008, s * sc, 1, 0.2, 0.6, 2.2, 0.4, 'c');
+  const w = textWidth('WIRED', s) / 2 + 0.12;
+  const wl = w * easeOut((T - OP_SLAM) / 0.8);
+  g.line2(-wl, ly - 0.28, wl, ly - 0.28, 0.2, 0.9, 1, 2, 0.85);
+  g.line2(-wl * 0.8, ly + 0.28, wl * 0.8, ly + 0.28, 1, 0.3, 0.7, 1.4, 0.5);
+  const tag = 'WIREFRAME COCKPIT COMBAT';
+  const tn = Math.floor(Math.max(0, (T - OP_SLAM - 0.3) * 40));
+  if (tn > 0) drawText(g, tag.slice(0, tn), 0, ly - 0.37, 0.05, 0.7, 0.9, 1, 2, 0.9, 'c');
+  if (T < OP_END) return; // メニューはOP後に出す
   if (G.menu === 'main') {
     H.button(g, 'start', 'START', 0, -0.12, 0.42, 0.075, { size: 0.075 });
     H.button(g, 'options', 'OPTIONS', -0.5, -0.36, 0.42, 0.06, { size: 0.055, col: H.C.cyan });

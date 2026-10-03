@@ -8,7 +8,7 @@ const PENTA = [0, 3, 5, 7, 10];
 
 const SONGS = [
   // title
-  { bpm: 104, root: 45, prog: [0, -4, 3, -2], seed: 7, drums: 0 },
+  { bpm: 116, root: 40, prog: [0, 3, -2, -5], seed: 77, drums: 1 },
   // stage 1
   { bpm: 138, root: 45, prog: [0, -4, 3, -2], seed: 11, drums: 1 },
   // stage 2
@@ -414,6 +414,32 @@ export class AudioEngine {
     if (!this.ctx) return; const t = this._now();
     [0, -2, -5, -9, -12].forEach((iv, i) => this._osc('sawtooth', mtof(60 + iv), t + i * 0.35, 0.8, 0.14, this.sfxBus, { lp: 1200, lp2: 200, rev: 0.7 }));
   }
+  // オープニング: 起動音 → 2秒のライザー → 3.2秒でロゴ着地の衝撃音
+  opening() {
+    if (!this.ctx) return;
+    const t = this._now();
+    this.opBus = this.ctx.createGain(); this.opBus.connect(this.sfxBus);
+    const B = this.opBus;
+    this._osc('sine', 880, t, 0.12, 0.12, B, { f2: 1760, rev: 0.4 });
+    this._osc('sine', 1320, t + 0.35, 0.1, 0.08, B, { rev: 0.4 });
+    this._osc('sine', 1760, t + 0.7, 0.1, 0.08, B, { rev: 0.4 });
+    this._osc('sawtooth', 55, t + 1.2, 2.0, 0.22, B, { f2: 220, fd: 2.0, lp: 200, lp2: 5000, a: 1.6, rev: 0.4 });
+    this._osc('sawtooth', 110.6, t + 1.2, 2.0, 0.12, B, { f2: 440, fd: 2.0, lp: 300, lp2: 6000, a: 1.6 });
+    this._noise(t + 1.2, 2.0, 0.22, B, { type: 'bandpass', f: 300, f2: 7000, q: 1.2, a: 1.8, rev: 0.4 });
+  }
+
+  // ロゴ着地の衝撃音 (OPのスキップ時も同じ音)
+  slam() {
+    if (!this.ctx) return;
+    const s = this._now();
+    this._osc('sine', 120, s, 1.6, 0.8, this.sfxBus, { f2: 30, fd: 1.2, a: 0.002 });
+    this._noise(s, 1.4, 0.45, this.sfxBus, { type: 'lowpass', f: 6000, f2: 120, rev: 0.6 });
+    for (const m of [40, 52, 55, 59, 64]) this._osc('sawtooth', mtof(m), s, 2.4, 0.07, this.sfxBus, { lp: 4000, lp2: 500, rev: 0.7, echo: 0.3 });
+  }
+  cancelOpening() {
+    if (this.opBus) { this.opBus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.03); this.opBus = null; }
+  }
+
   tick() { if (!this.ctx || !this._rl('tk', 40)) return; this._osc('square', 1500, this._now(), 0.025, 0.05, this.sfxBus); }
 
   // エンジン常時音は廃止 (互換用の空実装)

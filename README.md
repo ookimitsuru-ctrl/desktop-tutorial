@@ -1,11 +1,11 @@
-# STARWIRE
+# WIRED
 
 ワイヤーフレームの宇宙船で戦う、コックピット視点のレールシューティング。
 「スターブレード」のようなロックオン一斉射撃を軸に、**音楽と同期する攻撃**・**弾き返すロール**・**時間を減速させるオーバードライブ**を組み合わせた Android（横画面）向けゲームです。
 
 - 描画は自前の WebGL ワイヤーフレームレンダラ（発光ライン・残光トレイル・ブルーム）
 - 音はすべて WebAudio による手続き生成（外部の音声ファイル不要）
-- Android 版は WebView ラッパー（`android/`）。APK は **`dist/StarWire.apk`**（Android 8.0+ / 横画面固定 / 通信権限なし）
+- Android 版は WebView ラッパー（`android/`）。APK は **`dist/WIRED.apk`**（Android 8.0+ / 横画面固定 / 通信権限なし）
 
 ## 遊び方（タッチ）
 
@@ -41,7 +41,7 @@ npm run build          # game/dist に 1 ファイルへバンドル
 npm run serve          # http://localhost:8080 でブラウザ確認（?debug で FPS 表示）
 
 # Android APK（要 JDK 17+ と Android SDK: platforms;android-34, build-tools;34.0.0）
-tools/build-apk.sh     # → dist/StarWire.apk
+tools/build-apk.sh     # → dist/WIRED.apk
 ```
 
 CI（`.github/workflows/android.yml`）でも APK を生成し、Artifact として取得できます。

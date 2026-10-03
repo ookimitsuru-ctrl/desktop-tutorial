@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "StarWire"
+rootProject.name = "WIRED"
 include(":app")
