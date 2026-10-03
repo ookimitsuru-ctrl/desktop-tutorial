@@ -6,15 +6,17 @@ import { rng, clamp } from './util.js';
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const PENTA = [0, 3, 5, 7, 10];
 // 収録BGM (music/*.py で生成)。ファイル構成は music/export_game.py 参照
-//   stage1: メロディックメタル 160BPM E マイナー (1面・3面)
+//   stage1: メロディックメタル 160BPM E マイナー (1面)
 //   stage2: テクノ 140BPM F マイナー (2面)
+//   stage3: オーケストラ 132BPM D マイナー→メジャー (3面)
 //   boss:   メタル×テクノ 172BPM D マイナー (ボス戦)
 const TRACKS = {
   stage1: { bpm: 160, loopStart: 9.0, loopEnd: 111.0, gain: 0.36, root: 40 },
   stage2: { bpm: 140, loopStart: 16.714286, loopEnd: 123.0, gain: 0.36, root: 41 },
+  stage3: { bpm: 132, loopStart: 24.818182, loopEnd: 123.0, gain: 0.38, root: 38 },
   boss: { bpm: 172, loopStart: 8.581395, loopEnd: 64.395349, gain: 0.36, root: 38 },  // ボス戦 (全ボス共通)
 };
-const STAGE_TRACK = { 1: 'stage1', 2: 'stage2', 3: 'stage1' };
+const STAGE_TRACK = { 1: 'stage1', 2: 'stage2', 3: 'stage3' };
 
 const SONGS = [
   // title
