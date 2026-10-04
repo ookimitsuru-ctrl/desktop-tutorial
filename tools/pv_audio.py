@@ -62,10 +62,13 @@ slam(start['op'] + 2.7)
 # 各面: BGM の聴かせどころ
 place(excerpt('stage1', 6.0, dur['s1_intro'] + dur['s1']), start['s1_intro'])
 place(excerpt('stage2', 40 * 60 / 140 * 4, dur['s2_intro'] + dur['s2']), start['s2_intro'])
-S3BAR = 60 / 190 * 4   # 3 面 (パンク 190BPM) の 1 小節
-place(excerpt('stage3', 68 * S3BAR, dur['s3_intro'] + dur['s3']), start['s3_intro'])   # ラストサビ頭の VIC-TO-RY!
+# 3 面ワープ: 突入のスイープ (映像の最高速 = 曲の 2 小節目頭) → ドロップ 2
+place(excerpt('warp', 0.0, dur['w_intro'] + 0.05, -15), start['w_intro'], 1.0, 0.0, 0.05)
+place(excerpt('warp', 33 * 240 / 174, dur['w']), start['w'], 1.0, 0.02)
+S3BAR = 60 / 190 * 4   # 4 面 (パンク 190BPM) の 1 小節
+place(excerpt('stage3', 68 * S3BAR, dur['s4_intro'] + dur['s4']), start['s4_intro'])   # ラストサビ頭の VIC-TO-RY!
 place(excerpt('boss', 20 * 60 / 172 * 4, dur['boss'] + 0.6), start['boss'], 1.0, 0.04, 0.6)
-# ボス撃破: 爆発 + 3 面アウトロのキメ (VIC-TO-RY!)
+# ボス撃破: 爆発 + 4 面アウトロのキメ (VIC-TO-RY!)
 im = impact(rng, 2.0)
 place(np.stack([im, im], 1), start['boss_die'], 0.5, 0.0, 0.3)
 place(excerpt('stage3', 84 * S3BAR, dur['boss_die'] + 0.3, -15), start['boss_die'] + 0.25, 1.0, 0.02, 0.4)

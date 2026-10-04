@@ -53,6 +53,46 @@ function turrets(n, gap = 0.9) {
 }
 function wall(gx, gy, gr = 8.5) { spawnWall(gx, gy, gr, 300); }
 
+// ---- ワープ面: 高速で迫る小惑星 ----
+const WZ = 445; // フォグの向こうから現れる
+const WR = { path: 'world', hpK: 0.55, score: 100 }; // ワープ面の岩: ミサイル 1 発で砕ける硬さ
+// 自機の周辺に散らばる岩 (n 個を gap 秒間隔で)
+function wStream(n, gap, spread = 1, o = {}) {
+  for (let i = 0; i < n; i++) setTimeout0(i * gap, () => {
+    const near = Math.random() < 0.55;  // 半分は自機の近くを狙う
+    const x = near ? G.px + rand(-9, 9) * spread : rand(-34, 34);
+    const y = near ? G.py + rand(-6, 6) * spread : rand(-20, 20);
+    spawn('rock', { x, y, z: WZ + rand(0, 30), vx: rand(-1.5, 1.5), vy: rand(-1, 1), ...WR, ...o });
+  });
+}
+// 岩の壁: 格子状に並べ、穴 (1〜2 マス) だけ空ける。くぐるか、撃って穴を広げる
+function wWall(holes) {
+  const xs = [-17, -8.5, 0, 8.5, 17], ys = [-8.5, 0, 8.5];
+  for (const x of xs) for (const y of ys) {
+    if (holes.some((h) => xs[h[0]] === x && ys[h[1]] === y)) continue;
+    spawn('rock', { x: x + rand(-0.8, 0.8), y: y + rand(-0.8, 0.8), z: WZ, vx: 0, vy: 0, ...WR, scale: rand(3.4, 3.9) });
+  }
+}
+// 巨大な岩 (避けるか、集中砲火で砕く)
+function wGiant(x, y, o = {}) {
+  spawn('rock', { x, y, z: WZ + 20, vx: -x * 0.04, vy: -y * 0.04, ...WR, hpK: 1.1, scale: rand(7.5, 9), score: 1500, ...o });
+}
+// 横切る岩の列
+function wCross(n, side, y, gap = 0.18) {
+  for (let i = 0; i < n; i++) setTimeout0(i * gap, () => spawn('rock', { x: side * 46, y: y + rand(-3, 3), z: WZ - 120 + rand(-10, 10), vx: -side * rand(16, 22), vy: rand(-1, 1), ...WR, scale: rand(2.4, 3.4) }));
+}
+// 彗星: 小さく速い。撃つと回復/FLOW を落とす
+function wComet(drop) {
+  spawn('rock', { x: rand(-14, 14), y: rand(-8, 8), z: WZ + 40, vx: 0, vy: 0, vz: -70, ...WR, scale: 1.6, comet: true, score: 600, drop });
+}
+// 自機めがけて降る岩
+function wRain(n, gap) {
+  for (let i = 0; i < n; i++) setTimeout0(i * gap, () => {
+    const x = rand(-30, 30), y = rand(-18, 18), Tt = 2.8;
+    spawn('rock', { x, y, z: WZ, vx: (G.px - x) / Tt, vy: (G.py - y) / Tt, ...WR, scale: rand(2.2, 3.2) });
+  });
+}
+
 // ステージ時間依存の遅延実行
 let pending = [];
 export function setTimeout0(delay, fn) { if (delay <= 0) fn(); else pending.push({ t: G.st + delay, fn }); }
@@ -66,12 +106,14 @@ function E(list, t, fn) { list.push({ t, fn }); }
 const BENDS = [
   (t) => [0.00026 * Math.sin(t * 0.11) + 0.00008 * Math.sin(t * 0.31), -0.00014 * Math.sin(t * 0.07 + 1)],
   (t) => [0.00034 * Math.sin(t * 0.13 + 1) , -0.00006 * Math.sin(t * 0.2)],
+  // ワープ: うねるトンネル
+  (t) => [0.00045 * Math.sin(t * 0.23) + 0.00015 * Math.sin(t * 0.61), 0.0003 * Math.sin(t * 0.17 + 1)],
   (t) => [0.0003 * Math.sin(t * 0.09 + 2), -0.0002 * Math.sin(t * 0.1) - 0.00004],
 ];
 
 export function buildStage(idx) {
   const ev = [];
-  const st = { idx, events: ev, bend: BENDS[idx], boss: ['warden', 'leviathan', 'core'][idx], bossAt: 0 };
+  const st = { idx, events: ev, bend: BENDS[idx], boss: ['warden', 'leviathan', 'maelstrom', 'core'][idx], bossAt: 0 };
   if (idx === 0) {
     Object.assign(st, { name: 'STAGE 1', sub: 'OUTER BELT', theme: 'belt', music: 1 });
     E(ev, 3, () => hoverV('drone', dn(5), 0, 5, 80, { noFire: true }));
@@ -106,8 +148,36 @@ export function buildStage(idx) {
     E(ev, 94, () => spawnBomber(0, 2, 28));
     E(ev, 104, () => { wall(8, 4, 8); setTimeout0(1.8, () => wall(-8, -4, 8)); seekers(dn(4), 0.4); });
     st.bossAt = 118;
+  } else if (idx === 2) {
+    // ワープ: 敵は出ない。高速で迫る小惑星を砕くか避けてボスへ (曲の展開に合わせて配置)
+    Object.assign(st, { name: 'STAGE 3', sub: 'HYPERSPACE', theme: 'warp', music: 3, hyper: true });
+    E(ev, 4, () => wStream(dn(6), 1.1, 1.4));
+    E(ev, 12.4, () => { wStream(dn(14), 0.55); wComet('flow'); });        // ドロップ 1
+    E(ev, 21, () => wCross(dn(5), -1, 4));
+    E(ev, 23, () => { wStream(dn(12), 0.45); setTimeout0(2, () => wCross(dn(5), 1, -3)); });
+    E(ev, 29, () => wWall([[2, 1]]));
+    E(ev, 31.5, () => wRain(dn(8), 0.3));
+    E(ev, 34.5, () => wGiant(-6, 2));                                     // ブレイクダウン
+    E(ev, 37.5, () => { wComet('repair'); wGiant(8, -3); });
+    E(ev, 41, () => { wGiant(0, 0); wStream(dn(5), 0.6, 1.6); });
+    E(ev, 45.5, () => { wWall([[0, 0], [1, 0]]); wComet('flow'); });       // ドロップ 2
+    E(ev, 48.5, () => wStream(dn(16), 0.4));
+    E(ev, 52, () => wWall([[3, 2], [4, 2]]));
+    E(ev, 55, () => { wCross(dn(6), -1, 2, 0.15); setTimeout0(1.2, () => wCross(dn(6), 1, -5, 0.15)); });
+    E(ev, 58, () => wWall([[2, 0]]));
+    E(ev, 60.5, () => { wRain(dn(10), 0.25); wGiant(rand(-10, 10), rand(-5, 5)); });
+    E(ev, 64.5, () => wComet('repair'));
+    E(ev, 67.6, () => { wStream(dn(18), 0.32, 1.2); });                    // ニューロ
+    E(ev, 71, () => { wCross(dn(6), 1, 6, 0.14); setTimeout0(0.9, () => wCross(dn(6), -1, -6, 0.14)); });
+    E(ev, 74.5, () => wRain(dn(12), 0.22));
+    E(ev, 78.6, () => wWall([[1, 1]]));                                    // ビルド: 岩壁の連続
+    E(ev, 81.4, () => wWall([[3, 0]]));
+    E(ev, 84.2, () => wWall([[0, 2], [4, 0]]));
+    E(ev, 86.5, () => { wWall([[2, 1]]); wComet('flow'); });
+    E(ev, 89.7, () => { wStream(dn(10), 0.3); wGiant(-9, 4); wGiant(9, -4); }); // ラストドロップ
+    st.bossAt = 95;
   } else {
-    Object.assign(st, { name: 'STAGE 3', sub: 'DREADNOUGHT', theme: 'city', music: 3 });
+    Object.assign(st, { name: 'STAGE 4', sub: 'DREADNOUGHT', theme: 'city', music: 4 });
     E(ev, 2, () => { swoop('fighter', dn(3), -1, 6, 0.7); swoop('fighter', dn(3), 1, 6, 0.7); });
     E(ev, 10, () => ringLoop('drone', dn(8), 0, 3, 24));
     E(ev, 17, () => { seekers(dn(5), 0.3); wall(6, 3, 8.5); });

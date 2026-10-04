@@ -35,7 +35,9 @@ export function mk(kind, x, y, z, o = {}) {
     scale: def.scale || 1, ...o,
   };
   e.owner = e;
-  if (kind === 'rock') { e.mesh = ROCKS[o.m !== undefined ? o.m : (Math.random() * 8) | 0]; e.scale = o.scale || rand(2.4, 4.2); e.r = e.scale * 1.05; e.hp = Math.max(2, Math.round(e.scale * 1.3)); e.maxhp = e.hp; e.rx = rand(-1, 1); e.ry = rand(-1, 1); e.pitch = rand(0, TAU); e.yaw = rand(0, TAU); }
+  if (kind === 'rock') { e.mesh = ROCKS[o.m !== undefined ? o.m : (Math.random() * 8) | 0]; e.scale = o.scale || rand(2.4, 4.2); e.r = e.scale * 1.05; e.hp = Math.max(o.hpK ? 1 : 2, Math.round(e.scale * (o.hpK || 1.3))); e.maxhp = e.hp; e.rx = rand(-1, 1); e.ry = rand(-1, 1); e.pitch = rand(0, TAU); e.yaw = rand(0, TAU);
+    if (o.comet) { e.hp = e.maxhp = 1; e.col = [1, 0.75, 0.35]; e.w = 2.2; }
+  }
   if (HANDLERS[kind] && HANDLERS[kind].init) HANDLERS[kind].init(e);
   G.enemies.push(e);
   return e;
@@ -209,13 +211,13 @@ const UPD = {
     if (e.z < -25) e.gone = true;
   },
   rock(e, dt) {
-    e.z -= G.V * dt; e.x += (e.vx || 0) * dt; e.y += (e.vy || 0) * dt;
+    e.z += ((e.vz || 0) - G.V) * dt; e.x += (e.vx || 0) * dt; e.y += (e.vy || 0) * dt;
     e.yaw += e.ry * dt * 0.8; e.pitch += e.rx * dt * 0.8;
     // 衝突
     if (e.z < e.r + 1 && e.z > -e.r) {
       const d = Math.hypot(G.px - e.x, G.py - e.y);
       if (d < e.r + 1.3) {
-        if (G.rollT <= 0) { G.hurt(20, e.x, e.y, e.z); }
+        if (G.rollT <= 0) { G.hurt(e.hpK ? 15 : 20, e.x, e.y, e.z); }
         e.alive = false; explosion(e.x, e.y, Math.max(e.z, 4), 1.4, COL.blue);
         shatter(e.mesh, e.x, e.y, Math.max(e.z, 4), e.yaw, e.pitch, 0, e.scale, [0.45, 0.65, 1], 22, 0, 0, 0);
       }
@@ -448,6 +450,14 @@ export function drawEnemies(g, t) {
     if (h && h.draw) h.draw(e, g, r, gg, b, t);
     else if (e.kind === 'wall') drawWall(e, g);
     else if (e.mesh) g.mesh(e.mesh, e.x, e.y, e.z, e.yaw, e.pitch, e.roll, e.scale, r, gg, b, e.w);
+    if (e.comet) { // 彗星の尾
+      const L = 6 + (G.V - (e.vz || 0)) * 0.12;
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * TAU + t * 3, ox = Math.cos(a) * e.r * 0.6, oy = Math.sin(a) * e.r * 0.6;
+        g.line3(e.x + ox, e.y + oy, e.z + 0.5, e.x + ox * 0.3, e.y + oy * 0.3, e.z + L, 1, 0.55, 0.2, 2.0);
+      }
+      g.mesh(M.octa1, e.x, e.y, e.z, t * 4, t * 3, 0, e.r * 1.6, 1, 0.9, 0.6, 1.6);
+    }
     if (e.parts && !(h && h.drawParts === false)) drawParts(e, g, t);
   }
   // 敵弾

@@ -87,7 +87,7 @@ export function setState(s) {
   G.input.reset && G.input.reset();
   if (s === 'title') {
     G.menu = 'main'; G.titleReady = G.titleReady || false;
-    clearArrays(); initWorld('belt'); G.gfx.fx.tint = [1, 1, 1];
+    clearArrays(); G.hyper = 0; G.VS = 0; initWorld('belt'); G.gfx.fx.tint = [1, 1, 1];
     G.tsTarget = 1; G.ts = 1; G.od = 0;
     if (G.audio.ctx) { G.audio.startMusic(0); G.audio.setIntensity(2); }
     G.audio.setTimeScale(1);
@@ -118,7 +118,8 @@ export function startStage(idx, fresh) {
   G.banner = { text: G.stage.name, sub: G.stage.sub, t: 0, dur: 2.8, col: H.C.cyan };
   G.hintT = idx === 0 && !G.tutorialDone ? 14 : 0;
   G.camRoll = 0; G.camYaw = 0; G.camPitch = 0;
-  G.warp = 1; G.warpOut = 0;
+  G.warp = G.stage.hyper ? 0 : 1; G.warpOut = 0;
+  G.hyper = 0; G.VS = 0; G.hyperKick = 0; G.hyperStep = 0;
   setState('play');
 }
 
@@ -135,7 +136,7 @@ G.onBossDefeated = () => {
 
 function finishStage() {
   const idx = G.stageIdx;
-  G.save.reached = Math.max(G.save.reached, Math.min(3, idx + 2));
+  G.save.reached = Math.max(G.save.reached, Math.min(4, idx + 2));
   G.save.hi = Math.max(G.save.hi, Math.floor(G.score));
   writeSave();
   G.audio.clear();
@@ -144,7 +145,7 @@ function finishStage() {
   const pts = 100 - (G.dmgTaken - G.stageDmg0) * 0.5 + G.maxChain * 1.0 + (G.grazes || 0) * 0.15;
   G.rank = pts >= 105 ? 'S' : pts >= 85 ? 'A' : pts >= 65 ? 'B' : 'C';
   G.stageKills = G.kills - G.stageKills0;
-  setState(idx >= 2 ? 'ending' : 'clear');
+  setState(idx >= 3 ? 'ending' : 'clear');
 }
 
 function gameOver() {
@@ -170,6 +171,7 @@ function onButton(id) {
     case 's1': startStage(0, true); break;
     case 's2': if (G.save.reached >= 2) startStage(1, true); break;
     case 's3': if (G.save.reached >= 3) startStage(2, true); break;
+    case 's4': if (G.save.reached >= 4) startStage(3, true); break;
     case 'options': G.menu = 'options'; break;
     case 'howto': showHowTo(true); break;
     case 'back': G.menu = 'main'; writeSave(); break;
@@ -314,6 +316,8 @@ function autopilot(ctrl) {
   if (best && g.project(best.x, best.y, best.z, p)) { ctrl.aimAbs = [clamp(p[0], -1.5, 1.5), clamp(p[1], -0.8, 0.8)]; }
   else ctrl.aimAbs = [0, 0];
   ctrl.fire = (Math.floor(G.time * 0.6) % 3) !== 2;
+  // ロックした目標が近づいたら早めに撃つ (ワープ面の高速な岩向け)
+  if (G.locks.length && (G.locks.length >= 8 || G.locks.some((l) => l.tg.z < 150))) ctrl.fire = false;
   // 近い弾を避ける
   let dx = 0, dy = 0;
   for (const b of G.ebul) {
@@ -321,8 +325,15 @@ function autopilot(ctrl) {
     const ex = b.x + b.vx * (b.z / -b.vz || 0) - G.px, ey = b.y + b.vy * (b.z / -b.vz || 0) - G.py;
     if (Math.hypot(ex, ey) < 7) { dx -= Math.sign(ex || 1) * 1; dy -= Math.sign(ey || 1) * 0.5; if (G.rollCd <= 0 && b.z < 14) ctrl.roll = Math.sign(dx || 1); }
   }
+  // 迫る岩を避ける
+  for (const e of G.enemies) {
+    if (!e.alive || e.kind !== 'rock' || e.z > 70 || e.z < 0) continue;
+    const tt = e.z / Math.max(1, G.V - (e.vz || 0));
+    const ex = e.x + e.vx * tt - G.px, ey = e.y + e.vy * tt - G.py;
+    if (Math.hypot(ex, ey) < e.r + 3) { dx -= Math.sign(ex || 1) * 1.2; dy -= Math.sign(ey || 1) * 0.8; }
+  }
   ctrl.moveX = clamp(dx - G.px * 0.04, -1, 1); ctrl.moveY = clamp(dy - G.py * 0.05, -1, 1);
-  if (G.flow >= 100) ctrl.flow = true;
+  if (G.flow >= 100 && !G.noFlow) ctrl.flow = true;
   return ctrl;
 }
 
@@ -358,8 +369,11 @@ function updatePlay(dt, ctrl) {
   // ワープ演出: 開始時はワープイン、ボス撃破後はワープアウト
   G.warp = Math.max(0, (G.warp || 0) - dt / 2.4);
   G.warpOut = G.bossState === 3 ? clamp((G.clearT - 1.8) / 1.5, 0, 1) : 0;
-  const wk = Math.max(G.warp * G.warp, G.warpOut * G.warpOut);
-  G.V = 62 * (1 + 5 * wk);
+  if (G.stage.hyper) updateHyper(dt);
+  else {
+    const wk = Math.max(G.warp * G.warp, G.warpOut * G.warpOut);
+    G.V = 62 * (1 + 5 * wk);
+  }
   setCamera(dt, 1);
   updateWeapons(dt, wdt, ctrl);
 
@@ -377,6 +391,29 @@ function updatePlay(dt, ctrl) {
     G.clearT += dt;
     if (G.clearT > 3.4) finishStage();
   }
+}
+
+// ワープ面: 開始 0.35 秒で突入 → 1.38 秒 (曲の 2 小節目の頭) で最高速に達して「ドン」。
+// 岩が迫る速さ (V) と星が流れる見かけの速さ (VS) を分けて、反応できる速さのまま景色だけ超高速にする。
+const HY_ON = 0.35, HY_TOP = 1.38;
+function updateHyper(dt) {
+  const st = G.st;
+  if (G.hyperStep === 0 && st >= HY_ON) { G.hyperStep = 1; G.audio.warpEngage(); vib(30); }
+  if (G.hyperStep === 1 && st >= HY_TOP) {
+    G.hyperStep = 2;
+    G.flash = [0.7, 0.85, 1, 0.55]; G.glitch = 0.7; G.trauma = Math.max(G.trauma, 0.65); G.hyperKick = 0.35;
+    vib(70);
+  }
+  if (G.hyperStep === 2 && G.bossState === 3 && G.clearT > 1.8) { G.hyperStep = 3; G.audio.warpExit(); }
+  let u = clamp((st - HY_ON) / (HY_TOP - HY_ON), 0, 1);
+  u = u * u * u;                                   // ギュイーン: ゆっくり → 一気に
+  const out = G.bossState === 3 ? clamp((G.clearT - 1.8) / 1.4, 0, 1) : 0;
+  const h = u * (1 - out * out * (3 - 2 * out));    // ボス撃破後はワープアウト (減速)
+  G.hyper = h;
+  G.hyperKick = Math.max(0, G.hyperKick - dt * 0.6);
+  G.V = 62 + 88 * h;
+  G.VS = 62 + 820 * h + 900 * G.hyperKick;
+  G.trauma = Math.max(G.trauma, 0.2 * h);           // 高速域の微振動
 }
 
 function updateBossFlow(dt, wdt) {
@@ -414,7 +451,8 @@ function setCamera(dt, strength) {
   G.camLean = damp(G.camLean || 0, lean, 6, dt);
   G.camRoll = G.camLean - G.rollAngle + G.shakeR + Math.sin(t * 0.41) * 0.004;
   const od = G.od > 0 ? 1 : 0;
-  const fovT = 0.92 + (G.state === 'play' || G.state === 'title' ? 0.42 * Math.max((G.warp || 0) * (G.warp || 0), (G.warpOut || 0) * (G.warpOut || 0)) : 0) + od * 0.14 + clamp(Math.abs(G.pvx) * 0.0016, 0, 0.05) + (G.rollT > 0 ? 0.07 : 0);
+  const wv = G.stage && G.stage.hyper ? 0 : Math.max((G.warp || 0) * (G.warp || 0), (G.warpOut || 0) * (G.warpOut || 0));
+  const fovT = 0.92 + (G.state === 'play' || G.state === 'title' ? 0.42 * wv : 0) + (G.state === 'play' ? 0.2 * (G.hyper || 0) + 0.5 * (G.hyperKick || 0) : 0) + od * 0.14 + clamp(Math.abs(G.pvx) * 0.0016, 0, 0.05) + (G.rollT > 0 ? 0.07 : 0);
   G.fov = damp(G.fov, fovT, 5, dt);
   // カメラ位置は機体位置にやや遅れて追従 (滑らかさ)
   G.camX = damp(G.camX === undefined ? G.px : G.camX, G.px, 16, dt);
@@ -439,7 +477,8 @@ function render(dt) {
   fx.bloom = (od ? 1.45 : 1.05) + G.beat * 0.28;
   fx.decay = od ? 0.9 : G.ts < 0.9 ? 0.86 : 0.78;
   if (G.V > 70 && st === 'play') fx.decay = 0.92;
-  fx.aber = 0.0013 + G.trauma * 0.004 + (od ? 0.0025 : 0) + (G.rollT > 0 ? 0.002 : 0);
+  if (G.hyper > 0.05 && st === 'play') { fx.decay = 0.8; fx.bloom += 0.1 * G.hyper; }
+  fx.aber = 0.0013 + G.trauma * 0.004 + (G.hyper || 0) * 0.0015 + (od ? 0.0025 : 0) + (G.rollT > 0 ? 0.002 : 0);
   fx.glitch = G.glitch;
   fx.vig = 0.55 + (G.shield < 30 && !G.dead ? 0.25 + 0.15 * Math.sin(t * 8) : 0);
   const fl = G.flash;
@@ -557,9 +596,9 @@ function drawTitle(g, t) {
     H.button(g, 'howto', 'HOW TO PLAY', 0.5, -0.36, 0.42, 0.06, { size: 0.055, col: H.C.cyan });
     // ステージ選択
     drawText(g, 'STAGE SELECT', 0, -0.6, 0.04, 0.5, 0.8, 1, 1.8, 0.8, 'c');
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       const un = G.save.reached >= i + 1;
-      H.button(g, 's' + (i + 1), String(i + 1), (i - 1) * 0.3, -0.73, 0.1, 0.06, { dim: !un, size: 0.06, col: H.C.amber });
+      H.button(g, 's' + (i + 1), String(i + 1), (i - 1.5) * 0.28, -0.73, 0.1, 0.06, { dim: !un, size: 0.06, col: H.C.amber });
     }
     drawText(g, 'HI ' + fmtScore(G.save.hi), 0, -0.9, 0.045, 0.5, 0.8, 1, 1.8, 0.8, 'c');
   } else {

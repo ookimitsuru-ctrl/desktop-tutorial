@@ -6,10 +6,10 @@ const fs = require('fs');
 const OUT = process.argv[2] || '/tmp/pv';
 const FPS = 30;
 const LEN = Number(process.argv[3] || 20);
-// 区間の長さ (秒): [op, s1 イントロ, s1 戦闘, s2.., s2.., s3.., s3.., boss, boss_die, end]
+// 区間の長さ (秒): 各面は [イントロ, 戦闘]。w = 3 面ワープ (イントロで突入演出を見せる)
 const D = LEN >= 30
-  ? { op: 4.4, s1: [1.6, 4.0], s2: [1.4, 4.0], s3: [1.4, 4.4], boss: 4.0, die: 2.6, end: 2.2 }
-  : { op: 3.7, s1: [1.4, 3.0], s2: [1.2, 2.6], s3: [1.2, 2.4], boss: 2.8, die: 2.2, end: 1.4 };
+  ? { op: 3.8, s1: [1.4, 3.2], s2: [1.2, 3.2], w: [1.8, 3.4], s4: [1.2, 3.0], boss: 3.6, die: 2.2, end: 2.0 }
+  : { op: 3.2, s1: [1.0, 2.0], s2: [0.9, 1.9], w: [1.6, 2.0], s4: [0.9, 1.8], boss: 2.4, die: 2.0, end: 1.2 };
 fs.mkdirSync(path.join(OUT, 'frames'), { recursive: true });
 (async () => {
   const exe = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -45,16 +45,17 @@ fs.mkdirSync(path.join(OUT, 'frames'), { recursive: true });
   await grab(D.op, 'op');
   // 2) ステージ1: ワープイン → 戦闘
   const stage = async (idx, intro, jump, fight, label) => {
-    await ev((i) => { const { G, startStage } = window.__sw; startStage(i, true); G.auto = true; G.hintT = 0; G.tutorialDone = true; }, idx);
+    await ev((i) => { const { G, startStage } = window.__sw; startStage(i, true); G.auto = true; G.hintT = 0; G.tutorialDone = true; G.noFlow = i === 2; }, idx);  // ワープ面は減速させず速さを見せる
     await grab(intro, label + '_intro');
     await ff(jump);
     await grab(fight, label);
   };
   await stage(0, D.s1[0], 51.4, D.s1[1], 's1');
   await stage(1, D.s2[0], 89.8, D.s2[1], 's2');
-  await stage(2, D.s3[0], 81.8, D.s3[1], 's3');
+  await stage(2, D.w[0], 45.5 - D.w[0], D.w[1], 'w');
+  await stage(3, D.s4[0], 81.8, D.s4[1], 's4');
   // 3) 最終ボス
-  await ev(() => { const { G, startStage, spawnBoss } = window.__sw; startStage(2, true); G.auto = true; G.hintT = 0; G.banner = null; G.stage.events.length = 0; G.stage.bossAt = 1e9; G.warp = 0; G.bossState = 2; spawnBoss('core'); });
+  await ev(() => { const { G, startStage, spawnBoss } = window.__sw; startStage(3, true); G.auto = true; G.hintT = 0; G.banner = null; G.stage.events.length = 0; G.stage.bossAt = 1e9; G.warp = 0; G.bossState = 2; spawnBoss('core'); });
   await ff(9);
   await grab(D.boss, 'boss');
   await ev(() => { const { G, damage } = window.__sw; for (const p of G.boss.parts) { p.armored = false; damage(p, 9999, 'x'); } });

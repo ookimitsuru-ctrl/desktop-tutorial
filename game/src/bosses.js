@@ -1,6 +1,6 @@
-// ボス: WARDEN (ステージ1) / LEVIATHAN (ステージ2) / CORE (ステージ3)
+// ボス: WARDEN (ステージ1) / LEVIATHAN (ステージ2) / MAELSTROM (ステージ3 ワープ) / CORE (ステージ4)
 import { G, vib } from './state.js';
-import { M } from './models.js';
+import { M, ROCKS } from './models.js';
 import { rand, clamp, lerp, sat, smooth, TAU, PI, sign } from './util.js';
 import { mk, addPart, HANDLERS, fireBullet, aimShot, D, COL, killTarget, awardKill, spawn } from './enemies.js';
 import { explosion, shatter, burst, ring, popup } from './fx.js';
@@ -44,7 +44,7 @@ function curtain(z, nHoles = 2, speedMul = 0.78) {
 export function bossRatio(e) {
   if (!e || !e.parts) return 0;
   let cur = 0, max = 0;
-  for (const p of e.parts) { max += p.maxhp; if (p.alive) cur += Math.max(0, p.hp); }
+  for (const p of e.parts) { if (p.optional) continue; max += p.maxhp; if (p.alive) cur += Math.max(0, p.hp); }
   return max ? cur / max : 0;
 }
 
@@ -308,6 +308,158 @@ HANDLERS.leviathan = {
     g.mesh(M.serpentHead, e.x, e.y, e.z, hyaw, 0, 0, 1.4, hc[0], hc[1], hc[2], 2.1);
     if (e.lunge > 0 && e.lunge < 1.1) { // 予告線
       g.line3(e.x, e.y, e.z, e.tx, e.ty, 0, 1, 0.15 + 0.5 * Math.sin(t * 30), 0.1, 2.2);
+    }
+  },
+};
+
+// =========================================================
+// MAELSTROM (ワープ空間の岩塊要塞)
+// 後ろから自機を追い越して前に出る。周回する岩の盾を投げつけ、岩の散弾を浴びせる。
+// 推進ノード 4 基を壊すと結晶コアが露出。
+// =========================================================
+const ORBIT_N = 8;
+function rockAt(x, y, z, tx, ty, T, scale) {
+  // 目標 (tx, ty, z=0) に T 秒で届く岩。岩は (vz - V) で近づくので vz を逆算する
+  return spawn('rock', { x, y, z, vx: (tx - x) / T, vy: (ty - y) / T, vz: G.V - z / T, path: 'world', scale, hpK: 0.55, score: 100 });
+}
+function rockStorm(e, holes = 1) {
+  // 自機の周囲に格子状に岩をばらまく (穴あり)。穴へ移動するか、撃ち抜いて道を作る
+  const xs = [-16, -8, 0, 8, 16], ys = [-8, 0, 8];
+  const hs = [];
+  for (let i = 0; i < holes; i++) hs.push([(Math.random() * 5) | 0, (Math.random() * 3) | 0]);
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) {
+    if (hs.some((h) => h[0] === i && h[1] === j)) continue;
+    rockAt(e.x + rand(-4, 4), e.y + rand(-4, 4), e.z - 6, xs[i], ys[j], 2.6, rand(3.3, 3.8));
+  }
+  ring(e.x, e.y, e.z - 6, 18, 0.7, COL.blue, 3);
+  G.audio.warn();
+}
+HANDLERS.maelstrom = {
+  drawParts: false,
+  init(e) {
+    e.isBoss = true; e.bossR = 18; e.name = 'MAELSTROM'; e.col = [0.45, 0.75, 1]; e.mesh = null; e.score = 24000;
+    e.phase = 1; e.z0 = 108; e.enter = 4.6; e.atkT = 3.5; e.flingT = 2.5; e.stormT = 7; e.regenT = 3;
+    e.body = ROCKS[3]; e.bodyYaw = 0; e.bodyPitch = 0;
+    e.core = addPart(e, 0, 0, 0, 90, 5.5, { score: 6000, armored: true, core: true });
+    for (let i = 0; i < 4; i++) addPart(e, 0, 0, 0, 20, 3.2, { score: 1200, node: true, k: i });
+    for (let i = 0; i < ORBIT_N; i++) addPart(e, 0, 0, 0, 4, 2.6, { score: 150, orb: true, optional: true, k: i, m: i % 8 });
+    e.onPartDead = (p) => {
+      if (p.node && e.parts.filter((q) => q.node && q.alive).length === 0) {
+        e.phase = 2; e.core.armored = false; e.atkT = 2; e.stormT = 3;
+        explosion(e.x, e.y, e.z, 4, e.col);
+        shatter(e.body, e.x, e.y, e.z, e.bodyYaw, e.bodyPitch, 0, 13, [0.45, 0.65, 1], 46, 0, 0, 0, 2.6, 50);
+        popup(e.x, e.y + 14, e.z, 'CORE EXPOSED', COL.cyan, 0.09, 2.2);
+        G.audio.warn();
+      }
+      if (p.orb) p.regen = 4 + rand(0, 2);
+    };
+    e.onAllParts = () => startDying(e, 3.8);
+  },
+  update(e, dt) {
+    if (e.dying !== undefined && e.dying > 0) {
+      updateDying(e, dt, (b) => { shatter(M.icosa1, b.x, b.y, b.z, b.bodyYaw, 0, 0, 7, [0.6, 0.85, 1], 50, 0, 0, 0, 3, 30); });
+      e.bodyYaw += dt * 3; return;
+    }
+    // 登場: 背後 (z<0) から右上をかすめて追い越し、前方へ
+    const u = sat(e.t / e.enter), k = 1 - Math.pow(1 - u, 3);
+    const prog = 1 - bossRatio(e);
+    const sway = e.phase === 2 ? 1.4 : 1;
+    const zt = e.z0 - prog * 20 + Math.sin(e.t * 0.5) * 8;
+    const xt = Math.sin(e.t * 0.37 * sway) * 16, yt = Math.sin(e.t * 0.53 * sway + 1) * 7;
+    e.x = lerp(30, xt, k); e.y = lerp(16, yt, k); e.z = lerp(-70, zt, k);
+    if (!e.passed && e.z > 0) { e.passed = true; G.audio.flyby(0.8, 1, 3); G.trauma = Math.max(G.trauma, 0.5); vib(60); }
+    e.bodyYaw += dt * (e.phase === 1 ? 0.35 : 0.9); e.bodyPitch += dt * 0.18;
+    const orbR = 24, ow = e.t * (e.phase === 1 ? 0.9 : 1.5);
+    for (const p of e.parts) {
+      p.spin += dt * 2;
+      if (p.core) { p.x = e.x; p.y = e.y; p.z = e.z; }
+      else if (p.node) {
+        const a = e.bodyYaw + (p.k / 4) * TAU;
+        p.x = e.x + Math.cos(a) * 12; p.y = e.y + Math.sin(a) * 12 * 0.55 + (p.k % 2 ? 3 : -3); p.z = e.z + Math.sin(a) * 6 - 4;
+      } else {
+        const a = ow + (p.k / ORBIT_N) * TAU;
+        p.x = e.x + Math.cos(a) * orbR; p.y = e.y + Math.sin(a * 1) * orbR * 0.45; p.z = e.z + Math.sin(a) * 9;
+        if (!p.alive && e.phase === 1) {   // 岩の盾は時間で再生
+          p.regen = (p.regen === undefined ? 4 : p.regen) - dt;
+          if (p.regen <= 0) { p.alive = true; p.hp = p.maxhp; p.regen = undefined; burst(p.x, p.y, p.z, 6, 10, e.col, 0.4); }
+        }
+      }
+    }
+    if (e.t < e.enter) return;
+    const rage = (bossRatio(e) < 0.4 ? 1.3 : 1) * D().fire;
+    // 岩の盾を投げつける
+    e.flingT -= dt;
+    if (e.flingT <= 0) {
+      e.flingT = (e.phase === 1 ? 2.4 : 1.6) / rage;
+      const orbs = e.parts.filter((p) => p.orb && p.alive && p.z < e.z + 2);
+      if (orbs.length) {
+        const p = orbs[(Math.random() * orbs.length) | 0];
+        p.alive = false; p.regen = 5;
+        const r = rockAt(p.x, p.y, p.z, G.px + rand(-1.5, 1.5), G.py + rand(-1, 1), 1.9, 2.9);
+        r.score = 150;
+        burst(p.x, p.y, p.z, 6, 14, COL.blue, 0.4);
+      } else if (e.phase === 2) {
+        rockAt(e.x, e.y, e.z - 6, G.px, G.py, 1.8, rand(2.6, 3.2));
+      }
+    }
+    e.stormT -= dt;
+    if (e.stormT <= 0) { e.stormT = (e.phase === 1 ? 10 : 7) / rage; rockStorm(e, e.phase === 1 ? 2 : 1); }
+    e.atkT -= dt;
+    if (e.phase === 1) {
+      if (e.atkT <= 0) {
+        e.atkT = 2.6 / rage;
+        const nodes = e.parts.filter((p) => p.node && p.alive);
+        const p = nodes[(e.n = (e.n || 0) + 1) % Math.max(1, nodes.length)];
+        if (p) for (let j = -1; j <= 1; j++) { const b = aimShot({ x: p.x, y: p.y, z: p.z }, 'needle', 0, 1.0); if (b) b.vx += j * 6; }
+      }
+    } else {
+      // コア露出: 二重螺旋 + プラズマ + 弾幕リング
+      e.spT = (e.spT || 0) - dt;
+      e.spiral = (e.spiral || 0) + dt;
+      if (e.spiral % 6 < 3.2 && e.spT <= 0) {
+        e.spT = 0.13 / rage; e.sa = (e.sa || 0) + 0.6;
+        const rr = 7 + 5 * Math.sin(e.sa * 0.2);
+        ringShot('bolt', e.x, e.y, e.z - 6, e.sa, rr, 0.8);
+        ringShot('bolt', e.x, e.y, e.z - 6, -e.sa + PI, rr, 0.8);
+      }
+      if (e.atkT <= 0) {
+        e.atkT = 3.2 / rage;
+        aimShot({ x: e.x, y: e.y, z: e.z - 6 }, 'plasma', 0, 0.3);
+        if (bossRatio(e) < 0.4) gapRing(e.x, e.y, e.z - 6, 20, 9, 3, 0.65);
+      }
+    }
+  },
+  draw(e, g, r, gg, b, t) {
+    const col = e.col;
+    const hit = e.parts.some((p) => p.hitT > 0 && !p.orb) ? 0.5 : 0;
+    const pulse = 0.6 + 0.4 * Math.sin(t * 5);
+    if (e.phase === 1) {
+      g.mesh(e.body, e.x, e.y, e.z, e.bodyYaw, e.bodyPitch, 0, 13, Math.min(1, 0.4 + hit), Math.min(1, 0.6 + hit), Math.min(1, 1 + hit), 2.0);
+      // 結晶の亀裂 (コアの光が漏れる)
+      g.mesh(M.star4, e.x, e.y, e.z, -e.bodyYaw * 1.3, e.bodyPitch, t, 9, 0.5 * pulse, 0.9 * pulse, 1, 1.6);
+    } else {
+      g.mesh(M.icosa1, e.x, e.y, e.z, -e.bodyYaw * 2, e.bodyPitch, 0, 6.5, 0.6 + hit, 0.9 * pulse + hit, 1, 2.4);
+      g.mesh(M.octa1, e.x, e.y, e.z, e.bodyYaw * 3, 0.4, t, 4, 1, 1, 1, 2.0);
+      g.mesh(M.ring24, e.x, e.y, e.z, 0, 0, t * 2.2, 10, 0.5, 0.9, 1, 2.0);
+    }
+    // 駆動リング (ワープの航跡)
+    g.mesh(M.ring24, e.x, e.y, e.z, 0, PI / 2 * 0 + 0.25, t * 0.8, 21, col[0] * 0.7, col[1] * 0.7, col[2] * 0.7, 1.6);
+    g.mesh(M.ring24, e.x, e.y, e.z + 6, 0, 0, -t * 1.3, 15, 0.3, 0.5, 1, 1.4);
+    for (let i = 0; i < 6; i++) { // 後方へ流れる航跡
+      const a = (i / 6) * TAU + t;
+      const ox = Math.cos(a) * 14, oy = Math.sin(a) * 9;
+      g.line3(e.x + ox, e.y + oy, e.z + 6, e.x + ox * 0.6, e.y + oy * 0.6, e.z + 40, 0.3, 0.6, 1, 1.5);
+    }
+    // パーツ
+    for (const p of e.parts) {
+      if (!p.alive) continue;
+      const f = p.hitT > 0 ? 1 : 0;
+      if (p.orb) { g.mesh(ROCKS[p.m], p.x, p.y, p.z, p.spin, p.spin * 0.7, 0, 2.6, Math.min(1, 0.45 + f), Math.min(1, 0.65 + f), 1, 1.6); continue; }
+      if (p.core && p.armored) continue;
+      const c = p.core ? [1, 1, 1] : COL.cyan;
+      const k = 0.75 + 0.25 * Math.sin(t * 8 + p.spin);
+      g.mesh(M.octa1, p.x, p.y, p.z, p.spin + t * 1.8, t * 1.1, 0, p.r * 0.9, Math.min(1, c[0] * k + f), Math.min(1, c[1] * k + f), Math.min(1, c[2] * k + f), 1.9);
+      g.mesh(M.cube1, p.x, p.y, p.z, -t * 1.2, t * 0.9, 0, p.r * 0.55, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 1.3);
     }
   },
 };

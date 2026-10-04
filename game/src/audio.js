@@ -8,15 +8,17 @@ const PENTA = [0, 3, 5, 7, 10];
 // 収録BGM (music/*.py で生成)。ファイル構成は music/export_game.py 参照
 //   stage1: メロディックメタル 160BPM E マイナー (1面)
 //   stage2: テクノ 140BPM F マイナー (2面)
-//   stage3: パンク 190BPM D メジャー + 群衆の「VIC-TO-RY!」コール (3面)
+//   warp:   ドラムンベース 174BPM A マイナー (3面 ワープ)
+//   stage3: パンク 190BPM D メジャー + 群衆の「VIC-TO-RY!」コール (4面)
 //   boss:   メタル×テクノ 172BPM D マイナー (ボス戦)
 const TRACKS = {
   stage1: { bpm: 160, loopStart: 9.0, loopEnd: 111.0, gain: 0.36, root: 40 },
   stage2: { bpm: 140, loopStart: 16.714286, loopEnd: 123.0, gain: 0.36, root: 41 },
+  warp: { bpm: 174, loopStart: 15.413793, loopEnd: 123.0, gain: 0.36, root: 45 },
   stage3: { bpm: 190, loopStart: 8.052632, loopEnd: 123.0, gain: 0.36, root: 35 },  // B マイナーペンタ = D メジャーペンタ
   boss: { bpm: 172, loopStart: 8.581395, loopEnd: 64.395349, gain: 0.36, root: 38 },  // ボス戦 (全ボス共通)
 };
-const STAGE_TRACK = { 1: 'stage1', 2: 'stage2', 3: 'stage3' };
+const STAGE_TRACK = { 1: 'stage1', 2: 'stage2', 3: 'warp', 4: 'stage3' };
 
 const SONGS = [
   // title
@@ -25,7 +27,9 @@ const SONGS = [
   { bpm: 138, root: 45, prog: [0, -4, 3, -2], seed: 11, drums: 1 },
   // stage 2
   { bpm: 146, root: 50, prog: [0, 0, -4, -2], seed: 23, drums: 1 },
-  // stage 3
+  // stage 3 (warp)
+  { bpm: 174, root: 45, prog: [0, -4, 3, -2], seed: 53, drums: 1 },
+  // stage 4
   { bpm: 152, root: 52, prog: [0, 3, -2, -4], seed: 37, drums: 1 },
 ];
 
@@ -566,6 +570,23 @@ export class AudioEngine {
     const v = 0.05 + 0.13 * closeness;
     this._noise(t, 0.22, v, this.sfxBus, { type: 'bandpass', f: 4200, f2: 900, q: 2.2, a: 0.04, pan });
     this._osc('sine', 1700, t, 0.2, v * 0.5, this.sfxBus, { f2: 520, a: 0.03, pan });
+  }
+
+  // ワープ突入: 吸い込まれるように上昇 → 1.03 秒後に「ドン」と最高速へ
+  warpEngage() {
+    if (!this.ctx) return;
+    const t = this._now();
+    this._noise(t, 1.1, 0.3, this.sfxBus, { type: 'bandpass', f: 250, f2: 7000, q: 1.6, a: 0.95, rev: 0.4 });
+    this._osc('sawtooth', 70, t, 1.1, 0.1, this.sfxBus, { f2: 1400, fd: 1.03, lp: 2600, a: 0.9 });
+    this._osc('sine', 95, t + 1.03, 1.3, 0.55, this.sfxBus, { f2: 30, fd: 0.9, a: 0.003 });
+    this._noise(t + 1.03, 1.2, 0.32, this.sfxBus, { type: 'lowpass', f: 6000, f2: 180, rev: 0.6 });
+  }
+  // ワープアウト: 下降する風切り音
+  warpExit() {
+    if (!this.ctx) return;
+    const t = this._now();
+    this._noise(t, 1.6, 0.28, this.sfxBus, { type: 'bandpass', f: 5000, f2: 200, q: 1.3, a: 0.05, rev: 0.5 });
+    this._osc('sawtooth', 900, t, 1.4, 0.08, this.sfxBus, { f2: 60, fd: 1.3, lp: 2400, lp2: 300 });
   }
 
   // ボス出現時の警報サイレン (約3.2秒)

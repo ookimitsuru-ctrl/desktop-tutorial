@@ -6,6 +6,7 @@ import { ROCKS_LOW } from './models.js';
 export const THEMES = {
   belt: { star: [0.35, 0.55, 1], grid: [0.1, 0.5, 0.9], accent: [0.2, 0.9, 1], bgA: [0.0, 0.004, 0.02], bgB: [0.0, 0.02, 0.05], tint: [1, 1, 1], fog: [60, 420] },
   trench: { star: [0.5, 0.45, 0.9], grid: [0.9, 0.4, 0.1], accent: [1, 0.65, 0.2], bgA: [0.02, 0.006, 0.0], bgB: [0.03, 0.012, 0.0], tint: [1, 1, 1], fog: [40, 300] },
+  warp: { star: [0.55, 0.75, 1], grid: [0.3, 0.45, 1], accent: [0.45, 0.85, 1], bgA: [0.0, 0.004, 0.03], bgB: [0.012, 0.0, 0.05], tint: [1, 1, 1], fog: [90, 450] },
   city: { star: [0.9, 0.4, 0.8], grid: [0.8, 0.15, 0.6], accent: [1, 0.3, 0.8], bgA: [0.02, 0.0, 0.025], bgB: [0.05, 0.0, 0.05], tint: [1, 1, 1], fog: [60, 440] },
 };
 
@@ -18,7 +19,7 @@ export function initWorld(name) {
   scroll = 0;
   rnd = rng(77);
   stars = [];
-  for (let i = 0; i < STARS; i++) stars.push({ x: rand(-150, 150), y: rand(-110, 110), z: rand(1, 430), b: rand(0.35, 1) });
+  for (let i = 0; i < STARS; i++) stars.push(newStar(rand(1, 430)));
   deco = [];
   if (name === 'belt') {
     for (let i = 0; i < DECO; i++) deco.push(newDeco(rand(20, 440)));
@@ -29,6 +30,16 @@ export function initWorld(name) {
   if (name === 'city') for (let i = 0; i < 46; i++) towers.push(newTower(rand(10, 460)));
   G.gfx.fogNear = th.fog[0]; G.gfx.fogFar = th.fog[1];
   G.gfx.fx.bgA = th.bgA; G.gfx.fx.bgB = th.bgB;
+}
+
+// 星: ワープ面では中心を空けた円筒状に並べ、色も青白〜紫にばらす
+function newStar(z) {
+  if (theme === 'warp') {
+    const a = rand(0, TAU), r = 14 + Math.pow(Math.random(), 0.7) * 130;
+    const h = Math.random();
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.75, z, b: rand(0.45, 1), c: h < 0.6 ? null : h < 0.85 ? [0.75, 0.45, 1] : [1, 1, 1] };
+  }
+  return { x: rand(-150, 150), y: rand(-110, 110), z, b: rand(0.35, 1), c: null };
 }
 
 function newDeco(z) {
@@ -43,10 +54,11 @@ function newTower(z) {
 
 export function updateWorld(dt) {
   const V = G.V;
+  const VS = G.VS || V;  // 星だけの見かけの速度 (ワープ面では岩より桁違いに速く流す)
   scroll += V * dt;
   for (const s of stars) {
-    s.z -= V * dt;
-    if (s.z < 1) { s.z += 430; s.x = rand(-150, 150); s.y = rand(-110, 110); }
+    s.z -= VS * dt;
+    if (s.z < 1) Object.assign(s, newStar(s.z + 430));
   }
   if (theme === 'belt') {
     for (const d of deco) {
@@ -54,7 +66,8 @@ export function updateWorld(dt) {
       if (d.z < -12) Object.assign(d, newDeco(rand(420, 470)));
     }
   }
-  for (let i = 0; i < gates.length; i++) { gates[i] -= V * dt; if (gates[i] < 2) gates[i] += 510; }
+  const gv = theme === 'warp' ? Math.max(V, VS * 0.45) : V;
+  for (let i = 0; i < gates.length; i++) { gates[i] -= gv * dt; if (gates[i] < 2) gates[i] += 510; }
   if (theme === 'city') {
     for (const t of towers) { t.z -= V * dt; if (t.z < -12) Object.assign(t, newTower(rand(440, 480))); }
   }
@@ -119,13 +132,15 @@ function gateRing(g, z, w, h, col, a) {
 
 export function drawWorld(g, t) {
   const th = THEMES[theme];
-  const V = G.V;
+  const V = G.VS || G.V;
   // 星 (ストリーク)
   const streak = V * 0.028 * (1 + (G.od > 0 ? 0 : 0.2));
+  const sb = theme === 'warp' ? 0.6 : 0.8;
   for (const s of stars) {
-    const b = s.b;
-    g.line3(s.x, s.y, s.z, s.x, s.y, s.z + streak * (0.5 + 1.6 * (1 - s.z / 430)) + 0.4, th.star[0] * b * 0.8, th.star[1] * b * 0.8, th.star[2] * b * 0.8, 1.1);
+    const b = s.b, c = s.c || th.star;
+    g.line3(s.x, s.y, s.z, s.x, s.y, s.z + streak * (0.5 + 1.6 * (1 - s.z / 430)) + 0.4, c[0] * b * sb, c[1] * b * sb, c[2] * b * sb, 1.1);
   }
+  if (theme === 'warp') drawWarp(g, th, t);
   if (theme === 'belt') {
     planet(g, th, t);
     for (const d of deco) {
@@ -141,6 +156,27 @@ export function drawWorld(g, t) {
   }
   if (theme === 'trench') drawTrench(g, th, t);
   if (theme === 'city') drawCity(g, th, t);
+}
+
+// ワープ空間: 流れていく光のリング + 中心の消失点のにじみ
+function drawWarp(g, th, t) {
+  const h = G.hyper || 0;
+  if (h <= 0.01) return;
+  const ac = th.accent;
+  for (let i = 0; i < gates.length; i++) {
+    const z = gates[i];
+    const R = 62 + 6 * Math.sin(i * 1.7 + t * 0.5);
+    const a = h * 0.32 * (1 + G.beat * 0.8) * Math.min(1, z / 60);
+    const n = 24;
+    const rot = t * 0.3 + i;
+    let px = 0, py = 0;
+    for (let k = 0; k <= n; k++) {
+      const u = (k / n) * TAU + rot;
+      const x = Math.cos(u) * R, y = Math.sin(u) * R * 0.72;
+      if (k > 0 && k % 3 !== 0) g.line3(px, py, z, x, y, z, ac[0] * a, ac[1] * a, ac[2] * a, 1.6);
+      px = x; py = y;
+    }
+  }
 }
 
 const TW = 31, TH = 19;
