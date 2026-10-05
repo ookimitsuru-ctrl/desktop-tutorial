@@ -278,7 +278,7 @@ export function hero() {
   L(sl, tl); L(sr, tr); L(belly, tb); L(tl, tb); L(tr, tb); L(tl, tr);
   // 主翼 (後退翼)
   for (const s of [1, -1]) {
-    const r0 = P(0.9 * s, 0, 0.2), tip = P(4.6 * s, -0.25, -2.4), tip2 = P(4.6 * s, -0.25, -3.0), r1 = P(0.8 * s, 0, -2.6);
+    const r0 = P(0.9 * s, 0, -0.2), tip = P(3.1 * s, -0.2, -2.2), tip2 = P(3.1 * s, -0.2, -2.8), r1 = P(0.8 * s, 0, -2.6);  // 小さめの後退翼
     L(r0, tip); L(tip, tip2); L(tip2, r1); L(r1, r0);
     const fin = P(1.0 * s, 1.7, -3.4); L(fin, P(0.7 * s, 0.2, -1.8)); L(fin, s > 0 ? tl : tr);  // 双垂直尾翼
     const can = P(1.6 * s, 0.2, 2.0); L(can, s > 0 ? sl : sr); L(can, r0);          // カナード
@@ -286,16 +286,16 @@ export function hero() {
   B.tube(0.42, -0.05, -3.2, -3.6, 0.32, 6); B.tube(-0.42, -0.05, -3.2, -3.6, 0.32, 6);       // エンジン
   // プロペラントタンク: 両翼の上下に 1 本ずつ (計 4 本)。先端の尖った筒 + パイロン
   for (const s of [1, -1]) for (const up of [1, -1]) {
-    const x = 2.5 * s, wy = -0.13, y = wy + up * 0.62, r = 0.27, z0 = -2.6, z1 = -0.3;
+    const x = 2.0 * s, wy = -0.15, y = wy + up * 0.85, r = 0.42, z0 = -3.1, z1 = 0.0;
     const a0 = [], a1 = [];
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * TAU;
       a0.push(P(x + Math.cos(a) * r, y + Math.sin(a) * r, z0)); a1.push(P(x + Math.cos(a) * r, y + Math.sin(a) * r, z1));
     }
     B.poly(a0); B.poly(a1);
-    const nose = P(x, y, z1 + 0.9), tail = P(x, y, z0 - 0.45);
+    const nose = P(x, y, z1 + 1.3), tail = P(x, y, z0 - 0.6);
     for (let i = 0; i < 6; i++) { L(a0[i], a1[i]); L(a1[i], nose); if (i % 2 === 0) L(a0[i], tail); }
-    for (const z of [-2.1, -0.8]) L(P(x, y - up * r, z), P(x, wy, z - 0.15));   // パイロン
+    for (const z of [-2.4, -1.2]) L(P(x, y - up * r, z), P(x, wy, z - 0.15));   // パイロン
   }
   return B.done();
 }
