@@ -284,6 +284,19 @@ export function hero() {
     const can = P(1.6 * s, 0.2, 2.0); L(can, s > 0 ? sl : sr); L(can, r0);          // カナード
   }
   B.tube(0.42, -0.05, -3.2, -3.6, 0.32, 6); B.tube(-0.42, -0.05, -3.2, -3.6, 0.32, 6);       // エンジン
+  // プロペラントタンク: 両翼の上下に 1 本ずつ (計 4 本)。先端の尖った筒 + パイロン
+  for (const s of [1, -1]) for (const up of [1, -1]) {
+    const x = 2.5 * s, wy = -0.13, y = wy + up * 0.62, r = 0.27, z0 = -2.6, z1 = -0.3;
+    const a0 = [], a1 = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      a0.push(P(x + Math.cos(a) * r, y + Math.sin(a) * r, z0)); a1.push(P(x + Math.cos(a) * r, y + Math.sin(a) * r, z1));
+    }
+    B.poly(a0); B.poly(a1);
+    const nose = P(x, y, z1 + 0.9), tail = P(x, y, z0 - 0.45);
+    for (let i = 0; i < 6; i++) { L(a0[i], a1[i]); L(a1[i], nose); if (i % 2 === 0) L(a0[i], tail); }
+    for (const z of [-2.1, -0.8]) L(P(x, y - up * r, z), P(x, wy, z - 0.15));   // パイロン
+  }
   return B.done();
 }
 

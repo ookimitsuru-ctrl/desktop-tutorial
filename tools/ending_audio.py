@@ -64,10 +64,10 @@ place(whoosh(1.4, 600, 5000, rng), tl['defeat'] + 2.1, 0.35)
 # エンディング曲 (再生開始は 0.05 秒後に予約される)
 end, _ = sf.read(os.path.join(music, 'ending.wav'))
 place(end / (active_rms(end, pct=97) + 1e-9) * 10 ** (-12 / 20), tl['ending'] + 0.05)
-# 映像の効果音: C2 カメラの脇を抜ける / 目の前に迫る
+# 映像の効果音: 旋回後に加速して迫るエンジン音 → カメラの脇を通り過ぎる
 E = tl['ending']
-place(pan(whoosh(1.2, 2500, 300, rng), 0.5), E + 7.4, 0.12)
-place(whoosh(1.0, 3000, 250, rng), E + 21.6, 0.2)
+place(pan(whoosh(3.0, 300, 2500, rng), 0.3) * np.linspace(0, 1, int(3.0 * FS))[:, None] ** 2, E + 19.0, 0.12)
+place(pan(whoosh(1.0, 3000, 250, rng), 0.4), E + 21.6, 0.22)
 
 fo = int(0.8 * FS); out[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 2
 out = out / (active_rms(out, pct=97) + 1e-9) * 10 ** (-12.0 / 20)
