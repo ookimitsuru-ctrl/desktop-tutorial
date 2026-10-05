@@ -13,6 +13,7 @@ import { spawnBoss } from './bosses.js';
 import { buildStage, updatePending, clearPending } from './stages.js';
 import { resetPlayer, updatePlayerMove, updateWeapons, drawPlayerWorld, activateOverdrive, aimPoint } from './player.js';
 import * as H from './hud.js';
+import { startCine, updateCine, skipCine, drawCineWorld, drawCineHud, CINE_END, CINE_CARD } from './cine.js';
 
 const SAVE_KEY = 'starwire.save.v1'; // 互換のためキー名は据え置き
 let last = 0, evIdx = 0, fpsAvg = 16.7, fpsN = 0, startScale = 1, lowCount = 0;
@@ -132,6 +133,7 @@ function retryStage() {
 G.onBossDefeated = () => {
   G.bossState = 3; G.clearT = 0;
   G.audio.fadeOutMusic(1.2);
+  if (G.stageIdx >= 3) G.audio.preloadTrack('ending');
 };
 
 function finishStage() {
@@ -146,6 +148,7 @@ function finishStage() {
   G.rank = pts >= 105 ? 'S' : pts >= 85 ? 'A' : pts >= 65 ? 'B' : 'C';
   G.stageKills = G.kills - G.stageKills0;
   setState(idx >= 3 ? 'ending' : 'clear');
+  if (idx >= 3) startCine();
 }
 
 function gameOver() {
@@ -196,6 +199,7 @@ function onBack() {
   if (G.state === 'play') { setState('pause'); G.audio.suspend(); return true; }
   if (G.state === 'pause') { onButton('resume'); return true; }
   if (G.state === 'title' && G.menu === 'options') { G.menu = 'main'; return true; }
+  if (G.state === 'ending' && G.cine && G.cine.t < CINE_END - 0.1) { skipCine(); return true; }
   if (G.state === 'clear' || G.state === 'over' || G.state === 'ending') { onButton('title'); return true; }
   if (window.AndroidBridge && window.AndroidBridge.exit) window.AndroidBridge.exit();
   return false;
@@ -246,7 +250,8 @@ function update(dt) {
     case 'title': updateTitle(dt, ctrl, taps); break;
     case 'play': updatePlay(dt, ctrl); break;
     case 'pause': break;
-    case 'clear': case 'over': case 'ending': updateEnd(dt, ctrl, taps); break;
+    case 'ending': updateEnding(dt, taps); break;
+    case 'clear': case 'over': updateEnd(dt, ctrl, taps); break;
   }
   // フラッシュ・グリッチ減衰 (実時間)
   G.flash[3] *= Math.exp(-6 * dt);
@@ -301,6 +306,15 @@ function updateEnd(dt, ctrl, taps) {
   updateEnemies(dt * 0.3);
   setCamera(dt, 0.4);
   G.input.takeAnyPress();
+}
+
+// エンディング映像: タップで THE END まで飛ばす
+function updateEnding(dt, taps) {
+  G.wdt = dt;
+  const pressed = taps.length || G.input.takeAnyPress();
+  if (pressed && G.cine && G.cine.t < CINE_END - 0.1) skipCine();
+  updateCine(dt);
+  updateWorld(dt); updateFx(dt);
 }
 
 // 自動操縦 (テスト・デモ用)
@@ -484,15 +498,17 @@ function render(dt) {
   const fl = G.flash;
   fx.flash = [fl[0], fl[1], fl[2], fl[3]];
   // メニュー系の画面では背景を減光して文字を読みやすく
-  const menuLike = st === 'pause' || st === 'over' || st === 'clear' || st === 'ending' || (st === 'title' && G.menu === 'options');
-  const dimT = menuLike ? 0.38 : 1;
+  const menuLike = st === 'pause' || st === 'over' || st === 'clear' || (st === 'title' && G.menu === 'options');
+  const dimT = menuLike ? 0.38 : st === 'ending' ? (G.cine && G.cine.t > CINE_CARD ? 0.55 : 1) : 1;
+  if (st === 'ending') { fx.decay = 0.8; fx.aber = 0.0012 + G.trauma * 0.004; fx.vig = 0.7; }
   fx.dim += (dimT - fx.dim) * Math.min(1, 10 * dt);
 
   g.beginWorld();
   g.lineScale = 1;
   drawWorld(g, t);
   if (st === 'title') drawTitleWorld(g, t);
-  if (st !== 'title') {
+  if (st === 'ending') { drawCineWorld(g, t); drawFx(g, dt); }
+  else if (st !== 'title') {
     drawEnemies(g, t);
     drawPlayerWorld(g, t);
     drawFx(g, dt);
@@ -504,7 +520,7 @@ function render(dt) {
     case 'play': drawPlay(g, t, dt); break;
     case 'pause': drawPlay(g, t, 0, true); drawPauseMenu(g, t); break;
     case 'clear': drawPlay(g, t, 0, true); drawClear(g, t); break;
-    case 'ending': drawPlay(g, t, 0, true); drawEnding(g, t); break;
+    case 'ending': drawEnding(g, t); break;
     case 'over': drawPlay(g, t, 0, true); drawOver(g, t); break;
   }
   if (G.debug) {
@@ -652,12 +668,17 @@ function statRows(g, k) {
 }
 
 function drawEnding(g, t) {
+  drawCineHud(g, t);
+  const ct = G.cine ? G.cine.t : 99;
+  if (ct < CINE_CARD + 0.5) return;
+  // 戦績 (statRows は stateT 基準でフェードインするので、カード表示からの経過時間を渡す)
+  const st0 = G.stateT; G.stateT = ct - CINE_CARD - 0.5;
   const k = easeOut(G.stateT / 0.8);
-  drawText(g, 'MISSION COMPLETE', 0, 0.66, 0.12, 0.2, 1, 0.8, 3.4, k, 'c');
   statRows(g, k);
   drawText(g, 'THANK YOU FOR PLAYING', 0, -0.46, 0.055, 0.8, 0.9, 1, 2, k, 'c');
   if (G.score >= G.save.hi) drawText(g, 'NEW RECORD', 0, -0.54, 0.05, 1, 0.8, 0.2, 2, 0.6 + 0.4 * Math.sin(t * 6), 'c');
   if (G.stateT > 1) H.button(g, 'title', 'TITLE', 0, -0.66, 0.3, 0.065, { size: 0.06, pulse: true });
+  G.stateT = st0;
 }
 
 function drawOver(g, t) {

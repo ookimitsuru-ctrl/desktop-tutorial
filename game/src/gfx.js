@@ -440,7 +440,8 @@ export class Gfx {
     const rad = mesh.r * s;
     if (tz + rad < this.near || tz - rad > this.fogFar) return;
     const v = mesh.v, e = mesh.e, n = v.length / 3;
-    const buf = this._vb || (this._vb = new Float32Array(3 * 512));
+    if (!this._vb || this._vb.length < v.length) this._vb = new Float32Array(Math.max(3 * 512, v.length));
+    const buf = this._vb;
     for (let i = 0, j = 0; i < n; i++, j += 3) {
       const px = v[j], py = v[j + 1], pz = v[j + 2];
       buf[j] = c00 * px + c01 * py + c02 * pz + tx;

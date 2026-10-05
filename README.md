@@ -36,6 +36,8 @@
 
 3 面 HYPERSPACE はワープ空間。開始と同時に星が一気に伸びて超高速の光の筋になり、敵機は出ず、高速で迫る小惑星（岩の壁・巨大岩・横切る岩列・回復を落とす彗星）を砕くか避けて進みます。星の見かけの速さ（約 880）と岩が迫る速さ（150）を分けているので、景色は超高速のまま反応できる速さを保っています。ボス MAELSTROM は背後から自機を追い越して現れる岩塊要塞で、周回する岩の盾を投げつけ、穴あきの岩の散弾を浴びせてきます。
 
+4 面のボスを倒すとエンディング映像（約 22 秒 + THE END）。自機が母艦（巨大戦艦）の船腹すれすれを駆け抜けてロールし、艦首の前で大きく旋回してカメラへ向かってきて THE END、続いて戦績。曲は「勇者の帰還」をイメージしたオーケストラ（`music/ending.py`、E♭ メジャー）で、自機が画面いっぱいに迫る瞬間が曲の全奏の頭（22.0 秒）に合わせてあります。タップ / 戻るボタンで THE END まで飛ばせます。
+
 ## ビルド
 
 ```bash
@@ -63,6 +65,8 @@ python3 music/warp.py                                    # → music/out/warp.wa
 python3 music/export_game.py warp 120.0 12.413793        # → game/assets/bgm_warp.ogg
 python3 music/stage3.py                                  # → music/out/stage3.wav (4 面)
 python3 music/export_game.py stage3 120.0 5.052632       # → game/assets/bgm_stage3.ogg
+python3 music/ending.py                                  # → music/out/ending.wav (エンディング、ループなし)
+python3 music/export_game.py ending 40.25 -1             # → game/assets/bgm_ending.ogg
 python3 music/boss.py                                     # → music/out/boss.wav
 python3 music/export_game.py boss 61.395349 5.581395     # → game/assets/bgm_boss.ogg
 python3 music/make_preview.py stage2 120.0 13.714285714  # 試聴用 MP3
@@ -74,5 +78,5 @@ python3 music/make_preview.py stage2 120.0 13.714285714  # 試聴用 MP3
 game/src/        ゲーム本体（gfx=描画 / audio=音 / input=入力 / enemies・bosses・stages / hud …）
 game/index.html  エントリ（遊び方オーバーレイを含む）
 android/         WebView ラッパー（横画面固定・没入表示・最大リフレッシュレート要求・振動ブリッジ）
-tools/           ビルド・確認用スクリプト（shot.js はヘッドレス Chromium でのスクリーンショット）
+tools/           ビルド・確認用スクリプト（shot.js はヘッドレス Chromium でのスクリーンショット、pv_*.py/js は PV、ending_*.py/js はエンディング動画の撮影）
 ```

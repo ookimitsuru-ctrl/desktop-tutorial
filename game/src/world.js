@@ -7,6 +7,7 @@ export const THEMES = {
   belt: { star: [0.35, 0.55, 1], grid: [0.1, 0.5, 0.9], accent: [0.2, 0.9, 1], bgA: [0.0, 0.004, 0.02], bgB: [0.0, 0.02, 0.05], tint: [1, 1, 1], fog: [60, 420] },
   trench: { star: [0.5, 0.45, 0.9], grid: [0.9, 0.4, 0.1], accent: [1, 0.65, 0.2], bgA: [0.02, 0.006, 0.0], bgB: [0.03, 0.012, 0.0], tint: [1, 1, 1], fog: [40, 300] },
   warp: { star: [0.55, 0.75, 1], grid: [0.3, 0.45, 1], accent: [0.45, 0.85, 1], bgA: [0.0, 0.004, 0.03], bgB: [0.012, 0.0, 0.05], tint: [1, 1, 1], fog: [90, 450] },
+  home: { star: [0.5, 0.6, 1], grid: [0.3, 0.55, 1], accent: [0.3, 0.8, 1], bgA: [0.0, 0.006, 0.025], bgB: [0.0, 0.015, 0.05], tint: [1, 1, 1], fog: [500, 1700] },
   city: { star: [0.9, 0.4, 0.8], grid: [0.8, 0.15, 0.6], accent: [1, 0.3, 0.8], bgA: [0.02, 0.0, 0.025], bgB: [0.05, 0.0, 0.05], tint: [1, 1, 1], fog: [60, 440] },
 };
 
@@ -141,6 +142,7 @@ export function drawWorld(g, t) {
     g.line3(s.x, s.y, s.z, s.x, s.y, s.z + streak * (0.5 + 1.6 * (1 - s.z / 430)) + 0.4, c[0] * b * sb, c[1] * b * sb, c[2] * b * sb, 1.1);
   }
   if (theme === 'warp') drawWarp(g, th, t);
+  if (theme === 'home') planet(g, THEMES.belt, t);
   if (theme === 'belt') {
     planet(g, th, t);
     for (const d of deco) {

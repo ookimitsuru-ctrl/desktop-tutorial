@@ -11,11 +11,13 @@ const PENTA = [0, 3, 5, 7, 10];
 //   warp:   ドラムンベース 174BPM A マイナー (3面 ワープ)
 //   stage3: パンク 190BPM D メジャー + 群衆の「VIC-TO-RY!」コール (4面)
 //   boss:   メタル×テクノ 172BPM D マイナー (ボス戦)
+//   ending: オーケストラ 87BPM E♭ メジャー「勇者の帰還」(エンディング映像と同期、ループなし)
 const TRACKS = {
   stage1: { bpm: 160, loopStart: 9.0, loopEnd: 111.0, gain: 0.36, root: 40 },
   stage2: { bpm: 140, loopStart: 16.714286, loopEnd: 123.0, gain: 0.36, root: 41 },
   warp: { bpm: 174, loopStart: 15.413793, loopEnd: 123.0, gain: 0.36, root: 45 },
   stage3: { bpm: 190, loopStart: 8.052632, loopEnd: 123.0, gain: 0.36, root: 35 },  // B マイナーペンタ = D メジャーペンタ
+  ending: { bpm: 87.272727, loop: false, gain: 0.4, root: 39 },  // エンディング (1 回だけ)
   boss: { bpm: 172, loopStart: 8.581395, loopEnd: 64.395349, gain: 0.36, root: 38 },  // ボス戦 (全ボス共通)
 };
 const STAGE_TRACK = { 1: 'stage1', 2: 'stage2', 3: 'warp', 4: 'stage3' };
@@ -192,8 +194,8 @@ export class AudioEngine {
     this.pendingTrack = null;
     const ctx = this.ctx, cfg = TRACKS[name], buf = this.tracks[name];
     const src = ctx.createBufferSource();
-    src.buffer = buf; src.loop = true;
-    src.loopStart = cfg.loopStart; src.loopEnd = Math.min(cfg.loopEnd, buf.duration);
+    src.buffer = buf; src.loop = cfg.loop !== false;
+    if (src.loop) { src.loopStart = cfg.loopStart; src.loopEnd = Math.min(cfg.loopEnd, buf.duration); }
     const g = ctx.createGain(); g.gain.value = cfg.gain;
     src.connect(g); g.connect(this.musicBus);
     const t0 = ctx.currentTime + 0.05;
@@ -230,6 +232,13 @@ export class AudioEngine {
     this._stopTrack(0.25);
     this._playTrack('boss');
   }
+  // エンディング曲 (映像と同期させるため、デコード済みでなければ先読みしておく)
+  playEnding() {
+    if (!this.ctx) return;
+    this._stopTrack(0.1);
+    this._playTrack('ending');
+  }
+  preloadTrack(name) { if (this.ctx) this._loadTrack(name); }
   // 曲をフェードアウト (ボス撃破時など)
   fadeOutMusic(sec = 1.2) {
     if (!this.ctx) return;

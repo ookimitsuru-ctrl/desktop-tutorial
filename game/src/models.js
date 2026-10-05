@@ -247,12 +247,92 @@ export function tower(w, h, d) {
   return build(v, e);
 }
 
+// ---- エンディング用 ----
+const TAU = Math.PI * 2;
+// 頂点・辺を積み上げる簡易ビルダー
+function builder() {
+  const v = [], e = [];
+  const P = (x, y, z) => (v.push([x, y, z]), v.length - 1);
+  const L = (a, b) => e.push([a, b]);
+  const poly = (ids, close = true) => { for (let i = 0; i < ids.length - (close ? 0 : 1); i++) L(ids[i], ids[(i + 1) % ids.length]); };
+  const box = (cx, cy, cz, sx, sy, sz) => {
+    const b = v.length;
+    for (let i = 0; i < 8; i++) P(cx + (i & 1 ? sx : -sx), cy + (i & 2 ? sy : -sy), cz + (i & 4 ? sz : -sz));
+    for (const [a, c] of [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]) L(b + a, b + c);
+  };
+  const tube = (cx, cy, z0, z1, r, n = 10) => { // z 軸方向の筒
+    const a0 = [], a1 = [];
+    for (let i = 0; i < n; i++) { const a = (i / n) * TAU; a0.push(P(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z0)); a1.push(P(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z1)); }
+    poly(a0); poly(a1); for (let i = 0; i < n; i += 2) L(a0[i], a1[i]);
+  };
+  return { v, e, P, L, poly, box, tube, done: () => build(v, e) };
+}
+
+// 自機 (エンディングで外から見る戦闘機)。機首 +z
+export function hero() {
+  const B = builder(), P = B.P, L = B.L;
+  const nose = P(0, 0, 5), ck = P(0, 0.9, 1.4), ck2 = P(0, 0.7, -0.6), belly = P(0, -0.6, 0.5);
+  const sl = P(0.9, 0, 0.6), sr = P(-0.9, 0, 0.6), tl = P(0.7, 0.2, -3.2), tr = P(-0.7, 0.2, -3.2), tb = P(0, -0.4, -3.2);
+  for (const q of [ck, belly, sl, sr]) L(nose, q);
+  L(ck, sl); L(ck, sr); L(belly, sl); L(belly, sr); L(ck, ck2); L(ck2, tl); L(ck2, tr);
+  L(sl, tl); L(sr, tr); L(belly, tb); L(tl, tb); L(tr, tb); L(tl, tr);
+  // 主翼 (後退翼)
+  for (const s of [1, -1]) {
+    const r0 = P(0.9 * s, 0, 0.2), tip = P(4.6 * s, -0.25, -2.4), tip2 = P(4.6 * s, -0.25, -3.0), r1 = P(0.8 * s, 0, -2.6);
+    L(r0, tip); L(tip, tip2); L(tip2, r1); L(r1, r0);
+    const fin = P(1.0 * s, 1.7, -3.4); L(fin, P(0.7 * s, 0.2, -1.8)); L(fin, s > 0 ? tl : tr);  // 双垂直尾翼
+    const can = P(1.6 * s, 0.2, 2.0); L(can, s > 0 ? sl : sr); L(can, r0);          // カナード
+  }
+  B.tube(0.42, -0.05, -3.2, -3.6, 0.32, 6); B.tube(-0.42, -0.05, -3.2, -3.6, 0.32, 6);       // エンジン
+  return B.done();
+}
+
+// 母艦 (巨大戦艦)。全長 100 (z: -50〜+52)、艦首 +z
+export function battleship() {
+  const B = builder(), P = B.P, L = B.L;
+  const sec = (z, w, h) => [[-w, 0], [-w * 0.85, h * 0.6], [-w * 0.45, h], [w * 0.45, h], [w * 0.85, h * 0.6], [w, 0], [w * 0.7, -h * 0.75], [-w * 0.7, -h * 0.75]].map((p) => P(p[0], p[1], z));
+  // 船体: 断面 (z, 半幅, 高さ) を補間しながら肋材を並べる
+  const KEY = [[-50, 8.5, 6], [-44, 10, 6.6], [-10, 10, 6.2], [18, 8.4, 5.2], [36, 5, 3.6], [46, 2.2, 2.0], [52, 0.5, 0.6]];
+  const prof = (z) => { for (let i = 0; i < KEY.length - 1; i++) { const a = KEY[i], b = KEY[i + 1]; if (z <= b[0]) { const u = (z - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u]; } } return [KEY[6][1], KEY[6][2]]; };
+  let prev = null;
+  for (let z = -50; z <= 52.01; z += 3.4) {
+    const [w, h] = prof(z);
+    const s = sec(z, w, h);
+    const major = Math.abs(((z + 50) / 3.4) % 5) < 0.01 || z > 50;
+    if (major || z === -50) B.poly(s); else { L(s[1], s[2]); L(s[2], s[3]); L(s[3], s[4]); L(s[0], s[1]); L(s[4], s[5]); }
+    if (prev) for (let i = 0; i < 8; i++) L(prev[i], s[i]);
+    prev = s;
+  }
+  // 艦橋 (段々の塔)
+  B.box(0, 8.4, -24, 3.2, 2.2, 6); B.box(0, 12, -26, 2.2, 1.5, 3.6); B.box(0, 14.6, -26.5, 1.4, 1.1, 2.2);
+  const ant = P(0, 20, -27); L(ant, P(0, 15.7, -27)); L(P(-2.5, 18, -27), P(2.5, 18, -27)); L(P(0, 17, -29), P(0, 17, -24.5));
+  // 主砲塔 (上 3 基・下 2 基、砲身は艦首方向)
+  for (const [z, y, sgn] of [[2, 6.3, 1], [12, 5.8, 1], [24, 4.8, 1], [6, -4.6, -1], [20, -3.9, -1]]) {
+    B.box(0, y + sgn * 0.9, z, 2.0, 0.9, 2.2);
+    for (const x of [-0.7, 0.7]) L(P(x, y + sgn * 1.0, z + 2.2), P(x, y + sgn * 1.0, z + 9));
+  }
+  // 副砲 (両舷)
+  for (const s of [1, -1]) for (const z of [-30, -16, -2, 12]) {
+    const y = 3.6, x = s * (prof(z)[0] * 0.86);
+    B.box(x, y, z, 0.8, 0.6, 1.0); L(P(x, y + 0.2, z + 1), P(x + s * 0.3, y + 0.2, z + 4.5));
+  }
+  // 格納庫の開口 (両舷)
+  for (const s of [1, -1]) { const x = s * 10.05; B.poly([P(x, -1.5, -6), P(x, 2.6, -6), P(x, 2.6, 8), P(x, -1.5, 8)]); for (let z = -4; z < 8; z += 3) L(P(x, -1.5, z), P(x, 2.6, z)); }
+  // 背びれ・翼
+  const f0 = P(0, 6.6, -48), f1 = P(0, 15, -50), f2 = P(0, 6.4, -38); L(f0, f1); L(f1, f2);
+  for (const s of [1, -1]) { const a = P(s * 9.5, 0, -46), b = P(s * 20, -1.5, -50), c = P(s * 20, -1.5, -46), d = P(s * 9.8, 0, -34); L(a, b); L(b, c); L(c, d); }
+  // エンジン (艦尾)
+  for (const [x, y, r] of [[-5, 1.6, 2.6], [5, 1.6, 2.6], [0, -2.2, 2.2], [-11, -0.8, 1.8], [11, -0.8, 1.8]]) B.tube(x, y, -50, -55, r, 10);
+  return B.done();
+}
+
 export const M = {
   icosa1: icosa(1), octa1: octa(1), cube1: cube(1), ring16: ring(16, 1, 'xy'), ring24: ring(24, 1, 'xy'),
   drone: drone(), fighter: fighter(), mine: mine(), seeker: seeker(), turret: turret(), bomber: bomber(),
   orb: orb(0.55), plasma: plasma(1.3), missile: missile(), bolt: bolt(), needle: needle(), cross: crossItem(),
   bossCore: bossCore(5), bossCage: bossCage(11), serpentSeg: serpentSeg(), serpentHead: serpentHead(), reactor: reactorShell(12),
   star4: star4(1),
+  hero: hero(), battleship: battleship(),
 };
 export const ROCKS = [];
 export const ROCKS_LOW = [];
