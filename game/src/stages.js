@@ -93,6 +93,13 @@ function wRain(n, gap) {
   });
 }
 
+// 不規則に飛ぶ岩 (紫): 進路と速さが途中で何度も変わる
+function wErratic(n, gap) {
+  for (let i = 0; i < n; i++) setTimeout0(i * gap, () => {
+    spawn('rock', { x: rand(-28, 28), y: rand(-16, 16), z: WZ + rand(0, 20), vx: rand(-6, 6), vy: rand(-4, 4), ...WR, scale: rand(2.4, 3.4), erratic: true, score: 250 });
+  });
+}
+
 // ステージ時間依存の遅延実行
 let pending = [];
 export function setTimeout0(delay, fn) { if (delay <= 0) fn(); else pending.push({ t: G.st + delay, fn }); }
@@ -154,27 +161,34 @@ export function buildStage(idx) {
     E(ev, 4, () => wStream(dn(6), 1.1, 1.4));
     E(ev, 12.4, () => { wStream(dn(14), 0.55); wComet('flow'); });        // ドロップ 1
     E(ev, 21, () => wCross(dn(5), -1, 4));
+    E(ev, 26, () => wErratic(dn(3), 0.7));
     E(ev, 23, () => { wStream(dn(12), 0.45); setTimeout0(2, () => wCross(dn(5), 1, -3)); });
     E(ev, 29, () => wWall([[2, 1]]));
     E(ev, 31.5, () => wRain(dn(8), 0.3));
     E(ev, 34.5, () => wGiant(-6, 2));                                     // ブレイクダウン
     E(ev, 37.5, () => { wComet('repair'); wGiant(8, -3); });
     E(ev, 41, () => { wGiant(0, 0); wStream(dn(5), 0.6, 1.6); });
+    E(ev, 43, () => wErratic(dn(3), 0.6));
     E(ev, 45.5, () => { wWall([[0, 0], [1, 0]]); wComet('flow'); });       // ドロップ 2
     E(ev, 48.5, () => wStream(dn(16), 0.4));
     E(ev, 52, () => wWall([[3, 2], [4, 2]]));
+    E(ev, 50.5, () => wErratic(dn(4), 0.5));
     E(ev, 55, () => { wCross(dn(6), -1, 2, 0.15); setTimeout0(1.2, () => wCross(dn(6), 1, -5, 0.15)); });
     E(ev, 58, () => wWall([[2, 0]]));
     E(ev, 60.5, () => { wRain(dn(10), 0.25); wGiant(rand(-10, 10), rand(-5, 5)); });
     E(ev, 64.5, () => wComet('repair'));
+    E(ev, 62.8, () => wErratic(dn(4), 0.45));
     E(ev, 67.6, () => { wStream(dn(18), 0.32, 1.2); });                    // ニューロ
     E(ev, 71, () => { wCross(dn(6), 1, 6, 0.14); setTimeout0(0.9, () => wCross(dn(6), -1, -6, 0.14)); });
+    E(ev, 69, () => wErratic(dn(5), 0.4));
     E(ev, 74.5, () => wRain(dn(12), 0.22));
     E(ev, 78.6, () => wWall([[1, 1]]));                                    // ビルド: 岩壁の連続
+    E(ev, 76.5, () => wErratic(dn(5), 0.35));
     E(ev, 81.4, () => wWall([[3, 0]]));
     E(ev, 84.2, () => wWall([[0, 2], [4, 0]]));
     E(ev, 86.5, () => { wWall([[2, 1]]); wComet('flow'); });
     E(ev, 89.7, () => { wStream(dn(10), 0.3); wGiant(-9, 4); wGiant(9, -4); }); // ラストドロップ
+    E(ev, 91.5, () => wErratic(dn(6), 0.3));
     st.bossAt = 95;
   } else {
     Object.assign(st, { name: 'STAGE 4', sub: 'DREADNOUGHT', theme: 'city', music: 4 });

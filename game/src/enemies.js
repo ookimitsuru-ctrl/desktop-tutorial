@@ -43,6 +43,7 @@ export function mk(kind, x, y, z, o = {}) {
   e.owner = e;
   if (kind === 'rock') { e.mesh = ROCKS[o.m !== undefined ? o.m : (Math.random() * 8) | 0]; e.scale = o.scale || rand(2.4, 4.2); e.r = e.scale * 1.05; e.hp = Math.max(o.hpK ? 1 : 2, Math.round(e.scale * (o.hpK || 1.3))); e.maxhp = e.hp; e.rx = rand(-1, 1); e.ry = rand(-1, 1); e.pitch = rand(0, TAU); e.yaw = rand(0, TAU);
     if (o.comet) { e.hp = e.maxhp = 1; e.col = [1, 0.75, 0.35]; e.w = 2.2; }
+    if (o.erratic) { e.col = [0.85, 0.5, 1]; e.w = 1.9; }   // 不規則な岩は紫で見分けられるように
   }
   if (HANDLERS[kind] && HANDLERS[kind].init) HANDLERS[kind].init(e);
   G.enemies.push(e);
@@ -217,6 +218,23 @@ const UPD = {
     if (e.z < -25) e.gone = true;
   },
   rock(e, dt) {
+    if (e.erratic && e.z > 35) {
+      // 不規則に飛ぶ岩: ときどき弾かれたように進路・速さを変える (近づいたら読めるように止める)
+      e.jT = (e.jT === undefined ? rand(0.2, 0.5) : e.jT) - dt;
+      if (e.jT <= 0) {
+        e.jT = rand(0.35, 0.8);
+        // ジグザグ: 毎回左右・上下に大きく振る (自機の周辺に寄せる成分つき)
+        e.zig = -(e.zig || (Math.random() < 0.5 ? 1 : -1));
+        e.tvx = clamp(e.zig * rand(16, 32) + (G.px - e.x) * 0.5, -40, 40);
+        e.tvy = clamp((Math.random() < 0.5 ? -1 : 1) * rand(6, 16) + (G.py - e.y) * 0.5, -25, 25);
+        e.tvz = rand(-40, 25);
+        e.rx = rand(-3, 3); e.ry = rand(-3, 3);
+      }
+      const k = 1 - Math.exp(-9 * dt);
+      e.vx += ((e.tvx || 0) - e.vx) * k; e.vy += ((e.tvy || 0) - e.vy) * k; e.vz = (e.vz || 0) + ((e.tvz || 0) - (e.vz || 0)) * k;
+      if (Math.abs(e.x) > 42) e.vx = -Math.sign(e.x) * Math.abs(e.vx);
+      if (Math.abs(e.y) > 26) e.vy = -Math.sign(e.y) * Math.abs(e.vy);
+    }
     e.z += ((e.vz || 0) - G.V) * dt; e.x += (e.vx || 0) * dt; e.y += (e.vy || 0) * dt;
     e.yaw += e.ry * dt * 0.8; e.pitch += e.rx * dt * 0.8;
     // 衝突
