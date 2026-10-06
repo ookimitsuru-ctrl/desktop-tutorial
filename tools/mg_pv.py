@@ -247,73 +247,69 @@ def big_word(g, word, t0, t, size, col, y=H / 2, dur=0.3):
     stroke_text(g, word, W / 2, y, size, col, 6, prog=out_cubic((t - t0) / dur), align='c', stagger=0.3)
 
 
+# 場面の並び (小節数)。機能紹介・ボス紹介を省き、残りを約 1.5 倍に伸ばして 45 秒
+SCENES = [('intro', 6), ('logo', 3), ('quad', 1.5), ('stages', 3), ('warp', 1.5), ('err', 3), ('wall', 3),
+          ('kill', 1.5), ('hull', 3.5), ('flyby', 3), ('final', 99)]
+STARTS = []
+_b = 0.0
+for _n, _l in SCENES:
+    STARTS.append((_n, _b, _l)); _b += _l
+
+
 def frame(t):
     """t 秒目の 1 フレームを作る"""
-    bar = int(t / BAR); ub = (t - bar * BAR) / BAR   # 小節内の位置 0..1
-    beat = int(ub * 4)
+    for name, b0, nb in STARTS:
+        if t < (b0 + nb) * BAR: break
+    u = t - b0 * BAR            # 場面内の経過秒
+    dur = nb * BAR
+    ub = (t / BAR) % 1
+    beat = int(u / BEAT)        # 場面内の拍
     base = background(t)
     glow = Image.new('RGB', (W, H), (0, 0, 0))
     d = ImageDraw.Draw(base); g = ImageDraw.Draw(glow)
     label, idx = 'INTRO', 0
     post_split = 0; post_glitch = 0; flash = 0.0
 
-    if bar < 4:
-        # ---- イントロ: 文字のモーション
+    if name == 'intro':
+        # ---- 文字のモーション (各 1.5 小節)
         label, idx = 'TRANSMISSION', 0
-        u = t
-        g.line([(W / 2 - 520 * out_expo(u / 0.6), H / 2 + 70), (W / 2 + 520 * out_expo(u / 0.6), H / 2 + 70)], fill=CYAN, width=2)
-        if bar == 0:
-            mono(d, '> INCOMING SIGNAL', W / 2, H / 2 - 120, (140, 200, 230), MONO, anchor='ma', typed=u / 0.7)
-            big_word(g, 'A WIREFRAME', T(0) + 0.2, t, 70, WHITE, dur=0.8)
-        elif bar == 1:
-            big_word(g, 'COCKPIT SHOOTER', T(1), t, 70, WHITE, dur=0.7)
-            for b in range(beat + 1):   # 拍ごとに広がる輪
-                r = 40 + 400 * out_expo((t - T(1) - b * BEAT) / 0.6)
-                a = int(160 * (1 - sat((t - T(1) - b * BEAT) / 0.6)))
+        g.line([(W / 2 - 520 * out_expo(u / 0.8), H / 2 + 70), (W / 2 + 520 * out_expo(u / 0.8), H / 2 + 70)], fill=CYAN, width=2)
+        part = int(u / (1.5 * BAR)); pu = u - part * 1.5 * BAR
+        if part == 0:
+            mono(d, '> INCOMING SIGNAL', W / 2, H / 2 - 120, (140, 200, 230), MONO, anchor='ma', typed=u / 1.0)
+            big_word(g, 'A WIREFRAME', 0.3, pu, 70, WHITE, dur=1.1)
+        elif part == 1:
+            big_word(g, 'COCKPIT SHOOTER', 0, pu, 70, WHITE, dur=1.0)
+            for b in range(int(pu / BEAT) + 1):   # 拍ごとに広がる輪
+                r = 40 + 420 * out_expo((pu - b * BEAT) / 0.7)
+                a = int(160 * (1 - sat((pu - b * BEAT) / 0.7)))
                 g.ellipse([W / 2 - r, H / 2 - r, W / 2 + r, H / 2 + r], outline=(0, a, a), width=2)
-        elif bar == 2:
-            big_word(g, 'LOCK ON', T(2), t, 130, CYAN, dur=0.45)
-            # 照準 + 拍ごとにロックの四角が吸い付く
-            r = 210 * out_expo((t - T(2)) / 0.5)
+        elif part == 2:
+            big_word(g, 'LOCK ON', 0, pu, 130, CYAN, dur=0.6)
+            r = 210 * out_expo(pu / 0.6)
             g.ellipse([W / 2 - r, H / 2 - r * 0.6, W / 2 + r, H / 2 + r * 0.6], outline=MAG, width=2)
-            for b in range(beat + 1):
+            for b in range(int(pu / BEAT) + 1):   # 拍ごとにロックの四角が吸い付く
                 ang = b * 1.7 + 0.4
                 cx, cy = W / 2 + math.cos(ang) * 330, H / 2 + math.sin(ang) * 150
-                s = 26 * (1 + 2 * (1 - out_expo((t - T(2) - b * BEAT) / 0.25)))
-                g.rectangle([cx - s, cy - s, cx + s, cy + s], outline=AMBER, width=3)
-                mono(d, 'LOCK %d' % (b + 1), cx + s + 6, cy - 8, AMBER, MONO_S)
+                sz = 26 * (1 + 2 * (1 - out_expo((pu - b * BEAT) / 0.25)))
+                g.rectangle([cx - sz, cy - sz, cx + sz, cy + sz], outline=AMBER, width=3)
+                mono(d, 'LOCK %d' % (b + 1), cx + sz + 6, cy - 8, AMBER, MONO_S)
         else:
             words = ['FIRE', 'ON', 'THE', 'BEAT']
-            w = words[beat]
-            big_word(g, w, T(3) + beat * BEAT, t, 170 if beat == 3 else 130, MAG if beat == 3 else WHITE, dur=0.12)
-            if beat == 3: flash = 0.25 * sat((ub - 0.85) / 0.15)
+            k = min(3, int(pu / BEAT))
+            big_word(g, words[k], k * BEAT, pu, 170 if k == 3 else 130, MAG if k == 3 else WHITE, dur=0.12)
+            if k == 3: flash = 0.25 * sat((u - (dur - 0.2)) / 0.2)
             post_split = 3
-    elif bar < 6:
+    elif name == 'logo':
         # ---- ロゴ着地 (ゲームのオープニング)
         label, idx = 'TITLE', 1
-        u = t - T(4)
         base = clip('op', 2.62 + u)
         d = ImageDraw.Draw(base)
         post_split = 8 * (1 - sat(u / 0.4)); post_glitch = 1 - sat(u / 0.3)
-        mono(d, 'A RHYTHM-SYNCED LOCK-ON SHOOTER FOR ANDROID', W / 2, H - 120, (180, 220, 240), MONO, anchor='ma', typed=(u - 0.6) / 0.8)
-    elif bar < 8:
-        label, idx = 'FEATURE', 2
-        feature(base, glow, t, T(6), '01', 's1', 'MULTI\nLOCK-ON', 'HOLD TO PAINT UP TO 8 TARGETS\nRELEASE TO FIRE THE VOLLEY', 'r', CYAN)
-    elif bar < 10:
-        label, idx = 'FEATURE', 3
-        feature(base, glow, t, T(8), '02', 's1b', 'BEAT-SYNC\nMISSILES', 'MISSILES LAUNCH ON THE 16TH GRID\nRELEASE ON THE BEAT = X1.5', 'l', MAG)
-    elif bar < 12:
-        label, idx = 'FEATURE', 4
-        feature(base, glow, t, T(10), '03', 'roll', 'ROLL &\nREFLECT', 'BARREL ROLL SENDS BULLETS\nBACK AT THEIR OWNERS', 'r', AMBER)
-    elif bar < 14:
-        label, idx = 'FEATURE', 5
-        u = t - T(12)
-        feature(base, glow, t, T(12), '04', 's2od', 'OVERDRIVE', 'TIME SLIPS. LOCKS DOUBLE.\nFIREPOWER X1.5', 'l', CYAN)
-        post_split = 2 + 2 * math.sin(u * 9)
-    elif bar < 15:
+        mono(d, 'A RHYTHM-SYNCED LOCK-ON SHOOTER FOR ANDROID', W / 2, H - 120, (180, 220, 240), MONO, anchor='ma', typed=(u - 0.8) / 1.2)
+    elif name == 'quad':
         # ---- 4 面: 2x2 で拍ごとに出る
-        label, idx = 'STAGES', 6
-        u = t - T(14)
+        label, idx = 'STAGES', 2
         names = [('s1', '01 OUTER BELT'), ('s2', '02 STATION TRENCH'), ('err', '03 HYPERSPACE'), ('s4', '04 DREADNOUGHT')]
         pw, ph = 560, 300
         for i, (nm, lab) in enumerate(names):
@@ -321,124 +317,90 @@ def frame(t):
             if k <= 0: continue
             cx = 90 + (i % 2) * (pw + 40); cy = 70 + (i // 2) * (ph + 40)
             w = pw * k
-            paste_panel(base, glow, clip(nm, 0.5 + u), cx + (pw - w) / 2, cy, w, ph, CYAN if i % 2 == 0 else MAG, brackets=False)
+            paste_panel(base, glow, clip(nm, 0.5 + u * 0.8), cx + (pw - w) / 2, cy, w, ph, CYAN if i % 2 == 0 else MAG, brackets=False)
             mono(d, lab, cx + 10, cy + ph - 26, WHITE, MONO, typed=(u - i * BEAT - 0.1) / 0.3)
-        # 中央に見出し (帯)
-        bw = W * out_expo((u - 0.1) / 0.4)
+        bw = W * out_expo((u - 0.1) / 0.5)
         d.rectangle([W / 2 - bw / 2, H / 2 - 52, W / 2 + bw / 2, H / 2 + 52], fill=BG)
-        stroke_text(g, '4 STAGES', W / 2, H / 2, 80, WHITE, 5, prog=out_cubic((u - 0.15) / 0.4), stagger=0.3)
-    elif bar < 17:
-        # ---- 各面を半小節ずつ
-        label, idx = 'STAGES', 7
-        k = int((t - T(15)) / (BAR / 2))
+        stroke_text(g, '4 STAGES', W / 2, H / 2, 80, WHITE, 5, prog=out_cubic((u - 0.15) / 0.5), stagger=0.3)
+    elif name == 'stages':
+        # ---- 各面を 3 拍ずつ
+        label, idx = 'STAGES', 3
+        seg = dur / 4
+        k = min(3, int(u / seg))
         nm, num, nmtxt, col = [('s1', '01', 'OUTER BELT', CYAN), ('s2', '02', 'STATION TRENCH', AMBER), ('wall', '03', 'HYPERSPACE', MAG), ('s4', '04', 'DREADNOUGHT', CYAN)][k]
-        u = t - T(15) - k * BAR / 2
-        base = clip(nm, 0.6 + u)
+        su = u - k * seg
+        base = clip(nm, 0.4 + su)
         base = Image.fromarray((np.asarray(base).astype(np.float32) * 0.8).astype(np.uint8))
         d = ImageDraw.Draw(base)
-        x = lerp(-200, 70, out_expo(u / 0.25))
-        stroke_text(g, num, x, H / 2 - 30, 230, col, 7, prog=out_cubic(u / 0.2), align='l')
-        stroke_text(g, nmtxt, x + 10, H / 2 + 130, 44, WHITE, 3, prog=out_cubic((u - 0.08) / 0.3), align='l', stagger=0.4)
-        post_glitch = 0.8 * (1 - sat(u / 0.12))
-    elif bar < 18:
-        # ---- ワープ突入 (1 小節 = 星が伸び切るまで)
-        label, idx = 'HYPERSPACE', 8
-        u = t - T(17)
-        base = clip('warp', u)
+        x = lerp(-200, 70, out_expo(su / 0.3))
+        stroke_text(g, num, x, H / 2 - 30, 230, col, 7, prog=out_cubic(su / 0.25), align='l')
+        stroke_text(g, nmtxt, x + 10, H / 2 + 130, 44, WHITE, 3, prog=out_cubic((su - 0.1) / 0.4), align='l', stagger=0.4)
+        post_glitch = 0.8 * (1 - sat(su / 0.12))
+    elif name == 'warp':
+        # ---- ワープ突入 (スローで、星が伸び切った瞬間に場面が終わる)
+        label, idx = 'HYPERSPACE', 4
+        base = clip('warp', u * 1.38 / dur)
         d = ImageDraw.Draw(base)
-        mono(d, '> ENGAGE HYPERSPACE', W / 2, H - 130, CYAN, MONO, anchor='ma', typed=u / 0.6)
-        post_split = 6 * sat(u / BAR) ** 3
-    elif bar < 20:
-        label, idx = 'HYPERSPACE', 9
-        u = t - T(18)
-        base = clip('err', 0.2 + u)
+        mono(d, '> ENGAGE HYPERSPACE', W / 2, H - 130, CYAN, MONO, anchor='ma', typed=u / 0.8)
+        post_split = 6 * sat(u / dur) ** 3
+    elif name == 'err':
+        label, idx = 'HYPERSPACE', 5
+        base = clip('err', 0.2 + u * 0.7)
         d = ImageDraw.Draw(base)
-        # 警告の斜線帯
         yb = H - 150
         sh = (u * 120) % 40
-        for i in range(-2, 36):
+        for i in range(-2, 36):   # 警告の斜線帯
             x0 = i * 40 + sh
             g.polygon([(x0, yb), (x0 + 20, yb), (x0 + 0, yb + 22), (x0 - 20, yb + 22)], fill=(90, 70, 0))
-        stroke_text(g, 'INDESTRUCTIBLE', 70, yb - 90, 54, AMBER, 4, prog=out_cubic(u / 0.4), align='l', stagger=0.4)
-        stroke_text(g, 'ASTEROIDS', 70, yb - 30, 54, WHITE, 4, prog=out_cubic((u - 0.15) / 0.4), align='l', stagger=0.4)
+        stroke_text(g, 'INDESTRUCTIBLE', 70, yb - 90, 54, AMBER, 4, prog=out_cubic(u / 0.5), align='l', stagger=0.4)
+        stroke_text(g, 'ASTEROIDS', 70, yb - 30, 54, WHITE, 4, prog=out_cubic((u - 0.2) / 0.5), align='l', stagger=0.4)
         if u < 0.1: flash = 0.5 * (1 - u / 0.1)
-    elif bar < 22:
-        label, idx = 'HYPERSPACE', 10
-        u = t - T(20)
-        base = clip('wall', 0.4 + u)
+    elif name == 'wall':
+        label, idx = 'HYPERSPACE', 6
+        base = clip('wall', 0.4 + u * 0.65)
         d = ImageDraw.Draw(base)
         for j, wd in enumerate(['DODGE.', 'GRAZE.', 'SURVIVE.']):
-            t0 = j * 2 * BEAT
+            t0 = j * 3 * BEAT
             if u >= t0:
-                stroke_text(g, wd, 80 + j * 380, H / 2 + 200, 62, [CYAN, MAG, WHITE][j], 5, prog=out_cubic((u - t0) / 0.2), align='l')
-        post_glitch = 0.5 * (1 - sat((u % (2 * BEAT)) / 0.1)) if u < 6 * BEAT else 0
-    elif bar < 23:
-        # ---- ボス 4 体 (2x2)
-        label, idx = 'BOSSES', 11
-        u = t - T(22)
-        names = ['warden', 'leviathan', 'maelstrom', 'core']
-        pw, ph = 560, 300
-        for i, nm in enumerate(names):
-            k = out_expo((u - i * BEAT) / 0.35)
-            if k <= 0: continue
-            cx = 90 + (i % 2) * (pw + 40); cy = 70 + (i // 2) * (ph + 40)
-            h = ph * k
-            paste_panel(base, glow, clip(nm, u), cx, cy + (ph - h) / 2, pw, h, MAG, brackets=False)
-            mono(d, nm.upper(), cx + 10, cy + ph - 26, WHITE, MONO, typed=(u - i * BEAT - 0.1) / 0.3)
-        bw = W * out_expo((u - 0.1) / 0.4)
-        d.rectangle([W / 2 - bw / 2, H / 2 - 52, W / 2 + bw / 2, H / 2 + 52], fill=BG)
-        stroke_text(g, '4 BOSSES', W / 2, H / 2, 80, MAG, 5, prog=out_cubic((u - 0.15) / 0.4), stagger=0.3)
-    elif bar < 25:
-        label, idx = 'BOSSES', 12
-        k = int((t - T(23)) / (BAR / 2))
-        nm = ['warden', 'leviathan', 'maelstrom', 'core'][k]
-        u = t - T(23) - k * BAR / 2
-        base = clip(nm, 0.8 + u)
+                stroke_text(g, wd, 80 + j * 380, H / 2 + 200, 62, [CYAN, MAG, WHITE][j], 5, prog=out_cubic((u - t0) / 0.25), align='l')
+        post_glitch = 0.5 * (1 - sat((u % (3 * BEAT)) / 0.1)) if u < 9 * BEAT else 0
+    elif name == 'kill':
+        label, idx = 'FINAL BATTLE', 7
+        base = clip('kill', u * 0.8)
         d = ImageDraw.Draw(base)
-        mono(d, 'BOSS 0%d' % (k + 1), 74, H - 190, MAG, MONO, typed=u / 0.15)
-        stroke_text(g, nm.upper(), lerp(30, 70, out_expo(u / 0.3)), H - 130, 72, WHITE, 5, prog=out_cubic(u / 0.25), align='l', stagger=0.3)
-        post_glitch = 0.9 * (1 - sat(u / 0.12)); post_split = 5 * (1 - sat(u / 0.3))
-    elif bar < 26:
-        label, idx = 'BOSSES', 13
-        u = t - T(25)
-        base = clip('kill', u)
-        d = ImageDraw.Draw(base)
-        big_word(g, 'BREAK THE CORE', T(25) + 0.1, t, 64, WHITE, y=H - 130, dur=0.4)
+        big_word(g, 'BREAK THE CORE', 0.15, u, 64, WHITE, y=H - 130, dur=0.5)
         if u < 0.12: flash = 0.6 * (1 - u / 0.12)
-    elif bar < 28:
+    elif name == 'hull':
         # ---- エンディング: 船腹の並走
-        label, idx = 'HOMECOMING', 14
-        u = t - T(26)
-        base = clip('hull', 0.3 + u)
+        label, idx = 'HOMECOMING', 8
+        base = clip('hull', 0.3 + u * 0.68)
         d = ImageDraw.Draw(base)
         x = 70
-        d.rectangle([x - 10, H - 170, x + 560 * out_expo((u - 0.2) / 0.5), H - 100], fill=(0, 0, 0))
+        d.rectangle([x - 10, H - 170, x + 560 * out_expo((u - 0.3) / 0.6), H - 100], fill=(0, 0, 0))
         g.line([(x - 10, H - 170), (x - 10, H - 100)], fill=CYAN, width=4)
-        stroke_text(g, 'RETURN TO THE', x + 10, H - 150, 26, (170, 220, 240), 2, prog=sat((u - 0.35) / 0.4), align='l')
-        stroke_text(g, 'MOTHERSHIP', x + 10, H - 116, 34, WHITE, 3, prog=sat((u - 0.5) / 0.5), align='l', stagger=0.3)
-    elif bar < 30:
-        # ---- 加速して通過 → 白
-        label, idx = 'HOMECOMING', 15
-        u = t - T(28)
-        base = clip('flyby', 0.06 + u)
+        stroke_text(g, 'RETURN TO THE', x + 10, H - 150, 26, (170, 220, 240), 2, prog=sat((u - 0.5) / 0.6), align='l')
+        stroke_text(g, 'MOTHERSHIP', x + 10, H - 116, 34, WHITE, 3, prog=sat((u - 0.7) / 0.7), align='l', stagger=0.3)
+    elif name == 'flyby':
+        # ---- 加速して通過 → 白 (クリップの閃光 2.8 秒目が場面の終わりに来るよう速度を合わせる)
+        label, idx = 'HOMECOMING', 9
+        base = clip('flyby', 0.06 + u * 2.74 / dur)
         d = ImageDraw.Draw(base)
-        lb = 70 * out_expo(u / 0.6)   # シネマスコープの帯
+        lb = 70 * out_expo(u / 0.8)   # シネマスコープの帯
         d.rectangle([0, 0, W, lb], fill=(0, 0, 0)); d.rectangle([0, H - lb, W, H], fill=(0, 0, 0))
-        flash = sat((u - BAR * 2 + 0.12) / 0.12)
+        flash = sat((u - dur + 0.15) / 0.15)
     else:
         # ---- 最後: ロゴ
-        label, idx = 'WIRED', 16
-        u = t - T(30)
-        flash = 1 - sat(u / 0.5)
-        g.line([(W / 2 - 560 * out_expo(u / 0.8), H / 2 + 92), (W / 2 + 560 * out_expo(u / 0.8), H / 2 + 92)], fill=CYAN, width=3)
-        g.line([(W / 2 - 440 * out_expo((u - 0.1) / 0.8), H / 2 - 105), (W / 2 + 440 * out_expo((u - 0.1) / 0.8), H / 2 - 105)], fill=MAG, width=2)
-        stroke_text(g, 'WIRED', W / 2 + 5, H / 2 - 5, 150, (255, 60, 160), 5, prog=out_cubic((u - 0.05) / 0.8), stagger=0.35, alpha=0.5)
-        stroke_text(g, 'WIRED', W / 2, H / 2, 150, CYAN, 8, prog=out_cubic(u / 0.8), stagger=0.35)
-        stroke_text(g, 'WIREFRAME COCKPIT COMBAT', W / 2, H / 2 + 135, 30, WHITE, 3, prog=sat((u - 0.7) / 0.6), stagger=0.5)
-        mono(d, '4 STAGES  /  4 BOSSES  /  ORIGINAL SOUNDTRACK', W / 2, H / 2 + 185, (150, 200, 225), MONO, anchor='ma', typed=(u - 1.2) / 0.7)
+        label, idx = 'WIRED', 10
+        flash = 1 - sat(u / 0.6)
+        g.line([(W / 2 - 560 * out_expo(u / 1.0), H / 2 + 92), (W / 2 + 560 * out_expo(u / 1.0), H / 2 + 92)], fill=CYAN, width=3)
+        g.line([(W / 2 - 440 * out_expo((u - 0.1) / 1.0), H / 2 - 105), (W / 2 + 440 * out_expo((u - 0.1) / 1.0), H / 2 - 105)], fill=MAG, width=2)
+        stroke_text(g, 'WIRED', W / 2 + 5, H / 2 - 5, 150, (255, 60, 160), 5, prog=out_cubic((u - 0.05) / 1.0), stagger=0.35, alpha=0.5)
+        stroke_text(g, 'WIRED', W / 2, H / 2, 150, CYAN, 8, prog=out_cubic(u / 1.0), stagger=0.35)
+        stroke_text(g, 'WIREFRAME COCKPIT COMBAT', W / 2, H / 2 + 135, 30, WHITE, 3, prog=sat((u - 0.9) / 0.8), stagger=0.5)
+        mono(d, '4 STAGES  /  4 BOSSES  /  ORIGINAL SOUNDTRACK', W / 2, H / 2 + 185, (150, 200, 225), MONO, anchor='ma', typed=(u - 1.6) / 0.9)
         bx = W / 2; by = H - 120
-        if u > 1.6:
-            k = out_expo((u - 1.6) / 0.4)
+        if u > 2.2:
+            k = out_expo((u - 2.2) / 0.5)
             g.rectangle([bx - 90 * k, by - 22, bx + 90 * k, by + 22], outline=AMBER, width=2)
             if k > 0.9: stroke_text(g, 'ANDROID', bx, by, 24, AMBER, 2)
         post_split = 6 * (1 - sat(u / 0.5)); post_glitch = 0.6 * (1 - sat(u / 0.25))
@@ -473,11 +435,11 @@ def make_audio():
         seg[:fi] *= np.linspace(0, 1, fi)[:, None]; seg[-fo:] *= np.linspace(1, 0, fo)[:, None]
         i = int(round(dst_bar * BAR * fs)); ln = min(len(seg), N - i)
         out[i:i + ln] += seg[:ln]
-    put(5, 0, 4)       # イントロ (アルペジオ + フィル)
-    put(33, 4, 24)     # ドロップ 2 + ニューロ
-    put(63, 28, 2)     # ビルド (スネアロール + ライザー)
+    put(3, 0, 6)       # イントロ (フィルター付きブレイク → アルペジオ → フィル)
+    put(33, 6, 20)     # ドロップ 2 (ロゴ着地と同時) + ニューロ
+    put(62, 26, 3)     # ビルド (スネアロール + ライザー)
     # 最後の一撃 (ラストドロップの頭) を響かせて終わる
-    a = int(round(65 * BAR * fs)); i = int(round(30 * BAR * fs))
+    a = int(round(65 * BAR * fs)); i = int(round(29 * BAR * fs))   # 29 小節目 = 最後のロゴ
     hit = x[a:a + int(1.2 * fs)].copy()
     hit *= np.exp(-np.arange(len(hit)) / (0.35 * fs))[:, None]
     out[i:i + len(hit)] += hit[:N - i]
