@@ -1,9 +1,9 @@
 // ステージスクリプト: 時刻つきイベントで敵を配置する
 import { G } from './state.js';
-import { spawn, spawnBomber, spawnWall } from './enemies.js';
+import { spawn, spawnBomber, spawnWall, D } from './enemies.js';
 import { rand, randi, pick, PI, TAU } from './util.js';
 
-const dn = (n) => Math.max(1, Math.round(n * [0.8, 1, 1.2][G.diff]));
+const dn = (n) => Math.max(1, Math.round(n * D().n));
 
 // ---- 編隊ヘルパー ----
 function hoverV(kind, n, cx, cy, z0 = 90, o = {}) {

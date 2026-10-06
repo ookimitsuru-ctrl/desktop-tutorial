@@ -3,7 +3,7 @@ import { G, vib } from './state.js';
 import { M } from './models.js';
 import { clamp, lerp, damp, easeInOut, TAU, rand, PI } from './util.js';
 import { explosion, burst, ring, popup, spark } from './fx.js';
-import { targets, damage, COL } from './enemies.js';
+import { targets, damage, COL, D } from './enemies.js';
 
 export const XL = 15, YL = 8.5;
 const ROLL_T = 0.5, ROLL_CD = 0.9;
@@ -37,8 +37,8 @@ G.addFlow = addFlow;
 
 export function hurt(dmg, x, y, z) {
   if (G.dead || G.rollT > 0 || G.invuln > 0) return;
-  const m = G.diff === 0 ? 0.9 : G.diff === 2 ? 1.8 : 1.45; // 被ダメージ倍率
-  G.shield -= dmg * m; G.dmgTaken += dmg * m; G.invuln = 0.9; G.chain = 0; G.chainT = 0;
+  const d = D(), m = d.dmg; // 被ダメージ倍率
+  G.shield -= dmg * m; G.dmgTaken += dmg * m; G.invuln = d.inv; G.chain = 0; G.chainT = 0;
   if (G.od <= 0) G.flow = Math.max(0, G.flow - 14);
   G.flowReady = G.flow >= 100;
   G.trauma = Math.min(1, G.trauma + 0.65);
