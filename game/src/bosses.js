@@ -320,7 +320,7 @@ HANDLERS.leviathan = {
 const ORBIT_N = 8;
 function rockAt(x, y, z, tx, ty, T, scale) {
   // 目標 (tx, ty, z=0) に T 秒で届く岩。岩は (vz - V) で近づくので vz を逆算する
-  return spawn('rock', { x, y, z, vx: (tx - x) / T, vy: (ty - y) / T, vz: G.V - z / T, path: 'world', scale, hpK: 0.55, score: 100 });
+  return spawn('rock', { x, y, z, vx: (tx - x) / T, vy: (ty - y) / T, vz: G.V - z / T, path: 'world', scale, hpK: 0.55, score: 0, armored: true });  // 破壊できない (避ける)
 }
 function rockStorm(e, holes = 1) {
   // 自機の周囲に格子状に岩をばらまく (穴あり)。穴へ移動するか、撃ち抜いて道を作る
@@ -395,8 +395,7 @@ HANDLERS.maelstrom = {
       if (orbs.length) {
         const p = orbs[(Math.random() * orbs.length) | 0];
         p.alive = false; p.regen = 5;
-        const r = rockAt(p.x, p.y, p.z, G.px + rand(-1.5, 1.5), G.py + rand(-1, 1), 1.9, 2.9);
-        r.score = 150;
+        rockAt(p.x, p.y, p.z, G.px + rand(-1.5, 1.5), G.py + rand(-1, 1), 1.9, 2.9);
         burst(p.x, p.y, p.z, 6, 14, COL.blue, 0.4);
       } else if (e.phase === 2) {
         rockAt(e.x, e.y, e.z - 6, G.px, G.py, 1.8, rand(2.6, 3.2));

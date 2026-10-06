@@ -246,6 +246,11 @@ const UPD = {
         shatter(e.mesh, e.x, e.y, Math.max(e.z, 4), e.yaw, e.pitch, 0, e.scale, [0.45, 0.65, 1], 22, 0, 0, 0);
       }
     }
+    // 破壊できない岩をすれすれで避けたら GRAZE (FLOW とスコア)
+    if (e.armored && e.alive && !e.grazed && e.z < 0) {
+      e.grazed = true;
+      if (Math.hypot(G.px - e.x, G.py - e.y) < e.r + 5) G.graze(e);
+    }
     if (e.z < -e.r - 20) e.gone = true;
   },
   bomber(e, dt) {

@@ -55,7 +55,7 @@ function wall(gx, gy, gr = 8.5) { spawnWall(gx, gy, gr, 300); }
 
 // ---- ワープ面: 高速で迫る小惑星 ----
 const WZ = 445; // フォグの向こうから現れる
-const WR = { path: 'world', hpK: 0.55, score: 100 }; // ワープ面の岩: ミサイル 1 発で砕ける硬さ
+const WR = { path: 'world', hpK: 0.55, score: 0, armored: true }; // ワープ面の岩: 破壊できない (避けるだけ。かすめると GRAZE)
 // 自機の周辺に散らばる岩 (n 個を gap 秒間隔で)
 function wStream(n, gap, spread = 1, o = {}) {
   for (let i = 0; i < n; i++) setTimeout0(i * gap, () => {
@@ -81,9 +81,9 @@ function wGiant(x, y, o = {}) {
 function wCross(n, side, y, gap = 0.18) {
   for (let i = 0; i < n; i++) setTimeout0(i * gap, () => spawn('rock', { x: side * 46, y: y + rand(-3, 3), z: WZ - 120 + rand(-10, 10), vx: -side * rand(16, 22), vy: rand(-1, 1), ...WR, scale: rand(2.4, 3.4) }));
 }
-// 彗星: 小さく速い。撃つと回復/FLOW を落とす
+// 彗星: 小さく速い。この面で唯一撃てる。撃つと回復/FLOW を落とす
 function wComet(drop) {
-  spawn('rock', { x: rand(-14, 14), y: rand(-8, 8), z: WZ + 40, vx: 0, vy: 0, vz: -70, ...WR, scale: 1.6, comet: true, score: 600, drop });
+  spawn('rock', { x: rand(-14, 14), y: rand(-8, 8), z: WZ + 40, vx: 0, vy: 0, vz: -70, ...WR, armored: false, scale: 1.6, comet: true, score: 600, drop });  // 彗星だけは撃てる
 }
 // 自機めがけて降る岩
 function wRain(n, gap) {
@@ -96,7 +96,7 @@ function wRain(n, gap) {
 // 不規則に飛ぶ岩 (紫): 進路と速さが途中で何度も変わる
 function wErratic(n, gap) {
   for (let i = 0; i < n; i++) setTimeout0(i * gap, () => {
-    spawn('rock', { x: rand(-28, 28), y: rand(-16, 16), z: WZ + rand(0, 20), vx: rand(-6, 6), vy: rand(-4, 4), ...WR, scale: rand(2.4, 3.4), erratic: true, score: 250 });
+    spawn('rock', { x: rand(-28, 28), y: rand(-16, 16), z: WZ + rand(0, 20), vx: rand(-6, 6), vy: rand(-4, 4), ...WR, scale: rand(2.4, 3.4), erratic: true });
   });
 }
 
