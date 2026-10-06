@@ -332,6 +332,7 @@ function autopilot(ctrl) {
   ctrl.fire = (Math.floor(G.time * 0.6) % 3) !== 2;
   // ロックした目標が近づいたら早めに撃つ (ワープ面の高速な岩向け)
   if (G.locks.length && (G.locks.length >= 8 || G.locks.some((l) => l.tg.z < 150))) ctrl.fire = false;
+  if (G.noFire) ctrl.fire = false;   // 動画撮影用: 避けるだけ
   // 近い弾を避ける
   let dx = 0, dy = 0;
   for (const b of G.ebul) {
