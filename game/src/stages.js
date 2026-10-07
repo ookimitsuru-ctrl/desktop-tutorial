@@ -172,9 +172,8 @@ export function buildStage(idx) {
     E(ev, 23, () => { wStream(dn(12), 0.45); setTimeout0(2, () => wCross(dn(5), 1, -3)); });
     E(ev, 29, () => wWall([[2, 1]]));
     E(ev, 31.5, () => wRain(dn(8), 0.3));
-    // 中盤 (ブレイクダウン 34.5〜45.5 秒): 岩は止み、シールドを回復させる補給機だけが現れる
+    // 中盤 (ブレイクダウン 34.5〜45.5 秒): 岩は止み、シールドを回復させる補給機だけが現れる (2 回目はボス戦の直前)
     E(ev, 35, () => wSupply(3, 0, 4, 4.5));
-    E(ev, 42.5, () => wSupply(3, 0, -2, 3.0));
     E(ev, 45.5, () => { wWall([[0, 0], [1, 0]]); wComet('flow'); });       // ドロップ 2
     E(ev, 48.5, () => wStream(dn(16), 0.4));
     E(ev, 52, () => wWall([[3, 2], [4, 2]]));
@@ -193,8 +192,9 @@ export function buildStage(idx) {
     E(ev, 81.4, () => wWall([[3, 0]]));
     E(ev, 84.2, () => wWall([[0, 2], [4, 0]]));
     E(ev, 86.5, () => { wWall([[2, 1]]); wComet('flow'); });
-    E(ev, 89.7, () => { wStream(dn(10), 0.3); wGiant(-9, 4); wGiant(9, -4); }); // ラストドロップ
-    E(ev, 91.5, () => wErratic(dn(6), 0.3));
+    E(ev, 88.0, () => wErratic(dn(6), 0.3));
+    E(ev, 89.7, () => { wStream(dn(7), 0.3); wGiant(-9, 4); wGiant(9, -4); }); // ラストドロップ
+    E(ev, 92.3, () => wSupply(3, 0, -2, 3.5));                             // ボス戦の前に補給
     st.bossAt = 95;
   } else {
     Object.assign(st, { name: 'STAGE 4', sub: 'DREADNOUGHT', theme: 'city', music: 4 });

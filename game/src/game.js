@@ -435,7 +435,7 @@ function updateBossFlow(dt, wdt) {
   const s = G.stage;
   if (G.bossState === 0 && G.st >= s.bossAt) {
     let n = 0;
-    for (const e of G.enemies) if (e.alive && e.isEnemy && e.kind !== 'rock') n++;
+    for (const e of G.enemies) if (e.alive && e.isEnemy && e.kind !== 'rock' && !e.supply) n++;   // 岩と補給機はボスの出現を待たせない
     if (n <= 1 || G.st >= s.bossAt + 14) {
       G.bossState = 1; G.bossT = 3.4;
       G.banner = { text: 'WARNING', sub: 'BOSS APPROACHING', t: 0, dur: 3.2, col: H.C.red };
