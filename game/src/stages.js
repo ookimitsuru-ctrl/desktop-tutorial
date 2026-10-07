@@ -1,6 +1,7 @@
 // ステージスクリプト: 時刻つきイベントで敵を配置する
 import { G } from './state.js';
-import { spawn, spawnBomber, spawnWall, D } from './enemies.js';
+import { spawn, spawnBomber, spawnWall, D, COL } from './enemies.js';
+import { popup } from './fx.js';
 import { rand, randi, pick, PI, TAU } from './util.js';
 
 const dn = (n) => Math.max(1, Math.round(n * D().n));
@@ -100,6 +101,12 @@ function wErratic(n, gap) {
   });
 }
 
+// 補給機 (緑): 撃たずに並走し、撃ち落とすとシールド回復を落とす
+function wSupply(n, cx, cy, life) {
+  hoverV('drone', n, cx, cy, 85, { noFire: true, drop: 'repair', col: COL.green, score: 300, life, supply: true });
+  popup(cx, cy + 9, 110, 'SUPPLY', COL.green, 0.07, 1.8);
+}
+
 // ステージ時間依存の遅延実行
 let pending = [];
 export function setTimeout0(delay, fn) { if (delay <= 0) fn(); else pending.push({ t: G.st + delay, fn }); }
@@ -165,10 +172,9 @@ export function buildStage(idx) {
     E(ev, 23, () => { wStream(dn(12), 0.45); setTimeout0(2, () => wCross(dn(5), 1, -3)); });
     E(ev, 29, () => wWall([[2, 1]]));
     E(ev, 31.5, () => wRain(dn(8), 0.3));
-    E(ev, 34.5, () => wGiant(-6, 2));                                     // ブレイクダウン
-    E(ev, 37.5, () => { wComet('repair'); wGiant(8, -3); });
-    E(ev, 41, () => { wGiant(0, 0); wStream(dn(5), 0.6, 1.6); });
-    E(ev, 43, () => wErratic(dn(3), 0.6));
+    // 中盤 (ブレイクダウン 34.5〜45.5 秒): 岩は止み、シールドを回復させる補給機だけが現れる
+    E(ev, 35, () => wSupply(3, 0, 4, 4.5));
+    E(ev, 40, () => wSupply(3, 0, -2, 3.5));
     E(ev, 45.5, () => { wWall([[0, 0], [1, 0]]); wComet('flow'); });       // ドロップ 2
     E(ev, 48.5, () => wStream(dn(16), 0.4));
     E(ev, 52, () => wWall([[3, 2], [4, 2]]));
