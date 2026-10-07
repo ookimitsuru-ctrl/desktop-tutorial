@@ -21,7 +21,7 @@
 
 オプションで **エイム速度**・**左利きレイアウト（左右の役割入れ替え）**・振動・難易度・画質を変更できます。
 
-難易度（`game/src/enemies.js` の `DIFF`）: EASY = 以前の NORMAL 相当、NORMAL = 以前の NORMAL と HARD の間、HARD = 以前の HARD より攻撃頻度・敵の耐久・編隊数を上げ、被弾後の無敵時間も短め。敵弾の速さは EASY ×1.15 / NORMAL ×1.35 / HARD ×1.6。被ダメージは全難易度で以前の 1.5 倍（敵弾 1 発で EASY 約 26 / NORMAL 約 30 / HARD 約 40）。
+難易度（`game/src/enemies.js` の `DIFF`）: EASY = 以前の NORMAL 相当、NORMAL = 以前の NORMAL と HARD の間、HARD = 以前の HARD より攻撃頻度・敵の耐久・編隊数を上げ、被弾後の無敵時間も短め。敵弾の速さは EASY ×1.0 / NORMAL ×1.35 / HARD ×1.6。被ダメージは全難易度で以前の 1.5 倍（敵弾 1 発で EASY 約 26 / NORMAL 約 30 / HARD 約 40）。
 
 デスクトップ確認用: マウス移動=照準 / 左クリック長押し=ロック / WASD=移動 / Space=ロール / F=オーバードライブ / Esc=ポーズ。
 

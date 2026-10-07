@@ -7,7 +7,7 @@ import { explosion, burst, ring, popup, shatter, spark } from './fx.js';
 // 難易度: EASY = 旧 NORMAL、NORMAL = 旧 NORMAL と旧 HARD の間、HARD = 旧 HARD より辛く
 // fire: 攻撃頻度, spd: 敵の速さ, bspd: 敵弾の速さ, hp: 敵の耐久, n: 編隊の数, dmg: 被ダメージ倍率 (全難易度で旧値の 1.5 倍), inv: 被弾後の無敵時間
 export const DIFF = [
-  { fire: 1, spd: 1, bspd: 1.15, hp: 1, n: 1, dmg: 1.45 * 1.5, inv: 0.9 },
+  { fire: 1, spd: 1, bspd: 1, hp: 1, n: 1, dmg: 1.45 * 1.5, inv: 0.9 },
   { fire: 1.25, spd: 1.1, bspd: 1.35, hp: 1.15, n: 1.12, dmg: 1.65 * 1.5, inv: 0.8 },
   { fire: 1.6, spd: 1.25, bspd: 1.6, hp: 1.4, n: 1.35, dmg: 2.2 * 1.5, inv: 0.65 },
 ];
