@@ -218,8 +218,8 @@ const UPD = {
     if (e.z < -25) e.gone = true;
   },
   rock(e, dt) {
-    if (e.erratic && e.z > 35) {
-      // 不規則に飛ぶ岩: ときどき弾かれたように進路・速さを変える (近づいたら読めるように止める)
+    if (e.erratic && e.z > 60) {
+      // 不規則に飛ぶ岩: ときどき弾かれたように進路・速さを変える (z<60 まで近づいたら読めるように止める)
       e.jT = (e.jT === undefined ? rand(0.2, 0.5) : e.jT) - dt;
       if (e.jT <= 0) {
         e.jT = rand(0.35, 0.8);
@@ -240,8 +240,9 @@ const UPD = {
     // 衝突
     if (e.z < e.r + 1 && e.z > -e.r) {
       const d = Math.hypot(G.px - e.x, G.py - e.y);
-      if (d < e.r + 1.3) {
-        if (G.rollT <= 0) { G.hurt(e.hpK ? 15 : 20, e.x, e.y, e.z); }
+      // 3 面の岩 (armored) は当たり判定を見た目より少し小さくし、ダメージも軽め
+      if (d < (e.armored ? e.r * 0.8 + 1.0 : e.r + 1.3)) {
+        if (G.rollT <= 0) { G.hurt(e.armored ? 10 : e.hpK ? 15 : 20, e.x, e.y, e.z); }
         e.alive = false; explosion(e.x, e.y, Math.max(e.z, 4), 1.4, COL.blue);
         shatter(e.mesh, e.x, e.y, Math.max(e.z, 4), e.yaw, e.pitch, 0, e.scale, [0.45, 0.65, 1], 22, 0, 0, 0);
       }

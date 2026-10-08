@@ -5,6 +5,7 @@ import { popup } from './fx.js';
 import { rand, randi, pick, PI, TAU } from './util.js';
 
 const dn = (n) => Math.max(1, Math.round(n * D().n));
+const dw = (n) => Math.max(1, Math.round(n * D().n * 0.7)); // 3 面 (破壊できない岩) 用に数を 7 割へ
 
 // ---- 編隊ヘルパー ----
 function hoverV(kind, n, cx, cy, z0 = 90, o = {}) {
@@ -89,7 +90,7 @@ function wComet(drop) {
 // 自機めがけて降る岩
 function wRain(n, gap) {
   for (let i = 0; i < n; i++) setTimeout0(i * gap, () => {
-    const x = rand(-30, 30), y = rand(-18, 18), Tt = 2.8;
+    const x = rand(-30, 30), y = rand(-18, 18), Tt = WZ / Math.max(60, G.V);   // 自機の位置に届くまでの時間
     spawn('rock', { x, y, z: WZ, vx: (G.px - x) / Tt, vy: (G.py - y) / Tt, ...WR, scale: rand(2.2, 3.2) });
   });
 }
@@ -163,37 +164,37 @@ export function buildStage(idx) {
     E(ev, 104, () => { wall(8, 4, 8); setTimeout0(1.8, () => wall(-8, -4, 8)); seekers(dn(4), 0.4); });
     st.bossAt = 118;
   } else if (idx === 2) {
-    // ワープ: 敵は出ない。高速で迫る小惑星を砕くか避けてボスへ (曲の展開に合わせて配置)
+    // ワープ: 敵は出ない。高速で迫る小惑星を避けてボスへ (曲の展開に合わせて配置)。岩の数は他の面より控えめ (dw)
     Object.assign(st, { name: 'STAGE 3', sub: 'HYPERSPACE', theme: 'warp', music: 3, hyper: true });
-    E(ev, 4, () => wStream(dn(6), 1.1, 1.4));
-    E(ev, 12.4, () => { wStream(dn(14), 0.55); wComet('flow'); });        // ドロップ 1
-    E(ev, 21, () => wCross(dn(5), -1, 4));
-    E(ev, 26, () => wErratic(dn(3), 0.7));
-    E(ev, 23, () => { wStream(dn(12), 0.45); setTimeout0(2, () => wCross(dn(5), 1, -3)); });
+    E(ev, 4, () => wStream(dw(6), 1.1, 1.4));
+    E(ev, 12.4, () => { wStream(dw(14), 0.55); wComet('flow'); });        // ドロップ 1
+    E(ev, 21, () => wCross(dw(5), -1, 4));
+    E(ev, 26, () => wErratic(dw(3), 0.7));
+    E(ev, 23, () => { wStream(dw(12), 0.45); setTimeout0(2, () => wCross(dw(5), 1, -3)); });
     E(ev, 29, () => wWall([[2, 1]]));
-    E(ev, 31.5, () => wRain(dn(8), 0.3));
+    E(ev, 31.5, () => wRain(dw(8), 0.3));
     // 中盤 (ブレイクダウン 34.5〜45.5 秒): 岩は止み、シールドを回復させる補給機だけが現れる (2 回目はボス戦の直前)
     E(ev, 35, () => wSupply(3, 0, 4, 4.5));
     E(ev, 45.5, () => { wWall([[0, 0], [1, 0]]); wComet('flow'); });       // ドロップ 2
-    E(ev, 48.5, () => wStream(dn(16), 0.4));
+    E(ev, 48.5, () => wStream(dw(16), 0.4));
     E(ev, 52, () => wWall([[3, 2], [4, 2]]));
-    E(ev, 50.5, () => wErratic(dn(4), 0.5));
-    E(ev, 55, () => { wCross(dn(6), -1, 2, 0.15); setTimeout0(1.2, () => wCross(dn(6), 1, -5, 0.15)); });
+    E(ev, 50.5, () => wErratic(dw(4), 0.5));
+    E(ev, 55, () => { wCross(dw(6), -1, 2, 0.15); setTimeout0(1.2, () => wCross(dw(6), 1, -5, 0.15)); });
     E(ev, 58, () => wWall([[2, 0]]));
-    E(ev, 60.5, () => { wRain(dn(10), 0.25); wGiant(rand(-10, 10), rand(-5, 5)); });
+    E(ev, 60.5, () => { wRain(dw(10), 0.25); wGiant(rand(-10, 10), rand(-5, 5)); });
     E(ev, 64.5, () => wComet('repair'));
-    E(ev, 62.8, () => wErratic(dn(4), 0.45));
-    E(ev, 67.6, () => { wStream(dn(18), 0.32, 1.2); });                    // ニューロ
-    E(ev, 71, () => { wCross(dn(6), 1, 6, 0.14); setTimeout0(0.9, () => wCross(dn(6), -1, -6, 0.14)); });
-    E(ev, 69, () => wErratic(dn(5), 0.4));
-    E(ev, 74.5, () => wRain(dn(12), 0.22));
+    E(ev, 62.8, () => wErratic(dw(4), 0.45));
+    E(ev, 67.6, () => { wStream(dw(18), 0.32, 1.2); });                    // ニューロ
+    E(ev, 71, () => { wCross(dw(6), 1, 6, 0.14); setTimeout0(0.9, () => wCross(dw(6), -1, -6, 0.14)); });
+    E(ev, 69, () => wErratic(dw(5), 0.4));
+    E(ev, 74.5, () => wRain(dw(12), 0.22));
     E(ev, 78.6, () => wWall([[1, 1]]));                                    // ビルド: 岩壁の連続
-    E(ev, 76.5, () => wErratic(dn(5), 0.35));
+    E(ev, 76.5, () => wErratic(dw(5), 0.35));
     E(ev, 81.4, () => wWall([[3, 0]]));
     E(ev, 84.2, () => wWall([[0, 2], [4, 0]]));
     E(ev, 86.5, () => { wWall([[2, 1]]); wComet('flow'); });
-    E(ev, 88.0, () => wErratic(dn(6), 0.3));
-    E(ev, 89.7, () => { wStream(dn(7), 0.3); wGiant(-9, 4); wGiant(9, -4); }); // ラストドロップ
+    E(ev, 88.0, () => wErratic(dw(6), 0.3));
+    E(ev, 89.7, () => { wStream(dw(7), 0.3); wGiant(-9, 4); wGiant(9, -4); }); // ラストドロップ
     E(ev, 92.3, () => wSupply(3, 0, -2, 3.5));                             // ボス戦の前に補給
     st.bossAt = 95;
   } else {

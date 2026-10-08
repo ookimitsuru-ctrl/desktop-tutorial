@@ -426,7 +426,7 @@ function updateHyper(dt) {
   const h = u * (1 - out * out * (3 - 2 * out));    // ボス撃破後はワープアウト (減速)
   G.hyper = h;
   G.hyperKick = Math.max(0, G.hyperKick - dt * 0.6);
-  G.V = 62 + 88 * h;
+  G.V = 62 + 58 * h;   // 岩が迫る速さ 120 (反応の余裕を残す)
   G.VS = 62 + 820 * h + 900 * G.hyperKick;
   G.trauma = Math.max(G.trauma, 0.2 * h);           // 高速域の微振動
 }

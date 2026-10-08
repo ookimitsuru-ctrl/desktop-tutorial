@@ -390,7 +390,7 @@ HANDLERS.maelstrom = {
     // 岩の盾を投げつける
     e.flingT -= dt;
     if (e.flingT <= 0) {
-      e.flingT = (e.phase === 1 ? 2.4 : 1.6) / rage;
+      e.flingT = (e.phase === 1 ? 3.2 : 2.3) / rage;
       const orbs = e.parts.filter((p) => p.orb && p.alive && p.z < e.z + 2);
       if (orbs.length) {
         const p = orbs[(Math.random() * orbs.length) | 0];
@@ -402,7 +402,7 @@ HANDLERS.maelstrom = {
       }
     }
     e.stormT -= dt;
-    if (e.stormT <= 0) { e.stormT = (e.phase === 1 ? 10 : 7) / rage; rockStorm(e, e.phase === 1 ? 2 : 1); }
+    if (e.stormT <= 0) { e.stormT = (e.phase === 1 ? 13 : 10) / rage; rockStorm(e, e.phase === 1 ? 3 : 2); }
     e.atkT -= dt;
     if (e.phase === 1) {
       if (e.atkT <= 0) {
