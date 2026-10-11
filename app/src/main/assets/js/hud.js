@@ -376,6 +376,10 @@
     } else {
       if (st !== 'ending') drawGauges(ctx, Game, P);
       if (st === 'countdown') drawCountdown(ctx, Game);
+      if (st === 'race' && Game.stateT < 0.8 && Game.raceT < 1) {
+        var go = F.render('GO!', { scale: 4, bold: true, grad: ['#e0ffe0', '#40ff60', '#00a020'], outline: '#101018' });
+        zoomDraw(ctx, go, G.R.W / 2, 118, 1.0 + Game.stateT * 1.2, 1 - Game.stateT / 0.8);
+      }
       if (st === 'race' || st === 'countdown') drawBanner(ctx, Game);
       if (st === 'timeup' || st === 'gameover') drawGameOver(ctx, Game);
       if (st === 'goal' || st === 'ending') drawGoal(ctx, Game);

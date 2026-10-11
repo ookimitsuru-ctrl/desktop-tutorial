@@ -43,6 +43,23 @@ PCのブラウザでも遊べます。操作は ←→ / A・D でハンドル�
 
 対応OSは Android 7.0（API 24）以降です。
 
+APKはビルドした環境ごとに署名が変わります。別の環境でビルドしたAPKが入っている端末では「アプリはインストールされていません」と表示されることがあります。そのときは古い Smart Run をアンインストールしてから入れ直してください。
+
+## PV
+
+`promo/smart_run_pv.mp4` は30秒の紹介映像です（1920×1080、60fps）。映像も音もゲーム本体の描画とFM音源をそのまま使っています。
+
+撮り直すときは次のようにします。Playwright（Chromium）と ffmpeg が必要です。
+
+```sh
+node promo/make_pv.js out          # out/frames/*.png と out/audio.wav を書き出す
+ffmpeg -framerate 60 -i out/frames/%05d.png -i out/audio.wav \
+  -vf "scale=1920:1080:flags=neighbor,format=yuv420p" -c:v libx264 -tune animation -b:v 6400k \
+  -c:a aac -b:a 160k -movflags +faststart -shortest smart_run_pv.mp4
+```
+
+カット割りや字幕は `promo/pv_director.js` にあります。乱数を固定しているので、毎回同じ映像になります。
+
 ## ビルド方法
 
 ```sh

@@ -553,5 +553,7 @@
     requestAnimationFrame(frame);
   }
   Game.update = update; Game.render = render; Game.resize = resize;
+  // 動画 (PV) 撮影用のフック
+  Game.resetPlayerAt = resetPlayerAt; Game.initCars = initCars;
   window.addEventListener('load', boot);
 })();

@@ -248,34 +248,49 @@
   M.fm = function (name, f, t, dur, vol, dest) { if (G.Audio && G.Audio.ctx) fmNote(G.Audio.ctx, dest, name, f, t, dur, vol); };
 
   var bus = null, chGain = {};
-  function setup() {
-    var A = G.Audio, ctx = A.ctx;
-    if (bus) return;
-    bus = ctx.createGain(); bus.gain.value = 1; bus.connect(A.musicBus);
-    ['lead', 'arp', 'bass', 'drum', 'pad'].forEach(function (k) { chGain[k] = ctx.createGain(); chGain[k].connect(bus); });
-    chGain.lead.gain.value = 0.13; chGain.arp.gain.value = 0.05; chGain.bass.gain.value = 0.2;
-    chGain.drum.gain.value = 0.15; chGain.pad.gain.value = 0.032;
+  function makeChannels(ctx, out) {
+    var ch = {};
+    ['lead', 'arp', 'bass', 'drum', 'pad'].forEach(function (k) { ch[k] = ctx.createGain(); ch[k].connect(out); });
+    ch.lead.gain.value = 0.13; ch.arp.gain.value = 0.05; ch.bass.gain.value = 0.2;
+    ch.drum.gain.value = 0.15; ch.pad.gain.value = 0.032;
     // リードとパッドに薄いエコー (FM 音源らしい広がり)
     var dl = ctx.createDelay(1); dl.delayTime.value = 0.27;
     var fb = ctx.createGain(); fb.gain.value = 0.3;
     var wet = ctx.createGain(); wet.gain.value = 0.32;
-    chGain.lead.connect(dl); chGain.pad.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(bus);
+    ch.lead.connect(dl); ch.pad.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(out);
+    return ch;
+  }
+  function setup() {
+    var A = G.Audio, ctx = A.ctx;
+    if (bus) return;
+    bus = ctx.createGain(); bus.gain.value = 1; bus.connect(A.musicBus);
+    chGain = makeChannels(ctx, bus);
   }
 
+  var noiseBufs = [];
+  function noiseFor(ctx) {
+    for (var i = 0; i < noiseBufs.length; i++) if (noiseBufs[i].ctx === ctx) return noiseBufs[i].buf;
+    var len = ctx.sampleRate * 2, b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+    for (i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    noiseBufs.push({ ctx: ctx, buf: b });
+    return b;
+  }
+  function noiseSrc(ctx) { var s = ctx.createBufferSource(); s.buffer = noiseFor(ctx); s.loop = true; return s; }
+
   function drum(ctx, k, t) {
-    var A = G.Audio, dest = chGain.drum;
+    var dest = chGain.drum;
     if (k === 'k') {
       // FM 風キック: ピッチが落ちるサイン + アタックのクリック
       var o = ctx.createOscillator(), g = ctx.createGain();
       o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(44, t + 0.11);
       g.gain.setValueAtTime(1.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
       o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.22);
-      var c = A.noiseSrc(), cf = ctx.createBiquadFilter(), cgn = ctx.createGain();
+      var c = noiseSrc(ctx), cf = ctx.createBiquadFilter(), cgn = ctx.createGain();
       cf.type = 'highpass'; cf.frequency.value = 3000;
       cgn.gain.setValueAtTime(0.25, t); cgn.gain.exponentialRampToValueAtTime(0.001, t + 0.012);
       c.connect(cf); cf.connect(cgn); cgn.connect(dest); c.start(t, Math.random()); c.stop(t + 0.02);
     } else {
-      var s = A.noiseSrc(), f = ctx.createBiquadFilter(), g2 = ctx.createGain();
+      var s = noiseSrc(ctx), f = ctx.createBiquadFilter(), g2 = ctx.createGain();
       var dur = k === 's' ? 0.16 : (k === 'o' ? 0.16 : 0.035);
       f.type = k === 's' ? 'bandpass' : 'highpass';
       f.frequency.value = k === 's' ? 2200 : 7500;
@@ -301,18 +316,33 @@
     if (!play || !ctx || ctx.state !== 'running') return;
     var c = play.c, sd = c.stepDur, v = VOICING[c.key];
     while (play.next < ctx.currentTime + 0.15) {
-      var st = play.step % c.steps, t = play.next;
-      c.ev.lead.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.lead, v.lead, hz(e.m), t, e.d * sd, 0.9); });
-      c.ev.arp.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.arp, v.arp, hz(e.m), t, e.d * sd, 0.9); });
-      c.ev.bass.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.bass, 'bass', hz(e.m), t, e.d * sd, 1.0); });
-      c.ev.pad.forEach(function (e) {
-        if (e.s === st) e.ms.forEach(function (m) { fmNote(ctx, chGain.pad, v.pad, hz(m), t, e.d * sd, 0.7); });
-      });
-      c.ev.drum.forEach(function (e) { if (e.s === st) drum(ctx, e.k, t); });
+      playStep(ctx, c, v, play.step % c.steps, play.next);
       play.step++;
       play.next += sd;
     }
   }
+  function playStep(ctx, c, v, st, t) {
+    var sd = c.stepDur;
+    c.ev.lead.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.lead, v.lead, hz(e.m), t, e.d * sd, 0.9); });
+    c.ev.arp.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.arp, v.arp, hz(e.m), t, e.d * sd, 0.9); });
+    c.ev.bass.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.bass, 'bass', hz(e.m), t, e.d * sd, 1.0); });
+    c.ev.pad.forEach(function (e) {
+      if (e.s === st) e.ms.forEach(function (m) { fmNote(ctx, chGain.pad, v.pad, hz(m), t, e.d * sd, 0.7); });
+    });
+    c.ev.drum.forEach(function (e) { if (e.s === st) drum(ctx, e.k, t); });
+  }
+
+  // オフライン描画 (動画用): 曲 key を t0〜t1 秒に配置して dest へ
+  M.renderOffline = function (octx, dest, key, t0, t1) {
+    var saved = chGain;
+    chGain = makeChannels(octx, dest);
+    var c = COMPILED[key], v = VOICING[key];
+    for (var step = 0, t = t0; t < t1; step++, t += c.stepDur) playStep(octx, c, v, step % c.steps, t);
+    chGain = saved;
+    return c.stepDur * 16;   // 1 小節の長さ
+  };
+  M.fmCtx = function (octx, dest, name, f, t, dur, vol) { fmNote(octx, dest, name, f, t, dur, vol); };
+  M.songBar = function (key) { return COMPILED[key].stepDur * 16; };
 
   function start(key) {
     var A = G.Audio;
