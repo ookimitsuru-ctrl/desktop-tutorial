@@ -17,14 +17,14 @@
   // 黒ボディ: 暗→明 (明るい側は空の映り込み)
   var BODY = pal(['#020307', '#090b13', '#11141f', '#1b2030', '#2a3248', '#4a5a7c', '#93a7c8']);
   var GLS = pal(['#04060c', '#0a101c', '#141e31', '#22324e', '#4a6590', '#90acd6']);
-  var CABIN = pal(['#4a6478', '#7c9cb4', '#a8c6da']);         // 車内のサンシェード (水色)
+  var LOUVER = pal(['#151922', '#323844', '#4e5664']);        // ガラス越しのエンジンフードのルーバー
   var CHR = pal(['#4c525e', '#8c95a4', '#c6ccd6', '#eef2f6']);  // クローム
   var TIRE = pal(['#08080b', '#15151b', '#23232b', '#34343e']);
   var LAMP_OFF = pal(['#4a0810', '#951620', '#d02c38', '#ff8088']);
   var LAMP_ON = pal(['#c01020', '#ff3434', '#ff9c84', '#fff4e8']);
-  var AMB = pal(['#5a2806', '#b0601a', '#e8963c', '#ffd8a0']);
+  var AMB = pal(['#5a4026', '#9c7850', '#d6b488', '#f6e6cc']);
   var PLATE = C('#f2f2ea'), PLATE_D = C('#c4c4b6'), PLATE_G = C('#1a5a30');
-  var MESH = pal(['#020204', '#1c2028', '#30363f']);
+  var MESH = pal(['#020204', '#101218', '#5e6470', '#9aa0aa']);
   var OUT = C('#000000');
   var SHADOW = G.rgba(0, 0, 0, 105);
 
@@ -86,24 +86,6 @@
       });
     });
 
-    // ---- 下部: ハニカムメッシュ + センター 2 本出しマフラー ----
-    var gl = X(-33, 0), gr = X(33, 0);
-    p.poly([[gl, 48], [gr, 48], [gr - 3, 56], [gl + 3, 56]], MESH[0]);
-    sym(function (s) {
-      var a = X(s * 3, 0), b = X(s * 21, 0);
-      var lo = Math.round(Math.min(a, b)), hi = Math.round(Math.max(a, b));
-      for (var yy = 49; yy <= 54; yy++) for (var xx = lo; xx <= hi; xx++) {
-        var dia = ((xx + yy) % 3 === 0) || ((xx - yy + 99) % 3 === 0);
-        p.set(xx, yy, dia ? MESH[2] : MESH[1]);
-      }
-      p.hline(lo, hi, 48, BODY[3]);
-    });
-    sym(function (s) {
-      var ex = X(s * 3.2, 0);
-      p.disc(ex, 56.3, 2.9, 0, function (x, y, nx, ny) { return ny < -0.2 ? CHR[3] : (nx * s > 0.3 ? CHR[1] : CHR[2]); });
-      p.disc(ex, 56.5, 1.6, TIRE[0]);
-    });
-
     // ---- ボディ後面 (ショルダー〜バンパー) ----
     for (var yy = 24; yy <= 50; yy++) {
       var hw = BODY_ROWS[yy];
@@ -133,10 +115,27 @@
     p.hline(X(-30, 0), X(-12, 0), 35, BODY[4]);   // ランプ下の折れ線
     p.hline(X(12, 0), X(30, 0), 35, BODY[3]);
 
+    // ---- 下部: 左右の大きなダイヤ柄メッシュ + 2 本出しマフラー (やや左寄り) ----
+    var gl = X(-34, 0), gr = X(34, 0);
+    p.poly([[gl, 50], [gr, 50], [gr - 3, 56], [gl + 3, 56]], MESH[0]);
+    sym(function (s) {
+      // 内側が少し下がった台形
+      var pts = [[X(s * 29, 0), 45.5], [X(s * 3.5, 0), 47.5], [X(s * 3.5, 0), 54.5], [X(s * 27, 0), 52.5]];
+      p.poly(pts, 0, function (x, y) {
+        var dia = ((x + y) & 3) === 0 || ((x - y + 400) & 3) === 0;
+        return dia ? (y < 51 ? MESH[3] : MESH[2]) : MESH[1];
+      });
+    });
+    [-6.2, -1.4].forEach(function (ox) {
+      var ex = X(ox, 0);
+      p.disc(ex, 57, 2.6, 0, function (x, y, nx, ny) { return ny < -0.2 ? CHR[3] : (nx > 0.3 ? CHR[1] : CHR[2]); });
+      p.disc(ex, 57.2, 1.4, TIRE[0]);
+    });
+
     // ---- ナンバーのくぼみ + ナンバープレート ----
     var rl = Math.round(X(-25, 0)), rw = Math.round(X(25, 0)) - rl;
     p.rrect(rl, 35, rw, 10, 3, 0, function (x, y, i, j) { return j === 0 ? BODY[0] : (j === 9 ? BODY[3] : BODY[1]); });
-    var pw = 18, px0 = Math.round(X(-9, 0));
+    var pw = 18, px0 = Math.round(X(-12, 0));
     p.rect(px0, 36, pw, 8, PLATE);
     p.hline(px0, px0 + pw - 1, 43, PLATE_D);
     p.set(px0 + 1, 37, CHR[1]); p.set(px0 + pw - 2, 37, CHR[1]);       // ボルト
@@ -197,17 +196,23 @@
     for (y2 = baseY; y2 >= topY; y2--) poly.push([gx(y2, 1) + 3.4, y2]);
     p.poly(poly, 0, function (x, y) {
       var right = x > gx(y, 1) - 1;
-      if (y <= topY) return BODY[4];
+      if (y <= topY) return BODY[2];
       return right ? BODY[1] : BODY[3];
     });
     // ルーフ後端のシルバーの突起
-    sym(function (s) { var nx = Math.round(X(s * 19, 0.95)); p.rect(nx - 1, topY - 2, 3, 2, CHR[2]); p.set(nx - 1, topY - 2, CHR[3]); });
+    sym(function (s) {
+      var nx = Math.round(X(s * 18, 0.95));
+      p.rrect(nx - 2, topY - 2, 5, 3, 1, CHR[2]);
+      p.hline(nx - 1, nx + 1, topY - 2, CHR[3]);
+      p.set(nx + (s > 0 ? 2 : -2), topY, CHR[1]);
+    });
     // ガラス
     poly = [];
     for (y2 = topY + 1; y2 <= baseY - 1; y2++) poly.push([gx(y2, -1), y2]);
     for (y2 = baseY - 1; y2 >= topY + 1; y2--) poly.push([gx(y2, 1), y2]);
     p.poly(poly, 0, function (x, y) {
       var cl = gx(y, -1), cr = gx(y, 1), u = (x + 0.5 - cl) / (cr - cl);
+      if (y === midY - 1) return BODY[3];
       if (y === midY) return BODY[2];
       if (y === midY + 1) return BODY[1];
       if (y < midY) {
@@ -220,11 +225,13 @@
         else if (dg > 23 && dg < 24) c = GLS[4];
         return c;
       }
-      // 下段: 車内 (水色のサンシェードが透ける)
+      // 下段: ガラス越しにエンジンフードのルーバー
       var c2 = GLS[1];
-      var shx = Math.abs(u - 0.55);
-      if (shx < 0.3 && y >= midY + 2) c2 = y === midY + 2 ? CABIN[0] : (G.dither(x, y, 0.55) ? CABIN[2] : CABIN[1]);
-      else if (shx < 0.36 && y >= midY + 2) c2 = CABIN[0];
+      if (u > 0.16 && u < 0.84 && y >= midY + 2) {
+        c2 = ((y - midY) & 1) ? LOUVER[1] : LOUVER[0];
+        if (((y - midY) & 1) && Math.round(x - X(0, 0)) % 7 === 0) c2 = LOUVER[0];
+        if (y === midY + 2) c2 = LOUVER[2];
+      }
       if (u > 0.08 && u < 0.13 && y < baseY - 1) c2 = GLS[3];
       return c2;
     });
