@@ -138,12 +138,14 @@
       ctx.fillStyle = col;
       ctx.fillRect(x0 + i * 4, 34 - Math.floor(i / 3), 3, 5 + Math.floor(i / 3));
     }
-    F.text(ctx, 'GEAR ' + P.gear, x0 - 4, 33, { color: '#c0c8d8', outline: '#101018', align: 'right' });
+    if (W >= 360) F.text(ctx, 'GEAR ' + P.gear, x0 - 4, 33, { color: '#c0c8d8', outline: '#101018', align: 'right' });
   }
 
   function drawCourseMap(ctx, Game, P) {
     var T = G.Track, W = G.R.W;
     var bw = 16, gap = 18, total = bw * 4 + gap * 3, x0 = Math.round(W / 2 - total / 2), y0 = 4;
+    // 狭い画面 (4:3 など) では SCORE と重ならないよう 2 段目へ
+    if (W < 360) { gap = 12; total = bw * 4 + gap * 3; x0 = Math.round(W / 2 - total / 2) - 10; y0 = 30; }
     var pz = (P.z + G.R.playerZ) / T.SEG;
     var marks = [T.startIndex, T.checkpoints[0], T.checkpoints[1], T.checkpoints[2], T.goalIndex];
     ctx.fillStyle = '#101018';

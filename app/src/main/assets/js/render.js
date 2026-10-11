@@ -125,6 +125,13 @@
         }
         // 路肩
         if (seg.sl > 0) fillRow(o, Math.round(L - rw - w * seg.sl), Math.round(L - rw), sh[lv]);
+        // 波打ち際の白い波 (砂浜と海の境目)
+        if (seaL && seg.sl > 0.3) {
+          var wave = ((seg.index + Math.floor(sparkleT * 5)) % 6);
+          var fw = Math.max(1, Math.round(w * (wave < 2 ? 0.07 : 0.03)));
+          var fx = Math.round(L - rw - w * seg.sl);
+          fillRow(o, fx - fw, fx, line[lv]);
+        }
         if (seg.sr > 0) fillRow(o, Math.round(Rr + rw), Math.round(Rr + rw + w * seg.sr), sh[lv]);
         // ゼブラ (縁石)
         fillRow(o, Math.round(L - rw), Math.round(L), rumble[lv]);

@@ -70,7 +70,7 @@
     var target = Math.round(cur.n * sa.blend + prev.n * (1 - sa.blend) + FX.storm * 540);
     if (Game.state === 'title') target = Math.round(target * 0.6);
     target = Math.min(MAXW, target);
-    var w = FX.weather, sp0 = P.speed / G.MAX_SPEED;
+    var w = FX.weather;
     while (w.length < target) {
       var p = {};
       var kind = Math.random() < sa.blend ? cur.kind : prev.kind;
