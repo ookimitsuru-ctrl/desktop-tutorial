@@ -100,13 +100,13 @@
 
     // 煙 / 砂ぼこり
     if (Game.carScreen && P.speed > 300) {
-      var cs = Game.carScreen;
+      var cs = Game.carScreen, tw = 28 * (G.CAR_WIDE || 1);
       if (P.skid > 0.3 && Math.random() < P.skid * 0.9) {
-        FX.puffs.push({ type: 'smoke', x: cs.x - 28 + (Math.random() < 0.5 ? 0 : 56), y: cs.y - 4, vx: (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 20, life: 0, max: 0.5 + Math.random() * 0.3, r: 2 + Math.random() * 2 });
+        FX.puffs.push({ type: 'smoke', x: cs.x + (Math.random() < 0.5 ? -tw : tw), y: cs.y - 4, vx: (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 20, life: 0, max: 0.5 + Math.random() * 0.3, r: 2 + Math.random() * 2 });
       }
       if (P.offroad && Math.random() < 0.8) {
         var col = seg.pal.grounds[Math.abs(P.x) > 0 && P.x < 0 ? seg.gl : seg.gr] || seg.pal.grounds.grass;
-        FX.puffs.push({ type: 'dust', col: G.css(col[0][3]), x: cs.x - 30 + Math.random() * 60, y: cs.y - 3, vx: (Math.random() - 0.5) * 60, vy: -20 - Math.random() * 30, life: 0, max: 0.4 + Math.random() * 0.3, r: 2 + Math.random() * 3 });
+        FX.puffs.push({ type: 'dust', col: G.css(col[0][3]), x: cs.x + (Math.random() * 2 - 1) * (tw + 2), y: cs.y - 3, vx: (Math.random() - 0.5) * 60, vy: -20 - Math.random() * 30, life: 0, max: 0.4 + Math.random() * 0.3, r: 2 + Math.random() * 3 });
       }
     }
     for (i = FX.puffs.length - 1; i >= 0; i--) {

@@ -30,8 +30,10 @@
   var OUT = C('#120306');
   var SHADOW = G.rgba(0, 0, 0, 105);
 
-  // 真後ろからの写真で測った比率 (幅 84px に対して高さ約 57px)
-  var W = 104, H = 72, CX = 52, GROUND = 68;
+  // 真後ろからの写真で測った比率 (幅 84px に対して高さ約 57px) を, 高さはそのままで横に WIDE 倍する
+  // ランプやナンバーなど部品の大きさは変えず, 間隔だけを広げる
+  var WIDE = G.CAR_WIDE = 1.12;
+  var W = Math.round(104 * WIDE / 2) * 2, H = 72, CX = W / 2, GROUND = 68;
   var ROOF_Y = 12;      // ルーフ上端
   var WING_Y = 20;      // 黒いウイング (ハイマウントストップランプ) : ガラスの上から 4 割
   var GLASS_BOT = 30;   // 下段ガラスの下端 (テールランプの間)
@@ -59,7 +61,7 @@
     var p = new G.PX(W, H);
     var at = Math.abs(t), sd = G.sign(t);
     var KD = 3.2; // 奥行き 1.0 あたりの横ずれ(px)
-    function X(x, depth) { return CX + x * (1 - 0.02 * at) + t * KD * (depth || 0) - t * 1.2; }
+    function X(x, depth) { return CX + x * WIDE * (1 - 0.02 * at) + t * KD * (depth || 0) - t * 1.2; }
     function sym(fn) { fn(-1); fn(1); }
     function shade(lv, x, y) {
       var li = Math.floor(lv), f = lv - li;
@@ -69,7 +71,7 @@
     function gdep(y) { return G.clamp(0.95 - 0.95 * (y - ROOF_Y) / (GLASS_BOT - ROOF_Y), 0, 1); }
 
     // ---- 影 ----
-    p.ellipse(CX + t * 1.2, GROUND - 1, 47, 4.2, SHADOW);
+    p.ellipse(CX + t * 1.2, GROUND - 1, 47 * WIDE, 4.2, SHADOW);
 
     // ---- 前輪 (曲がっている時に外側から見える) ----
     if (at > 0) {
@@ -115,7 +117,7 @@
       if (at && yy >= 26 && yy <= 60) ext = at * 2.6 * Math.min(1, (yy - 25) / 3);
       if (sd > 0) r += ext; else l -= ext;
       for (var x = Math.round(l); x <= Math.round(r) - 1; x++) {
-        var u = (x + 0.5 - X(0, dep)) / hw;
+        var u = (x + 0.5 - X(0, dep)) / (hw * WIDE);
         var side = (sd > 0 && u > 1) || (sd < 0 && u < -1);
         var lv;
         if (yy <= 25) lv = 4.2; else if (yy <= 29) lv = 3.8; else if (yy <= 40) lv = 3.2; else if (yy <= 54) lv = 2.8; else lv = 2.0;
@@ -158,7 +160,7 @@
     });
 
     // ---- ナンバープレート (中央, インサートの上端にかかる) ----
-    var pw = 19, ph = 9, px0 = Math.round(X(-9.5, 0)), py0 = INS_Y - 1;
+    var pw = 19, ph = 9, px0 = Math.round(X(0, 0) - pw / 2), py0 = INS_Y - 1;
     p.rect(px0 - 1, py0 - 1, pw + 2, ph + 2, GREY[0]);
     p.rect(px0, py0, pw, ph, PLATE);
     p.hline(px0, px0 + pw - 1, py0 + ph - 1, PLATE_D);

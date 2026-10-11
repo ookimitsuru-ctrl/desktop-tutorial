@@ -120,7 +120,7 @@
     var half = (pct || 1) / 2;
     return !((x1 + w1 * half) < (x2 - w2 * half) || (x1 - w1 * half) > (x2 + w2 * half));
   }
-  var PLAYER_W = 84 * R.UNIT / R.ROAD_W;
+  var PLAYER_W = 84 * (G.CAR_WIDE || 1) * R.UNIT / R.ROAD_W;   // 当たり判定は見た目の車幅に合わせる
 
   function crash(type) {
     if (P.crash) return;
