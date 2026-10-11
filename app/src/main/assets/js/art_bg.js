@@ -242,14 +242,14 @@
     var cl = new G.PX(LW, 70), cramp = pal(['#9cc8f0', '#c4e0fa', '#e8f4ff', '#ffffff']);
     var r = G.rng(11);
     for (var i = 0; i < 7; i++) cumulus(cl, r() * LW, 22 + r() * 30, 26 + r() * 30, 10 + r() * 8, cramp, 100 + i, { rmin: 3, rvar: 5 });
-    L.clouds = { cv: cl.toCanvas(), speed: 0.12, y: 6 };
+    L.clouds = { cv: cl.toCanvas(), par: 0.8, y: 6 };
     // 入道雲 (遠景)
     var far = new G.PX(LW, 100), bramp = pal(['#8aa8d8', '#a8c4ec', '#cfe2fa', '#eef6ff', '#ffffff']);
     cumulus(far, 180, 99, 150, 92, bramp, 21, { rmin: 7, rvar: 14 });
     cumulus(far, 330, 99, 90, 50, bramp, 22, { rmin: 6, rvar: 10 });
     cumulus(far, 610, 99, 190, 80, bramp, 23, { rmin: 8, rvar: 14 });
     cumulus(far, 860, 99, 120, 64, bramp, 24, { rmin: 6, rvar: 12 });
-    L.far = { cv: far.toCanvas(), speed: 0.25, y: 0 };
+    L.far = { cv: far.toCanvas(), par: 1.0, y: 0 };
     // 近景: 島影と岬
     var near = new G.PX(LW, 40);
     ridgeLayer(near, {
@@ -258,7 +258,7 @@
       peaks: [{ x: 300, w: 40, h: 22 }, { x: 760, w: 80, h: 16 }]
     });
     lighthouse(near, 300, 40 - 18);
-    L.near = { cv: near.toCanvas(), speed: 0.5, y: 0 };
+    L.near = { cv: near.toCanvas(), par: 1.3, y: 0 };
     return L;
   }
 
@@ -267,7 +267,7 @@
     var cl = new G.PX(LW, 60), sramp = pal(['#9a4a6a', '#d06a6a', '#f29a7a', '#ffd0a0']);
     var r = G.rng(31);
     for (var i = 0; i < 9; i++) streak(cl, r() * LW, 14 + r() * 36, 60 + r() * 70, 6 + r() * 5, sramp, 300 + i);
-    L.clouds = { cv: cl.toCanvas(), speed: 0.12, y: 8 };
+    L.clouds = { cv: cl.toCanvas(), par: 0.8, y: 8 };
     var far = new G.PX(LW, 80);
     // 夕日
     far.disc(520, 62, 20, 0, function (x, y, nx, ny, d) { return G.dither(x, y, 1 - Math.sqrt(d)) ? C('#ffd890') : 0; });
@@ -276,13 +276,13 @@
       seed: 41, period: 7, min: 12, max: 52, pow: 1.3,
       cols: pal(['#4a3266', '#5a3c74', '#6e4a84']), haze: C('#c27280'), hazeStart: 0.35, rim: C('#8a5c90')
     });
-    L.far = { cv: far.toCanvas(), speed: 0.25, y: 0 };
+    L.far = { cv: far.toCanvas(), par: 1.0, y: 0 };
     var near = new G.PX(LW, 46);
     var ramps = [pal(['#5a1a14', '#9a2a1c', '#d24a24', '#f2763a']), pal(['#6a3a0a', '#b06814', '#e69a24', '#ffc84a']),
       pal(['#5a2a10', '#8a4418', '#c06424', '#e28a3a']), pal(['#2a3a1a', '#4a5a24', '#6a7a30', '#8a9440'])];
     treeBand(near, { seed: 51, count: 300, rmin: 4, rvar: 6, gmin: 3, gmax: 14, ramps: ramps, groundCol: C('#9a5a2a') });
     pagoda(near, 700, 24, 0.55, C('#2a1820'), C('#5a3a3a'));
-    L.near = { cv: near.toCanvas(), speed: 0.5, y: 0 };
+    L.near = { cv: near.toCanvas(), par: 1.3, y: 0 };
     return L;
   }
 
@@ -295,7 +295,7 @@
       snow: 44, snowVar: 26, snowCols: pal(['#a8acdc', '#f2f4ff']),
       peaks: [{ x: 420, w: 170, h: 86, concave: 1.6, flat: 3 }]
     });
-    L.far = { cv: far.toCanvas(), speed: 0.22, y: 0 };
+    L.far = { cv: far.toCanvas(), par: 1.0, y: 0 };
     var near = new G.PX(LW, 50);
     conifers(near, {
       seed: 71, count: 210, hmin: 12, hvar: 26, lift: 6,
@@ -307,7 +307,7 @@
       var lx = Math.floor(r() * LW), ly = 50 - 3 - Math.floor(r() * 3);
       near.set(lx, ly, C('#ffd870')); if (r() > 0.5) near.set(lx + 1, ly, C('#ffb040'));
     }
-    L.near = { cv: near.toCanvas(), speed: 0.5, y: 0 };
+    L.near = { cv: near.toCanvas(), par: 1.3, y: 0 };
     return L;
   }
 
@@ -316,19 +316,19 @@
     var cl = new G.PX(LW, 70), cramp = pal(['#b4cff0', '#d4e6fa', '#f0f6ff', '#ffffff']);
     var r = G.rng(81);
     for (var i = 0; i < 8; i++) cumulus(cl, r() * LW, 26 + r() * 34, 30 + r() * 40, 8 + r() * 8, cramp, 800 + i, { rmin: 3, rvar: 6 });
-    L.clouds = { cv: cl.toCanvas(), speed: 0.12, y: 4 };
+    L.clouds = { cv: cl.toCanvas(), par: 0.8, y: 4 };
     var far = new G.PX(LW, 70);
     ridgeLayer(far, {
       seed: 91, period: 6, min: 8, max: 40, pow: 1.5,
       cols: pal(['#7486c0', '#8494cc', '#96a6d8']), haze: C('#d8d4ec'), hazeStart: 0.25, rim: C('#b0bce4')
     });
-    L.far = { cv: far.toCanvas(), speed: 0.25, y: 0 };
+    L.far = { cv: far.toCanvas(), par: 1.0, y: 0 };
     var near = new G.PX(LW, 56);
     var ramps = [pal(['#c46a96', '#e892b8', '#ffb8d2', '#ffe0ec']), pal(['#d07aa0', '#f4a2c4', '#ffc8dc', '#fff0f6']),
       pal(['#3a7a3a', '#4c9644', '#68b250', '#8ccc64']), pal(['#c46a96', '#e892b8', '#ffb8d2', '#ffe0ec'])];
     treeBand(near, { seed: 95, count: 260, rmin: 4, rvar: 6, gmin: 3, gmax: 14, ramps: ramps, groundCol: C('#6ab452') });
     castle(near, 560, 56 - 18, 0);
-    L.near = { cv: near.toCanvas(), speed: 0.5, y: 0 };
+    L.near = { cv: near.toCanvas(), par: 1.3, y: 0 };
     return L;
   }
 
@@ -342,8 +342,10 @@
 
   BG.update = function (dt, P, seg) {
     if (!seg) return;
-    var sp = P.speed / G.MAX_SPEED;
-    BG.offs += seg.curve * sp * dt * 16;
+    // カーブで車の向きが変わった角度 (ラジアン)。道路の描画では 1 セグメント進むごとに
+    // 向きが curve / SEG ずつ変わるので, 背景もその角度ぶんだけ (焦点距離 F を掛けて) 横に動かす
+    var SEG = G.Track.SEG;
+    BG.offs += seg.curve * (P.speed * dt / SEG) / SEG;
     // 少し先の勾配を見てカメラを傾ける
     var T = G.Track, a = T.segments[seg.index + 4] || seg, b = T.segments[seg.index + 24] || seg;
     var slope = (b.p1.world.y - a.p1.world.y) / (Math.max(1, b.index - a.index) * T.SEG);
@@ -355,7 +357,8 @@
   function drawLayer(ctx, L, alpha) {
     if (!L) return;
     var W = G.R.W, HOR = G.R.HOR;
-    var x = -Math.round(((BG.offs * L.speed * 60) % LW + LW) % LW);
+    // par: 地平線の彼方 (=1) に対する視差。雲は少し遅く, 手前の山は少し速い
+    var x = -Math.round(((BG.offs * G.R.F * L.par) % LW + LW) % LW);
     var y = Math.round(HOR + G.R.pitch + 3 - L.cv.height + (L.y || 0));
     if (alpha < 1) ctx.globalAlpha = alpha;
     for (var xx = x; xx < W; xx += LW) ctx.drawImage(L.cv, xx, y);
