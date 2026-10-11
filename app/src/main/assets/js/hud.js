@@ -49,9 +49,28 @@
     return cv;
   }
 
-  // ---------- ブレーキペダル ----------
-  var pedal = [];
+  // ---------- ブレーキペダル / アクセルペダル ----------
+  var pedal = [], pedalA = [];
+  function buildAccel() {
+    [false, true].forEach(function (on) {
+      var W = 30, H = 62, p = new G.PX(W, H);
+      // アーム (上から吊り下げ)
+      p.rect(W / 2 - 2, 0, 4, 8, C('#6a7080')); p.vline(W / 2 - 2, 0, 7, C('#a0a8b8'));
+      p.rrect(3, 6, W - 6, H - 8, 4, 0, function (x, y, i, j) {
+        var w = W - 6, h = H - 8;
+        if (i < 2 || j < 2) return C('#d8dce6');
+        if (i >= w - 2 || j >= h - 2) return C('#6a7080');
+        // 縦の滑り止め
+        var rib = ((i - 3) % 4) < 2;
+        return rib ? (on ? C('#1e6a2a') : C('#24242c')) : (on ? C('#3aa040') : C('#3a3a46'));
+      });
+      p.outline(on ? C('#60ff70') : C('#0a0a0e'));
+      if (on) p.outline(G.rgba(80, 255, 110, 120));
+      pedalA.push(p.toCanvas());
+    });
+  }
   function buildPedal() {
+    buildAccel();
     [false, true].forEach(function (on) {
       var W = 40, H = 54, p = new G.PX(W, H);
       // アーム
@@ -73,7 +92,7 @@
   // ---------- ロゴ ----------
   var logo = null;
   function buildLogo() {
-    var big = F.render('SHIKI DRIVE', { scale: 4, bold: true, grad: ['#fff6c0', '#ff4a7a', '#ffb000'], outline: '#2a0a2a', outlineDiag: true });
+    var big = F.render('SMART RUN', { scale: 4, bold: true, grad: ['#fff6c0', '#ff4a7a', '#ffb000'], outline: '#2a0a2a', outlineDiag: true });
     var p = new G.PX(big.width + 8, big.height + 6);
     // 影
     var sh = G.pxFromCanvas(big);
@@ -185,10 +204,13 @@
     var on = I.braking;
     var pimg = pedal[on ? 1 : 0];
     ctx.drawImage(pimg, L.brake.x, L.brake.y + (on ? 2 : 0));
+    var onA = I.accel;
+    ctx.drawImage(pedalA[onA ? 1 : 0], L.accel.x, L.accel.y + (onA ? 2 : 0));
     ctx.globalAlpha = 1;
     var hint = Game.state === 'countdown';
     if (hint) {
       F.text(ctx, 'BRAKE', L.brake.x + 20, L.brake.y - 9, { color: '#ffffff', outline: '#000000', align: 'center' });
+      F.text(ctx, 'ACCEL', L.accel.x + 15, L.accel.y - 9, { color: '#80ff80', outline: '#000000', align: 'center' });
       F.text(ctx, 'STEER', L.wheel.x, L.wheel.y - 42, { color: '#ffffff', outline: '#000000', align: 'center' });
     }
   }
@@ -263,9 +285,7 @@
     var z = t < 0.6 ? 0.2 + (t / 0.6) * 0.8 : 1 + Math.sin(t * 2) * 0.015;
     zoomDraw(ctx, logo, W / 2, 50, z);
     if (t > 0.6) {
-      var jp = F.renderJP('四季ドライブ', { size: 14, color: '#ffffff', outline: '#2a0a2a' });
-      ctx.drawImage(jp, Math.round(W / 2 - jp.width / 2), 74);
-      var y = 96;
+      var y = 84;
       var names = G.SEASONS.map(function (s) { return s.name; });
       var tot = 0, gap = 14;
       names.forEach(function (n) { tot += F.width(n, { bold: true }) + gap; });
@@ -278,7 +298,7 @@
       });
     }
     if (blink(2)) F.text(ctx, 'TAP TO START', W / 2, 124, { scale: 2, bold: true, grad: YEL, outline: OUTL, align: 'center' });
-    var help = F.renderJP('右のハンドルで操作 / 左でブレーキ / アクセルは自動', { size: 11, color: '#ffffff', outline: '#101018' });
+    var help = F.renderJP('右のハンドルで操作 / 左のペダルでブレーキ・アクセル', { size: 11, color: '#ffffff', outline: '#101018' });
     ctx.drawImage(help, Math.round(W / 2 - help.width / 2), 146);
     F.text(ctx, 'HI-SCORE ' + Game.hiscore, W / 2, 162, { color: '#7ae0ff', outline: '#002040', align: 'center', bold: true });
     // サウンド切替ボタン
@@ -287,7 +307,7 @@
     panel(ctx, bx, by, 58, 14);
     F.text(ctx, on ? 'SOUND ON' : 'SOUND OFF', bx + 29, by + 4, { color: on ? '#80ff80' : '#ff8080', align: 'center' });
     HUD.soundBtn = { x: bx, y: by, w: 58, h: 14 };
-    F.text(ctx, 'CAR: SMART ROADSTER COUPE BRABUS', 6, 8, { color: '#ffffff', outline: '#101018' });
+    F.text(ctx, 'CAR: SMART ROADSTER COUPE', 6, 8, { color: '#ffffff', outline: '#101018' });
   }
   HUD.titleTap = function (tap) {
     var b = HUD.soundBtn;
@@ -360,6 +380,13 @@
       if (st === 'timeup' || st === 'gameover') drawGameOver(ctx, Game);
       if (st === 'goal' || st === 'ending') drawGoal(ctx, Game);
       if (st === 'countdown' || st === 'race' || st === 'timeup') drawControls(ctx, Game);
+      // 発進のヒント (止まっていてアクセルを踏んでいない時)
+      if ((st === 'race' && P.speed < 60 && !G.Input.accel && Game.stateT > 0.5) && blink(2)) {
+        var L = G.Input.layout();
+        var hj = F.renderJP('アクセルを押して発進!', { size: 13, color: '#80ff80', outline: '#002000' });
+        ctx.drawImage(hj, Math.round(G.R.W / 2 - hj.width / 2), 150);
+        F.text(ctx, '<', L.accel.x + 34, L.accel.y + 26, { scale: 2, bold: true, color: '#80ff80', outline: '#002000' });
+      }
     }
     if (Game.paused) {
       var W = G.R.W, H = G.R.H;

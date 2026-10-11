@@ -767,7 +767,7 @@
     reg('rockS', rock(6, false), 1.8, 0.6);
     reg('yachtR', yacht('#e83030'), 2.2, 0);
     reg('yachtB', yacht('#2a6ae0'), 2.2, 0);
-    reg('board_summer', billboard('SHIKI DRIVE', 'SEASIDE LINE', ['#1a7ae8', '#ffd030', '#ffffff', '#102a60'], 1), 2.2, 0.5);
+    reg('board_summer', billboard('SMART RUN', 'SEASIDE LINE', ['#1a7ae8', '#ffd030', '#ffffff', '#102a60'], 1), 2.2, 0.5);
     reg('board_smart', billboard('ROADSTER', 'COUPE  2 SEATER', ['#d82030', '#202028', '#ffffff', '#3a0a10', '#ffd040'], 2), 2.2, 0.5);
     // 秋
     var momijiR = pal(['#4a0c0a', '#8a1a12', '#c8301c', '#ee5a2c', '#ff9a52']);

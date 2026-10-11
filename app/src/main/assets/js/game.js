@@ -11,6 +11,7 @@
   var ACCEL = MAX_SPEED / 4.6;
   var BRAKE = -MAX_SPEED * 1.05;
   var DECEL = -MAX_SPEED / 3.5;
+  var ENGINE_BRAKE = -MAX_SPEED / 9;   // アクセルを離した時の軽い減速
   var OFFROAD_DECEL = -MAX_SPEED / 1.5;
   var OFFROAD_LIMIT = MAX_SPEED / 3.2;
   var CENTRIFUGAL = 0.3;
@@ -135,6 +136,7 @@
     var dx = dt * 2 * speedPct;
     var steer = controlled ? I.steer : 0;
     var braking = controlled && I.braking;
+    var throttle = controlled && I.accel;
 
     if (Game.demo) {
       // デモ走行の自動操縦
@@ -142,6 +144,7 @@
       var want = -P.x * 1.8 + look.curve * 0.22;
       steer = G.clamp(want, -1, 1);
       braking = look.curve * look.curve > 30 && speedPct > 0.8;
+      throttle = !braking;
     }
 
     if (P.crash) {
@@ -154,14 +157,15 @@
         if (cr.type === 'flip') P.x = G.clamp(P.x, -0.6, 0.6);
         P.crash = null;
       }
-      steer = 0; braking = false;
+      steer = 0; braking = false; throttle = false;
     } else {
       P.x += steer * dx * STEER_GAIN;
       P.x -= dx * speedPct * playerSeg.curve * CENTRIFUGAL;
       if (Game.state === 'race' || Game.demo || Game.state === 'goal') {
         if (braking) P.speed += BRAKE * dt;
         else if (Game.state === 'goal') P.speed += DECEL * 0.6 * dt;
-        else P.speed += ACCEL * dt * (1.12 - speedPct * 0.55);
+        else if (throttle) P.speed += ACCEL * dt * (1.12 - speedPct * 0.55);
+        else P.speed += ENGINE_BRAKE * dt * (0.4 + speedPct * 0.6);   // エンジンブレーキ
       } else {
         P.speed += DECEL * dt;
       }
@@ -173,6 +177,7 @@
     P.x = G.clamp(P.x, -2.4, 2.4);
     P.speed = G.clamp(P.speed, 0, MAX_SPEED);
     P.braking = braking && P.speed > 1;
+    P.throttle = throttle || (Game.state === 'countdown' && I.accel);
 
     // 路肩の障害物と衝突
     if (!P.crash && Math.abs(P.x) > 1.0) {
@@ -523,7 +528,7 @@
     Game.paused = on;
     if (G.Audio) G.Audio.suspend(on);
     // 押しっぱなしのまま中断されたタッチを解除
-    I.steerId = null; I.brakeId = null; I.brake = false;
+    I.releaseAll();
     if (!on) { I.clearTaps(); last = 0; }
   };
 

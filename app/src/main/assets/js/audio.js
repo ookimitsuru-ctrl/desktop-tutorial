@@ -94,17 +94,17 @@
     var sp = P.speed / G.MAX_SPEED;
     var racing = Game.state === 'race' || Game.state === 'countdown' || Game.state === 'goal' || Game.state === 'timeup';
     var rpm = P.rpm;
-    if (Game.state === 'countdown') rpm = 0.3 + Math.max(0, Math.sin(G.time * 3)) * 0.35; // 空ぶかし
+    if (Game.state === 'countdown') { A._rev = G.clamp((A._rev || 0) + (P.throttle ? dt * 2.5 : -dt * 1.5), 0, 1); rpm = 0.28 + A._rev * 0.65; } // 空ぶかし
     if (P.crash) rpm = 0.25;
     var f = 30 + rpm * 112;
     eng.o1.frequency.setTargetAtTime(f, t, k);
     eng.o2.frequency.setTargetAtTime(f * 0.5, t, k);
     eng.lfo.frequency.setTargetAtTime(f * 0.5, t, k);
     eng.filter.frequency.setTargetAtTime(260 + rpm * 1500 + sp * 400, t, k);
-    var vol = racing && A.engineActive ? 0.075 + rpm * 0.05 : (Game.state === 'title' ? 0.03 : 0.0);
+    var vol = racing && A.engineActive ? (0.06 + rpm * 0.05) * (P.throttle ? 1.15 : 0.85) : (Game.state === 'title' ? 0.03 : 0.0);
     if (Game.state === 'ending' || Game.state === 'gameover') vol = 0;
     eng.out.gain.setTargetAtTime(vol, t, 0.1);
-    var accel = !P.braking && rpm > lastRpm - 0.001 && racing;
+    var accel = P.throttle && racing;
     eng.turbo.frequency.setTargetAtTime(1600 + rpm * 2400, t, 0.1);
     eng.turboG.gain.setTargetAtTime(accel && sp > 0.1 ? 0.004 + rpm * 0.006 : 0, t, 0.15);
     // ブローオフ (ブレーキ時)

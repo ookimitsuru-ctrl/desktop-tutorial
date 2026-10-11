@@ -14,7 +14,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 
 /**
- * 四季ドライブ: ゲーム本体 (assets/index.html, HTML5 Canvas) を
+ * Smart Run: ゲーム本体 (assets/index.html, HTML5 Canvas) を
  * 横画面・全画面の WebView で動かすだけのシンプルなラッパー。
  */
 class MainActivity : Activity() {
