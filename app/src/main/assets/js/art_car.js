@@ -1,39 +1,45 @@
 'use strict';
 // ============================================================
-//  art_car.js  自車: smart roadster-coupé (後ろ姿) のドット絵を生成
-//   - 大きなガラスのファストバック (斜めガラス + 不透明パネル + 垂直ガラス)
-//   - シルバーのトライディオン (ロールバー/Bピラー)
-//   - シルバーのスポイラー枠 + ハイマウントストップランプ
-//   - 三連丸型テールランプ / センター出しマフラー / 太い後輪
+//  art_car.js  自車: smart roadster-coupé BRABUS (黒) の後ろ姿をドット絵で生成
+//   オーナーの実車写真を参考に:
+//   - 艶のある黒いボディ, 大きく張り出した丸いリアフェンダー
+//   - 大きなガラスハッチ (上段は空の映り込み, 下段は車内が透ける)
+//     と, その境目の赤いハイマウントストップランプ
+//   - クロームの枠に 赤・アンバー・赤 の三連丸テールランプ
+//   - 黒いパネルに smart ロゴと BRABUS エンブレム
+//   - ナンバーのくぼみ, 左右のハニカムメッシュ, センター 2 本出しマフラー
+//   - 楕円の黒いドアミラー, ルーフのアクションカメラ
 //  turn(-2..2) ごとに奥行きずらしで曲がっている姿を作る
 // ============================================================
 (function () {
   var C = G.col;
   function pal(a) { return a.map(function (h) { return C(h); }); }
-  var BODY = pal(['#3a0610', '#6a0c18', '#a0121e', '#d0202c', '#ee4450', '#ff8c88']);
-  var SIL = pal(['#2a303c', '#565f70', '#8a94a6', '#b8c0d0', '#e2e6ee', '#ffffff']);
-  var BLK = pal(['#07070b', '#121219', '#1e1e28', '#2e2e3c', '#444456']);
-  var GLS = pal(['#091024', '#111c38', '#1a2c58', '#284478', '#4a6ca8', '#90b4e4']);
-  var TIRE = pal(['#0a0a0e', '#18181e', '#26262e', '#383842']);
-  var LAMP_OFF = pal(['#3e0810', '#7c1220', '#b8243a', '#e8707c']);
-  var LAMP_ON = pal(['#b01828', '#ff3a3a', '#ffa088', '#fff6e8']);
-  var AMB = pal(['#5a2808', '#b86010', '#f8a030', '#ffe0a0']);
-  var PLATE = C('#f2f2e6'), PLATE_D = C('#c4c4b4'), PLATE_G = C('#1d7038');
-  var OUT = C('#140810');
-  var SHADOW = G.rgba(0, 0, 0, 100);
+  // 黒ボディ: 暗→明 (明るい側は空の映り込み)
+  var BODY = pal(['#020307', '#090b13', '#11141f', '#1b2030', '#2a3248', '#4a5a7c', '#93a7c8']);
+  var GLS = pal(['#04060c', '#0a101c', '#141e31', '#22324e', '#4a6590', '#90acd6']);
+  var CABIN = pal(['#4a6478', '#7c9cb4', '#a8c6da']);         // 車内のサンシェード (水色)
+  var CHR = pal(['#4c525e', '#8c95a4', '#c6ccd6', '#eef2f6']);  // クローム
+  var TIRE = pal(['#08080b', '#15151b', '#23232b', '#34343e']);
+  var LAMP_OFF = pal(['#4a0810', '#951620', '#d02c38', '#ff8088']);
+  var LAMP_ON = pal(['#c01020', '#ff3434', '#ff9c84', '#fff4e8']);
+  var AMB = pal(['#5a2806', '#b0601a', '#e8963c', '#ffd8a0']);
+  var PLATE = C('#f2f2ea'), PLATE_D = C('#c4c4b6'), PLATE_G = C('#1a5a30');
+  var MESH = pal(['#020204', '#1c2028', '#30363f']);
+  var OUT = C('#000000');
+  var SHADOW = G.rgba(0, 0, 0, 105);
 
   var W = 104, H = 64, CX = 52, GROUND = 60;
 
-  // ボディ (後面) の行ごとの半幅
+  // ボディ後面の行ごとの半幅 (ショルダー〜バンパー下端)
   var BODY_ROWS = {};
   (function () {
-    var tbl = [[24, 30], [25, 34], [26, 37], [27, 39], [28, 40.5], [29, 41.5], [30, 42], [38, 42], [39, 41.5],
-      [40, 41], [41, 40.5], [42, 40], [43, 39], [44, 38], [45, 36.5], [46, 35], [47, 33]];
+    var tbl = [[24, 31], [25, 34], [26, 36.5], [27, 38.5], [28, 40], [29, 41], [31, 41.8], [43, 42], [45, 41.5],
+      [46, 41], [47, 40], [48, 38.5], [49, 36.5], [50, 34]];
     for (var i = 0; i < tbl.length - 1; i++) {
       var a = tbl[i], b = tbl[i + 1];
       for (var y = a[0]; y < b[0]; y++) BODY_ROWS[y] = a[1] + (b[1] - a[1]) * (y - a[0]) / (b[0] - a[0]);
     }
-    BODY_ROWS[47] = 33;
+    BODY_ROWS[50] = 34;
   })();
 
   function drawCar(t, wheelFrame, brake) {
@@ -42,187 +48,198 @@
     var KD = 3.2; // 奥行き 1.0 あたりの横ずれ(px)
     function X(x, depth) { return CX + x * (1 - 0.02 * at) + t * KD * (depth || 0) - t * 1.2; }
     function sym(fn) { fn(-1); fn(1); }
+    function shade(lv, x, y) { // 小数レベル -> ディザ付きの色
+      var li = Math.floor(lv), f = lv - li;
+      if (f > 0.3 && f < 0.7 && G.dither(x, y, f)) li++; else if (f >= 0.7) li++;
+      return BODY[G.clamp(li, 0, BODY.length - 1)];
+    }
 
     // ---- 影 ----
-    p.ellipse(CX + t * 1.2, GROUND - 1, 46, 4.2, SHADOW);
+    p.ellipse(CX + t * 1.2, GROUND - 1, 47, 4.2, SHADOW);
 
     // ---- 前輪 (曲がっている時に外側から見える) ----
     if (at > 0) {
-      var fx = X(sd * 37.5, 1.0), fw = 2 + at * 1.5;
-      for (var y = GROUND - 14; y < GROUND - 1; y++) {
+      var fx = X(sd * 38, 1.0), fw = 2 + at * 1.5;
+      for (var y = GROUND - 13; y < GROUND - 1; y++) {
         for (var i = 0; i < fw; i++) {
-          var c = i >= fw - 1 ? TIRE[2] : TIRE[1];
-          if (((y + wheelFrame * 2) & 3) === 0 && i > 0) c = TIRE[3];
+          var c = i >= fw - 1 ? CHR[1] : TIRE[1];   // 外側にホイールのリムが少し光る
+          if (((y + wheelFrame * 2) & 3) === 0 && i > 0 && i < fw - 1) c = TIRE[3];
           p.set(Math.round(fx + sd * i), y, c);
         }
       }
     }
 
-    // ---- 後輪 ----
+    // ---- 後輪 (太いタイヤ) ----
     sym(function (s) {
-      var lo = X(s > 0 ? 28 : -41, 0.05), hi = X(s > 0 ? 41 : -28, 0.05);
+      var lo = X(s > 0 ? 28 : -42, 0.05), hi = X(s > 0 ? 42 : -28, 0.05);
       if (s === sd) { if (s > 0) hi += at * 1.3; else lo -= at * 1.3; }
       var x0 = Math.round(lo), w = Math.round(hi - lo) + 1;
-      p.rrect(x0, 40, w, GROUND - 40, 3, 0, function (x, y, i, j) {
+      p.rrect(x0, 43, w, GROUND - 43, 3, 0, function (x, y, i, j) {
         var c = TIRE[1];
         if (((j + wheelFrame * 2) & 3) === 0) c = TIRE[2];
         if (i === 0 || i === w - 1) c = TIRE[0];
         if ((s > 0 && i === 1) || (s < 0 && i === w - 2)) c = TIRE[3];
-        if (j >= GROUND - 40 - 2) c = TIRE[0];
+        if (j >= GROUND - 43 - 2) c = TIRE[0];
+        // 曲がる側はリムのクロームが見える
+        if (s === sd && ((s > 0 && i === w - 2) || (s < 0 && i === 1)) && j > 4 && j < 12) c = CHR[2];
         return c;
       });
     });
 
-    // ---- 下部ディフューザー (黒) ----
-    var dl = X(-30, 0), dr = X(30, 0);
-    p.poly([[dl, 46], [dr, 46], [dr - 2, 54], [dl + 2, 54]], BLK[1]);
-    for (var k = -3; k <= 3; k++) if (k) p.vline(Math.round(X(k * 7, 0)), 49, 53, BLK[3]);
-    p.hline(dl + 1, dr - 2, 47, BLK[2]);
-    // センター出しマフラー
-    p.ellipse(X(0, 0), 51, 4.4, 2.7, SIL[3]);
-    p.ellipse(X(0, 0), 51, 3.1, 1.6, BLK[0]);
-    p.set(Math.round(X(-2, 0)), 49, SIL[5]); p.set(Math.round(X(-1, 0)), 49, SIL[4]);
+    // ---- 下部: ハニカムメッシュ + センター 2 本出しマフラー ----
+    var gl = X(-33, 0), gr = X(33, 0);
+    p.poly([[gl, 48], [gr, 48], [gr - 3, 56], [gl + 3, 56]], MESH[0]);
+    sym(function (s) {
+      var a = X(s * 3, 0), b = X(s * 21, 0);
+      var lo = Math.round(Math.min(a, b)), hi = Math.round(Math.max(a, b));
+      for (var yy = 49; yy <= 54; yy++) for (var xx = lo; xx <= hi; xx++) {
+        var dia = ((xx + yy) % 3 === 0) || ((xx - yy + 99) % 3 === 0);
+        p.set(xx, yy, dia ? MESH[2] : MESH[1]);
+      }
+      p.hline(lo, hi, 48, BODY[3]);
+    });
+    sym(function (s) {
+      var ex = X(s * 3.2, 0);
+      p.disc(ex, 56.3, 2.9, 0, function (x, y, nx, ny) { return ny < -0.2 ? CHR[3] : (nx * s > 0.3 ? CHR[1] : CHR[2]); });
+      p.disc(ex, 56.5, 1.6, TIRE[0]);
+    });
 
-    // ---- ボディ後面 ----
-    for (var yy = 24; yy <= 47; yy++) {
+    // ---- ボディ後面 (ショルダー〜バンパー) ----
+    for (var yy = 24; yy <= 50; yy++) {
       var hw = BODY_ROWS[yy];
       var l = X(-hw, 0), r = X(hw, 0);
-      // 曲がる側に側面が少し見える
       var ext = 0;
-      if (at && yy >= 26 && yy <= 45) ext = at * 2.6 * Math.min(1, (yy - 25) / 3);
+      if (at && yy >= 26 && yy <= 48) ext = at * 2.6 * Math.min(1, (yy - 25) / 3);
       if (sd > 0) r += ext; else l -= ext;
       for (var x = Math.round(l); x <= Math.round(r) - 1; x++) {
-        var u = (x + 0.5 - X(0, 0)) / hw; // -1..1 (後面)
+        var u = (x + 0.5 - X(0, 0)) / hw;
         var side = (sd > 0 && u > 1) || (sd < 0 && u < -1);
         var lv;
-        if (yy <= 25) lv = 4.6; else if (yy <= 28) lv = 4; else if (yy <= 37) lv = 3; else if (yy <= 43) lv = 2.4; else lv = 1.5;
-        if (yy === 29) lv = 3.5;
-        // 端の丸み
+        if (yy <= 25) lv = 4.4; else if (yy <= 27) lv = 3.6; else if (yy <= 36) lv = 2.4; else if (yy <= 44) lv = 2.1; else lv = 1.4;
         var au = Math.abs(u);
-        if (au > 0.84) lv -= (au - 0.84) * 9;
-        if (u < -0.3 && u > -0.75 && yy >= 26 && yy <= 31) lv += 0.6; // 左フェンダー上の照り
-        if (side) lv = yy < 30 ? 2.6 : (yy < 40 ? 2 : 1.2);
-        var li = Math.floor(lv), f = lv - li;
-        if (f > 0.25 && f < 0.75 && G.dither(x, yy, f)) li++; else if (f >= 0.75) li++;
-        p.set(x, yy, BODY[G.clamp(li, 0, 5)]);
+        // 丸いヒップの陰影と空の映り込み
+        if (au > 0.8) lv -= (au - 0.8) * 7;
+        if (au > 0.62 && au < 0.8 && yy >= 27 && yy <= 40) lv += (u < 0 ? 2.4 : 1.6) * (1 - Math.abs(yy - 32) / 9);
+        if (yy === 44 || yy === 45) lv += 1.0;   // バンパーの角の照り
+        if (side) lv = yy < 30 ? 2.8 : (yy < 42 ? 1.8 : 1);
+        p.set(x, yy, shade(lv, x, yy));
       }
     }
-    // フェンダーのスペキュラー
-    p.hline(X(-31, 0), X(-26, 0), 26, BODY[5]);
-    p.hline(X(25, 0), X(28, 0), 26, BODY[4]);
-    // バンパー上のプレスライン
-    p.hline(X(-39, 0), X(39, 0) - 1, 43, BODY[1]);
-    p.hline(X(-37, 0), X(37, 0) - 1, 44, BODY[3]);
+    // フェンダーの鋭いハイライト (写真の反射)
+    p.line(X(-36, 0), 28, X(-34, 0), 36, BODY[6]);
+    p.line(X(-35, 0), 28, X(-33, 0), 35, BODY[5]);
+    p.line(X(34, 0), 28, X(36, 0), 36, BODY[6]);
+    p.line(X(33, 0), 29, X(35, 0), 35, BODY[5]);
+    p.hline(X(-30, 0), X(-12, 0), 35, BODY[4]);   // ランプ下の折れ線
+    p.hline(X(12, 0), X(30, 0), 35, BODY[3]);
 
-    // ---- テールランプ (黒いハウジングに三連丸) ----
+    // ---- ナンバーのくぼみ + ナンバープレート ----
+    var rl = Math.round(X(-25, 0)), rw = Math.round(X(25, 0)) - rl;
+    p.rrect(rl, 35, rw, 10, 3, 0, function (x, y, i, j) { return j === 0 ? BODY[0] : (j === 9 ? BODY[3] : BODY[1]); });
+    var pw = 18, px0 = Math.round(X(-9, 0));
+    p.rect(px0, 36, pw, 8, PLATE);
+    p.hline(px0, px0 + pw - 1, 43, PLATE_D);
+    p.set(px0 + 1, 37, CHR[1]); p.set(px0 + pw - 2, 37, CHR[1]);       // ボルト
+    p.hline(px0 + 4, px0 + 7, 37, PLATE_G); p.hline(px0 + 9, px0 + 11, 37, PLATE_G);
+    p.set(px0 + 2, 40, PLATE_G); p.set(px0 + 2, 41, PLATE_G);
+    for (var d = 0; d < 4; d++) {
+      var dx = px0 + 4 + d * 3 + (d >= 2 ? 1 : 0);
+      p.vline(dx, 39, 42, PLATE_G); p.vline(dx + 1, 39, 42, PLATE_G);
+    }
+    p.set(px0 + 10, 40, PLATE_G);
+
+    // ---- テールランプ (クローム枠に 赤・アンバー・赤) ----
+    var ly = 30.5;
     sym(function (s) {
-      var hx = X(s * 28.5, 0), hy = 33;
-      p.rrect(Math.round(hx - 11), hy - 4, 23, 9, 4, BLK[1]);
-      p.hline(Math.round(hx - 9), Math.round(hx + 9), hy - 4, BLK[3]);
-      [[s * 36, 'red'], [s * 28.5, 'red'], [s * 21, 'amb']].forEach(function (L) {
-        var cx = X(L[0], 0), cy = hy + 0.5, rr = 3.1;
+      var lamps = [[s * 33.2, 'red', -1.0], [s * 26.6, 'amb', -0.5], [s * 20, 'red', 0]];
+      // 細いクロームの枠 (外側がガラスの縁に沿って少し上がる)
+      lamps.forEach(function (L) { p.disc(X(L[0], 0), ly + 0.6 + L[2], 4.3, CHR[1]); });
+      lamps.forEach(function (L) { p.disc(X(L[0], 0), ly + 0.4 + L[2], 3.9, 0, function (x, y, nx, ny) { return ny < -0.3 ? CHR[3] : CHR[2]; }); });
+      lamps.forEach(function (L) {
+        var cx = X(L[0], 0), cy = ly + 0.8 + L[2], rr = 3.3;
         var ramp = L[1] === 'amb' ? AMB : (brake ? LAMP_ON : LAMP_OFF);
         p.disc(cx, cy, rr, 0, function (x, y, nx, ny) {
           return G.shadeRamp(ramp, nx, ny, x, y, -0.5, -0.8, (brake && L[1] === 'red') ? 0.3 : 0);
         });
-        p.set(Math.round(cx - 1.2), Math.round(cy - 1.6), ramp[3]);
+        p.set(Math.round(cx - 1.3), Math.round(cy - 1.6), ramp[3]);
       });
     });
-    // smart ロゴ (銀の c + 黄色の矢印)
-    var lx = Math.round(X(-1, 0)), ly = 33;
-    p.rect(lx - 2, ly - 2, 7, 5, BODY[2]);
-    p.set(lx, ly - 2, SIL[4]); p.set(lx + 1, ly - 2, SIL[3]);
-    p.set(lx - 1, ly - 1, SIL[4]); p.set(lx - 1, ly, SIL[4]);
-    p.set(lx, ly + 1, SIL[3]); p.set(lx + 1, ly + 1, SIL[2]);
-    p.set(lx + 2, ly - 1, C('#ffd030')); p.set(lx + 2, ly, C('#ffc020')); p.set(lx + 3, ly - 1, C('#ffb000'));
+    // 中央の黒いパネル: smart ロゴ / BRABUS エンブレム / 左の小さなエンブレム
+    var lx = Math.round(X(-3, 0));
+    p.hline(lx, lx + 5, 31, CHR[2]); p.set(lx + 1, 32, CHR[1]); p.set(lx + 3, 32, CHR[1]); p.set(lx + 5, 32, CHR[1]);
+    var bx = Math.round(X(9, 0));
+    p.hline(bx, bx + 3, 32, CHR[3]); p.hline(bx, bx + 3, 33, CHR[0]);
+    var kx = Math.round(X(-12, 0));
+    p.hline(kx, kx + 1, 32, CHR[1]);
 
-    // ---- ナンバープレート ----
-    var pw = 18, px0 = Math.round(X(-9, 0));
-    p.rect(px0 - 1, 37, pw + 2, 8, BLK[1]);
-    p.rect(px0, 37, pw, 7, PLATE);
-    p.hline(px0, px0 + pw - 1, 43, PLATE_D);
-    p.hline(px0 + 2, px0 + 5, 38, PLATE_G); p.hline(px0 + 9, px0 + 11, 38, PLATE_G);
-    for (var d = 0; d < 4; d++) {
-      var dx = px0 + 2 + d * 4;
-      p.vline(dx, 40, 42, PLATE_G); p.vline(dx + 2, 40, 42, PLATE_G); p.set(dx + 1, 40, PLATE_G); p.set(dx + 1, 42, PLATE_G);
-    }
-
-    // ---- サイドミラー ----
+    // ---- サイドミラー (楕円の黒) ----
     sym(function (s) {
-      var stx = X(s * 27, 0.6);
-      p.rect(Math.round(s < 0 ? stx - 4 : stx), 19, 5, 2, BLK[2]);
-      var mx = X(s * 33.5, 0.6), w = 8, x0 = Math.round(mx - w / 2);
-      p.rrect(x0, 14, w, 6, 2, 0, function (x, y, i, j) {
-        var c = j < 2 ? BODY[4] : (j < 4 ? BODY[3] : BODY[1]);
-        if ((s < 0 && i === 0) || (s > 0 && i === w - 1)) c = BODY[1];
-        return c;
+      var stx = X(s * 30, 0.6);
+      p.rect(Math.round(s < 0 ? stx - 4 : stx), 23, 5, 2, BODY[1]);
+      var mx = X(s * 37, 0.6), w = 9, x0 = Math.round(mx - w / 2);
+      p.rrect(x0, 18, w, 7, 3, 0, function (x, y, i, j) {
+        if (j < 2) return BODY[4];
+        if ((s < 0 && i === 1 && j < 5) || (s > 0 && i === w - 2 && j < 5)) return BODY[5];
+        return j < 5 ? BODY[2] : BODY[1];
       });
-      p.hline(x0 + 1, x0 + w - 2, 19, BLK[1]);
     });
 
-    // ---- ガラスキャノピー + トライディオン ----
-    var topY = 4, baseY = 24, midY = 15;
+    // ---- ガラスハッチ + 黒いピラー ----
+    var topY = 11, baseY = 27, midY = 20;
     function gx(y, s) {
       var tt = (y - topY) / (baseY - topY);
-      var hw = 16 + 9.5 * Math.sin(tt * Math.PI / 2);
+      var hw = 19.5 + 9 * Math.pow(tt, 0.85);
       var dep = 0.95 - 0.85 * tt;
       return X(s * hw, dep);
     }
     var poly = [], y2;
-    for (y2 = topY; y2 <= baseY; y2++) poly.push([gx(y2, -1) - 2.4, y2]);
-    for (y2 = baseY; y2 >= topY; y2--) poly.push([gx(y2, 1) + 2.4, y2]);
+    for (y2 = topY; y2 <= baseY; y2++) poly.push([gx(y2, -1) - 3.4, y2]);
+    for (y2 = baseY; y2 >= topY; y2--) poly.push([gx(y2, 1) + 3.4, y2]);
     p.poly(poly, 0, function (x, y) {
       var right = x > gx(y, 1) - 1;
-      if (y <= topY + 1) return right ? SIL[3] : SIL[4];
-      return right ? SIL[2] : SIL[3];
+      if (y <= topY) return BODY[4];
+      return right ? BODY[1] : BODY[3];
     });
-    // ルーフ
-    p.hline(gx(topY, -1) - 1, gx(topY, 1) + 1, topY - 1, SIL[2]);
-    p.hline(gx(topY, -1) + 1, gx(topY, 1) - 1, topY - 2, SIL[1]);
+    // ルーフ後端のシルバーの突起
+    sym(function (s) { var nx = Math.round(X(s * 19, 0.95)); p.rect(nx - 1, topY - 2, 3, 2, CHR[2]); p.set(nx - 1, topY - 2, CHR[3]); });
     // ガラス
     poly = [];
-    for (y2 = topY + 1; y2 <= baseY; y2++) poly.push([gx(y2, -1), y2]);
-    for (y2 = baseY; y2 >= topY + 1; y2--) poly.push([gx(y2, 1), y2]);
+    for (y2 = topY + 1; y2 <= baseY - 1; y2++) poly.push([gx(y2, -1), y2]);
+    for (y2 = baseY - 1; y2 >= topY + 1; y2--) poly.push([gx(y2, 1), y2]);
     p.poly(poly, 0, function (x, y) {
       var cl = gx(y, -1), cr = gx(y, 1), u = (x + 0.5 - cl) / (cr - cl);
-      if (y === midY) return BLK[3];
-      if (y === midY + 1 || y === midY + 2) return BLK[1];
-      var c;
+      if (y === midY) return BODY[2];
+      if (y === midY + 1) return BODY[1];
       if (y < midY) {
-        var lv = 1.3 + (midY - y) * 0.13, li = Math.floor(lv);
+        // 上段: 空の映り込み (上ほど明るい)
+        var lv = 1.6 + (midY - y) * 0.22 - Math.abs(u - 0.45) * 0.8, li = Math.floor(lv);
         if (G.dither(x, y, lv - li)) li++;
-        c = GLS[li];
-        var dg = u * 30 + (y - topY) * 1.5;
-        if (dg > 19 && dg < 22) c = GLS[4];
-        else if (dg > 23 && dg < 24.5) c = GLS[3];
-      } else {
-        var lv2 = 2.2 - (y - midY - 3) * 0.18, li2 = Math.floor(lv2);
-        if (G.dither(x, y, lv2 - li2)) li2++;
-        c = GLS[G.clamp(li2, 0, 5)];
-        if (u > 0.1 && u < 0.17) c = GLS[4];
-        if (u > 0.2 && u < 0.23) c = GLS[3];
+        var c = GLS[G.clamp(li, 0, 5)];
+        var dg = u * 30 + (y - topY) * 1.6;
+        if (dg > 19 && dg < 21.5) c = GLS[5];
+        else if (dg > 23 && dg < 24) c = GLS[4];
+        return c;
       }
-      return c;
+      // 下段: 車内 (水色のサンシェードが透ける)
+      var c2 = GLS[1];
+      var shx = Math.abs(u - 0.55);
+      if (shx < 0.3 && y >= midY + 2) c2 = y === midY + 2 ? CABIN[0] : (G.dither(x, y, 0.55) ? CABIN[2] : CABIN[1]);
+      else if (shx < 0.36 && y >= midY + 2) c2 = CABIN[0];
+      if (u > 0.08 && u < 0.13 && y < baseY - 1) c2 = GLS[3];
+      return c2;
     });
-    // 乗員 (右ハンドル: 右が運転席)
-    function head(hx, hair, hairHi, long) {
-      var cx = X(hx, 0.9);
-      p.ellipse(cx, 10.5, 3.7, 3.6, 0, function (x, y, nx, ny) {
-        if (y >= midY) return 0;
-        return (ny < -0.3 && nx < 0.1) ? hairHi : hair;
-      });
-      if (long) { p.rect(Math.round(cx - 3.7), 11, 2, 4, hair); p.rect(Math.round(cx + 1.7), 11, 2, 4, hair); }
-      p.hline(cx - 5.5, cx + 5.5, midY - 1, BLK[0]);
-    }
-    head(8.5, C('#18121a'), C('#342834'), false);
-    head(-8.5, C('#4c2a1a'), C('#7a4a2c'), true);
-
-    // ---- スポイラー枠 + ハイマウントストップランプ ----
-    var sx0 = Math.round(X(-27.5, 0.02)), sw = Math.round(X(27.5, 0.02)) - sx0;
-    p.rrect(sx0, baseY, sw, 3, 1, 0, function (x, y, i, j) { return [SIL[4], SIL[3], SIL[1]][j]; });
+    // ハイマウントストップランプ (ガラスの境目の赤いバー)
     var hb = brake ? LAMP_ON : LAMP_OFF;
-    p.hline(X(-6, 0.02), X(6, 0.02) - 1, baseY + 1, hb[1]);
-    p.hline(X(-4, 0.02), X(4, 0.02) - 1, baseY + 1, brake ? hb[3] : hb[2]);
+    p.hline(X(-11, 0.4), X(11, 0.4) - 1, midY, hb[1]);
+    p.hline(X(-10, 0.4), X(10, 0.4) - 1, midY, brake ? hb[3] : hb[2]);
+    if (brake) p.hline(X(-9, 0.4), X(9, 0.4) - 1, midY + 1, hb[1]);
+
+    // ---- ルーフのアクションカメラ (吸盤マウント) ----
+    var cmx = Math.round(X(-3, 1.0));
+    p.rect(cmx - 2, topY - 1, 5, 1, BODY[3]);         // 吸盤
+    p.vline(cmx, topY - 5, topY - 2, BODY[4]);         // アーム
+    p.rect(cmx - 2, topY - 9, 5, 4, BODY[1]);          // カメラ本体
+    p.set(cmx - 1, topY - 9, BODY[5]); p.set(cmx + 2, topY - 8, BODY[0]);
 
     // ---- 輪郭 ----
     var sh = [];
@@ -233,8 +250,8 @@
     // ---- ブレーキグロー ----
     if (brake) {
       sym(function (s) {
-        [36, 28.5].forEach(function (lp) {
-          var cx = X(s * lp, 0), cy = 33.5;
+        [[33.2, -1], [20, 0]].forEach(function (lp) {
+          var cx = X(s * lp[0], 0), cy = ly + 0.8 + lp[1];
           p.disc(cx, cy, 6, 0, function (x, y, nx, ny, dd) {
             var o = p.get(x, y);
             if (G.ca(o) && o !== SHADOW) return 0;

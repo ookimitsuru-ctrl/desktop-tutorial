@@ -1,7 +1,7 @@
 # 四季ドライブ / SHIKI DRIVE
 
 セガ「アウトラン」風の、ドット絵の疑似3Dドライブゲームです。Androidの横画面で遊べます。
-自車は **smart roadster-coupé**（赤いボディに銀のトライディオン）です。
+自車は **smart roadster-coupé BRABUS**（黒）です。オーナーの実車写真をもとにドット絵にしました。
 
 - コースは **夏 → 秋 → 冬 → 春** の4つ。チェックポイントを越えると景色が次の季節へ移ります。
 - 最後の春のコースは桜並木です。ゴールの先は **花吹雪** になります。
@@ -62,7 +62,7 @@ Android Studio でこのフォルダを開いて Run してもビルドできま
 | `assets/js/render.js` | 疑似3D道路の走査線レンダラーと、スプライトの拡大縮小描画 |
 | `assets/js/track.js` | コース（カーブ・起伏・季節のつなぎ目）の定義 |
 | `assets/js/scenery.js` | 沿道のオブジェクトの配置ルール |
-| `assets/js/art_car.js` | 自車 smart roadster-coupé のドット絵（左右の傾きフレーム、ブレーキランプ） |
+| `assets/js/art_car.js` | 自車 smart roadster-coupé BRABUS のドット絵（左右の傾きフレーム、ブレーキランプ） |
 | `assets/js/art_traffic.js` | 他車（軽自動車・タクシー・トラック・バス・軽トラなど） |
 | `assets/js/art_scenery.js` | 沿道のドット絵（ヤシ・紅葉・雪の杉・桜・ゲートなど） |
 | `assets/js/art_bg.js` | 空・雲・山・遠景（多重スクロール、季節のクロスフェード） |
@@ -73,7 +73,7 @@ Android Studio でこのフォルダを開いて Run してもビルドできま
 
 ### 車の色を変えたいとき
 
-`assets/js/art_car.js` の先頭にある `BODY`（ボディ色の濃い順〜明るい順の6色）と `SIL`（トライディオンの色）を書き換えてください。
+`assets/js/art_car.js` の先頭にある `BODY`（ボディ色。暗い順から明るい順の7色）を書き換えてください。明るい側の色は空の映り込みです。
 
 ## クレジット
 

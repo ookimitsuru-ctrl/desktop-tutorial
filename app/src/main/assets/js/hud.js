@@ -287,7 +287,7 @@
     panel(ctx, bx, by, 58, 14);
     F.text(ctx, on ? 'SOUND ON' : 'SOUND OFF', bx + 29, by + 4, { color: on ? '#80ff80' : '#ff8080', align: 'center' });
     HUD.soundBtn = { x: bx, y: by, w: 58, h: 14 };
-    F.text(ctx, 'CAR: SMART ROADSTER COUPE', 6, 8, { color: '#ffffff', outline: '#101018' });
+    F.text(ctx, 'CAR: SMART ROADSTER COUPE BRABUS', 6, 8, { color: '#ffffff', outline: '#101018' });
   }
   HUD.titleTap = function (tap) {
     var b = HUD.soundBtn;
