@@ -1,6 +1,7 @@
 'use strict';
 // ============================================================
-//  music.js  チップチューン風 BGM シーケンサ
+//  music.js  FM 音源風 BGM シーケンサ (アーケード/メガドライブの YM 系の音色を
+//             WebAudio の発振器どうしで周波数変調して作る)
 //  曲はオリジナル (エンディングは日本古謡「さくらさくら」の編曲)
 //  記法: 1 小節 = 16 ステップ (16分音符)
 //    音名+オクターブ = 発音,  '-' = 伸ばす,  '.' = 休符
@@ -86,7 +87,7 @@
         'D5 - - - G5 - - - Bb5 - - - A5 - G5 -', 'F5 - - - D5 - - - F5 - - - Bb5 - - -',
         'A5 - - - - - - - G5 - - - F5 - E5 -', 'E5 - - - - - - - C#5 - - - - - . .'
       ],
-      bass: 'R - - - - - - - F - - - O - - -', arp: 'bell', drums: 'k . . . h . . . s . . . h . . h', leadType: 'bell'
+      bass: 'R - - - - - - - F - - - O - - -', arp: 'bell', drums: 'k . . . h . . . s . . . h . . h'
     },
     spring: {
       bpm: 136,
@@ -117,14 +118,14 @@
         'A5 - - - A5 - - - B5 - - - - - - -', 'A5 - - - A5 - - - B5 - - - - - - -',
         'E5 - - - F5 - - - B5 - A5 - F5 - - -', 'E5 - - - - - - - - - - - . . . .'
       ],
-      bass: 'R - - - - - - - F - - - - - - -', arp: 'koto', drums: null, leadType: 'bell'
+      bass: 'R - - - - - - - F - - - - - - -', arp: 'koto', drums: null
     }
   };
 
   // ---------------- コンパイル ----------------
   function compile(song) {
     var bars = song.lead.length, steps = bars * 16;
-    var ev = { lead: [], arp: [], bass: [], drum: [] };
+    var ev = { lead: [], arp: [], bass: [], drum: [], pad: [] };
     // メロディ
     var all = song.lead.join(' ').split(/\s+/);
     for (var i = 0; i < all.length; i++) {
@@ -138,6 +139,12 @@
     var bp = song.bass.split(/\s+/);
     for (var b = 0; b < bars; b++) {
       var syms = song.chords[b % song.chords.length].split(' ');
+      // パッド: コードごとに白玉 (中音域にまとめる)
+      syms.forEach(function (sym, k) {
+        var chd = chord(sym), seg = 16 / syms.length;
+        var notes = chd.iv.slice(0, 3).map(function (x) { var n = 55 + ((chd.root + x - 7 + 24) % 12); return n; });
+        ev.pad.push({ s: b * 16 + k * seg, d: seg, ms: notes });
+      });
       for (var st = 0; st < 16; st++) {
         var ch = chord(syms[Math.min(syms.length - 1, Math.floor(st / (16 / syms.length)))]);
         var step = b * 16 + st;
@@ -168,75 +175,121 @@
     return { song: song, ev: ev, steps: steps, stepDur: 60 / song.bpm / 4 };
   }
   var COMPILED = {};
-  Object.keys(SONGS).forEach(function (k) { COMPILED[k] = compile(SONGS[k]); });
+  Object.keys(SONGS).forEach(function (k) { COMPILED[k] = compile(SONGS[k]); COMPILED[k].key = k; });
 
-  // ---------------- 再生 ----------------
-  var waves = {};
-  function pulse(ctx, duty) {
-    var n = 32, re = new Float32Array(n), im = new Float32Array(n);
-    for (var i = 1; i < n; i++) re[i] = 2 / (i * Math.PI) * Math.sin(i * Math.PI * duty);
-    return ctx.createPeriodicWave(re, im);
+  // ---------------- FM 音源 ----------------
+  //  mods: 変調器 [{ r: 周波数比, i: 変調指数, s: 持続時の指数の割合, d: 減衰の時定数(秒) }]
+  //  a: アタック, dl/sl: ディケイとサスティン, rel: リリース, perc: 打鍵系の減衰時間, chorus: 2 本目のキャリアのずれ
+  var PATCH = {
+    brass:   { mods: [{ r: 1, i: 2.6, s: 0.45, d: 0.12 }], a: 0.012, dl: 0.25, sl: 0.78, rel: 0.08, chorus: 0.004 },
+    synlead: { mods: [{ r: 2, i: 1.4, s: 0.55, d: 0.2 }, { r: 1, i: 0.6, s: 0.6, d: 0.3 }], a: 0.01, dl: 0.3, sl: 0.72, rel: 0.07, chorus: 0.003 },
+    flute:   { mods: [{ r: 1, i: 0.8, s: 0.45, d: 0.08 }], a: 0.035, dl: 0.3, sl: 0.85, rel: 0.09, chorus: 0.002 },
+    epiano:  { mods: [{ r: 1, i: 1.8, s: 0.15, d: 0.25 }, { r: 14, i: 0.45, s: 0, d: 0.03 }], a: 0.003, perc: 0.7 },
+    bass:    { mods: [{ r: 1, i: 3.2, s: 0.22, d: 0.06 }, { r: 0.5, i: 0.8, s: 0.3, d: 0.1 }], a: 0.004, dl: 0.15, sl: 0.62, rel: 0.04 },
+    bell:    { mods: [{ r: 3.5, i: 2.4, s: 0.08, d: 0.45 }], a: 0.003, perc: 1.6 },
+    koto:    { mods: [{ r: 3, i: 2.0, s: 0, d: 0.07 }, { r: 1, i: 0.5, s: 0.2, d: 0.2 }], a: 0.002, perc: 0.9 },
+    marimba: { mods: [{ r: 4, i: 1.4, s: 0, d: 0.04 }], a: 0.002, perc: 0.35 },
+    strings: { mods: [{ r: 1, i: 0.9, s: 0.9, d: 0.4 }], a: 0.28, dl: 0.4, sl: 0.9, rel: 0.3, chorus: 0.006 }
+  };
+  // 曲ごとの音色
+  var VOICING = {
+    title:  { lead: 'brass', arp: 'epiano', pad: 'strings' },
+    summer: { lead: 'brass', arp: 'epiano', pad: 'strings' },
+    autumn: { lead: 'synlead', arp: 'epiano', pad: 'strings' },
+    winter: { lead: 'bell', arp: 'bell', pad: 'strings' },
+    spring: { lead: 'flute', arp: 'marimba', pad: 'strings' },
+    ending: { lead: 'koto', arp: 'koto', pad: 'strings' }
+  };
+
+  function fmNote(ctx, dest, name, f, t, dur, vol) {
+    var P = PATCH[name] || PATCH.brass;
+    var cg = ctx.createGain(); cg.connect(dest);
+    var nCar = P.chorus ? 2 : 1, cars = [], end;
+    for (var k = 0; k < nCar; k++) {
+      var o = ctx.createOscillator();
+      o.frequency.setValueAtTime(f * (k ? 1 + P.chorus : 1), t);
+      o.connect(cg); cars.push(o);
+    }
+    var amp = vol / (nCar === 2 ? 1.6 : 1);
+    cg.gain.setValueAtTime(0, t);
+    if (P.perc) {
+      var pd = Math.min(P.perc, Math.max(0.22, dur * 3));
+      cg.gain.linearRampToValueAtTime(amp, t + P.a);
+      cg.gain.setTargetAtTime(0, t + P.a, pd / 3);
+      end = t + pd * 1.3 + 0.05;
+    } else {
+      cg.gain.linearRampToValueAtTime(amp, t + P.a);
+      cg.gain.setTargetAtTime(amp * P.sl, t + P.a, P.dl / 3);
+      var rs = Math.max(t + P.a + 0.01, t + dur - 0.01);
+      cg.gain.setTargetAtTime(0, rs, P.rel / 3);
+      end = rs + P.rel * 2.5;
+    }
+    P.mods.forEach(function (m) {
+      var mo = ctx.createOscillator(), mg = ctx.createGain();
+      var fmod = f * m.r, dev = m.i * fmod;
+      mo.frequency.setValueAtTime(fmod, t);
+      mg.gain.setValueAtTime(dev, t);
+      mg.gain.setTargetAtTime(dev * m.s, t + 0.002, m.d);
+      mo.connect(mg);
+      cars.forEach(function (o) { mg.connect(o.frequency); });
+      mo.start(t); mo.stop(end);
+    });
+    // 長い音にはビブラート
+    if (!P.perc && dur > 0.35) {
+      var l = ctx.createOscillator(), lg = ctx.createGain();
+      l.frequency.value = 5.5; lg.gain.value = f * 0.006;
+      l.connect(lg);
+      cars.forEach(function (o) { lg.connect(o.frequency); });
+      l.start(t + 0.25); l.stop(end);
+    }
+    cars.forEach(function (o) { o.start(t); o.stop(end); });
   }
+  // 効果音 (ジングル) からも使う
+  M.fm = function (name, f, t, dur, vol, dest) { if (G.Audio && G.Audio.ctx) fmNote(G.Audio.ctx, dest, name, f, t, dur, vol); };
+
   var bus = null, chGain = {};
   function setup() {
     var A = G.Audio, ctx = A.ctx;
     if (bus) return;
-    waves.p25 = pulse(ctx, 0.25); waves.p125 = pulse(ctx, 0.125); waves.p50 = pulse(ctx, 0.5);
     bus = ctx.createGain(); bus.gain.value = 1; bus.connect(A.musicBus);
-    ['lead', 'arp', 'bass', 'drum'].forEach(function (k) { chGain[k] = ctx.createGain(); chGain[k].connect(bus); });
-    chGain.lead.gain.value = 0.17; chGain.arp.gain.value = 0.06; chGain.bass.gain.value = 0.22; chGain.drum.gain.value = 0.2;
-    // リードに薄いエコー
+    ['lead', 'arp', 'bass', 'drum', 'pad'].forEach(function (k) { chGain[k] = ctx.createGain(); chGain[k].connect(bus); });
+    chGain.lead.gain.value = 0.13; chGain.arp.gain.value = 0.05; chGain.bass.gain.value = 0.2;
+    chGain.drum.gain.value = 0.15; chGain.pad.gain.value = 0.032;
+    // リードとパッドに薄いエコー (FM 音源らしい広がり)
     var dl = ctx.createDelay(1); dl.delayTime.value = 0.27;
-    var fb = ctx.createGain(); fb.gain.value = 0.28;
-    var wet = ctx.createGain(); wet.gain.value = 0.35;
-    chGain.lead.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(bus);
+    var fb = ctx.createGain(); fb.gain.value = 0.3;
+    var wet = ctx.createGain(); wet.gain.value = 0.32;
+    chGain.lead.connect(dl); chGain.pad.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(bus);
   }
 
-  function voice(ctx, dest, wave, type, f, t, dur, vol, env) {
-    var o = ctx.createOscillator(), g = ctx.createGain();
-    if (wave) o.setPeriodicWave(wave); else o.type = type;
-    o.frequency.setValueAtTime(f, t);
-    o.connect(g); g.connect(dest);
-    o.start(t);
-    g.gain.setValueAtTime(0, t);
-    if (env === 'bell') {
-      g.gain.linearRampToValueAtTime(vol, t + 0.005);
-      g.gain.exponentialRampToValueAtTime(vol * 0.25, t + 0.25);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.3, dur + 0.25));
-      o.stop(t + Math.max(0.3, dur + 0.25) + 0.05);
-    } else {
-      g.gain.linearRampToValueAtTime(vol, t + 0.006);
-      g.gain.setTargetAtTime(vol * 0.6, t + 0.02, 0.08);
-      g.gain.setTargetAtTime(0, t + dur * 0.92, 0.025);
-      o.stop(t + dur + 0.15);
-    }
-    // ビブラート (長い音)
-    if (dur > 0.35 && env !== 'bell') {
-      var l = ctx.createOscillator(), lg = ctx.createGain();
-      l.frequency.value = 5.5; lg.gain.value = f * 0.006;
-      l.connect(lg); lg.connect(o.frequency);
-      l.start(t + 0.2); l.stop(t + dur + 0.15);
-    }
-  }
   function drum(ctx, k, t) {
     var A = G.Audio, dest = chGain.drum;
     if (k === 'k') {
+      // FM 風キック: ピッチが落ちるサイン + アタックのクリック
       var o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
-      g.gain.setValueAtTime(1.0, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-      o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.2);
+      o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(44, t + 0.11);
+      g.gain.setValueAtTime(1.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.22);
+      var c = A.noiseSrc(), cf = ctx.createBiquadFilter(), cgn = ctx.createGain();
+      cf.type = 'highpass'; cf.frequency.value = 3000;
+      cgn.gain.setValueAtTime(0.25, t); cgn.gain.exponentialRampToValueAtTime(0.001, t + 0.012);
+      c.connect(cf); cf.connect(cgn); cgn.connect(dest); c.start(t, Math.random()); c.stop(t + 0.02);
     } else {
       var s = A.noiseSrc(), f = ctx.createBiquadFilter(), g2 = ctx.createGain();
-      var dur = k === 's' ? 0.14 : (k === 'o' ? 0.16 : 0.035);
+      var dur = k === 's' ? 0.16 : (k === 'o' ? 0.16 : 0.035);
       f.type = k === 's' ? 'bandpass' : 'highpass';
-      f.frequency.value = k === 's' ? 1800 : 7000;
-      g2.gain.setValueAtTime(k === 's' ? 0.8 : 0.32, t); g2.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      f.frequency.value = k === 's' ? 2200 : 7500;
+      g2.gain.setValueAtTime(k === 's' ? 0.7 : 0.3, t); g2.gain.exponentialRampToValueAtTime(0.001, t + dur);
       s.connect(f); f.connect(g2); g2.connect(dest); s.start(t, Math.random()); s.stop(t + dur + 0.02);
       if (k === 's') {
-        var o2 = ctx.createOscillator(), g3 = ctx.createGain();
-        o2.type = 'triangle'; o2.frequency.setValueAtTime(200, t); o2.frequency.exponentialRampToValueAtTime(120, t + 0.08);
-        g3.gain.setValueAtTime(0.5, t); g3.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        o2.connect(g3); g3.connect(dest); o2.start(t); o2.stop(t + 0.12);
+        // 金属的な FM スネアの胴鳴り
+        var car = ctx.createOscillator(), mod = ctx.createOscillator(), mg = ctx.createGain(), g3 = ctx.createGain();
+        car.frequency.setValueAtTime(190, t); mod.frequency.setValueAtTime(190 * 1.47, t);
+        mg.gain.setValueAtTime(600, t); mg.gain.exponentialRampToValueAtTime(20, t + 0.08);
+        mod.connect(mg); mg.connect(car.frequency);
+        g3.gain.setValueAtTime(0.55, t); g3.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+        car.connect(g3); g3.connect(dest);
+        car.start(t); mod.start(t); car.stop(t + 0.13); mod.stop(t + 0.13);
       }
     }
   }
@@ -246,13 +299,15 @@
   function schedule() {
     var A = G.Audio, ctx = A.ctx;
     if (!play || !ctx || ctx.state !== 'running') return;
-    var c = play.c, sd = c.stepDur;
+    var c = play.c, sd = c.stepDur, v = VOICING[c.key];
     while (play.next < ctx.currentTime + 0.15) {
       var st = play.step % c.steps, t = play.next;
-      var lt = c.song.leadType;
-      c.ev.lead.forEach(function (e) { if (e.s === st) voice(ctx, chGain.lead, lt === 'bell' ? waves.p125 : waves.p25, null, hz(e.m), t, e.d * sd, lt === 'bell' ? 0.9 : 0.7, lt); });
-      c.ev.arp.forEach(function (e) { if (e.s === st) voice(ctx, chGain.arp, waves.p125, null, hz(e.m), t, e.d * sd, 0.8, 'bell'); });
-      c.ev.bass.forEach(function (e) { if (e.s === st) voice(ctx, chGain.bass, null, 'triangle', hz(e.m), t, e.d * sd, 1.0); });
+      c.ev.lead.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.lead, v.lead, hz(e.m), t, e.d * sd, 0.9); });
+      c.ev.arp.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.arp, v.arp, hz(e.m), t, e.d * sd, 0.9); });
+      c.ev.bass.forEach(function (e) { if (e.s === st) fmNote(ctx, chGain.bass, 'bass', hz(e.m), t, e.d * sd, 1.0); });
+      c.ev.pad.forEach(function (e) {
+        if (e.s === st) e.ms.forEach(function (m) { fmNote(ctx, chGain.pad, v.pad, hz(m), t, e.d * sd, 0.7); });
+      });
       c.ev.drum.forEach(function (e) { if (e.s === st) drum(ctx, e.k, t); });
       play.step++;
       play.next += sd;

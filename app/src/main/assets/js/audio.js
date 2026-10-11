@@ -136,20 +136,24 @@
     s.connect(f); f.connect(g); g.connect(sfxBus);
     s.start(start, Math.random()); s.stop(start + dur + 0.05);
   }
+  function fmJ(patch, m, t, dur, vol) {
+    if (G.Music && G.Music.fm) G.Music.fm(patch, 440 * Math.pow(2, (m - 69) / 12), t, dur, vol, sfxBus);
+  }
   var SFX = {
     beep: function (t) { tone('square', 440, t, 0.22, 0.25); },
     go: function (t) { tone('square', 880, t, 0.6, 0.28); tone('square', 1760, t, 0.3, 0.08); },
     tick: function (t) { tone('square', 1320, t, 0.05, 0.12); },
+    // ジングルは BGM と同じ FM 音色 (ブラス + FM ベース)
     checkpoint: function (t) {
-      [72, 76, 79, 84, 88, 91].forEach(function (m, i) { tone('square', 440 * Math.pow(2, (m - 69) / 12), t + i * 0.07, 0.25, 0.16); });
-      tone('triangle', 440 * Math.pow(2, (60 - 69) / 12), t, 0.6, 0.25);
+      [72, 76, 79, 84, 88, 91].forEach(function (m, i) { fmJ('brass', m, t + i * 0.07, 0.22, 0.32); });
+      fmJ('bass', 48, t, 0.5, 0.45); fmJ('bass', 60, t + 0.42, 0.3, 0.35);
     },
     goal: function (t) {
-      var seq = [[72, 0], [72, 0.12], [72, 0.24], [77, 0.4], [81, 0.7], [84, 1.0], [81, 1.2], [84, 1.4]];
-      seq.forEach(function (n) { tone('square', 440 * Math.pow(2, (n[0] - 69) / 12), t + n[1], 0.35, 0.18); });
-      tone('triangle', 130.8, t, 1.8, 0.3);
+      var seq = [[72, 0, 0.1], [72, 0.12, 0.1], [72, 0.24, 0.12], [77, 0.4, 0.26], [81, 0.7, 0.26], [84, 1.0, 0.18], [81, 1.2, 0.18], [84, 1.4, 0.8]];
+      seq.forEach(function (n) { fmJ('brass', n[0], t + n[1], n[2], 0.34); fmJ('brass', n[0] - 5, t + n[1], n[2], 0.16); });
+      fmJ('bass', 41, t + 0.4, 0.6, 0.45); fmJ('bass', 48, t + 1.4, 0.8, 0.45);
     },
-    timeup: function (t) { [76, 72, 67, 60].forEach(function (m, i) { tone('square', 440 * Math.pow(2, (m - 69) / 12), t + i * 0.18, 0.3, 0.18); }); },
+    timeup: function (t) { [76, 72, 67, 60].forEach(function (m, i) { fmJ('brass', m, t + i * 0.18, 0.24, 0.32); }); fmJ('bass', 36, t + 0.54, 0.6, 0.45); },
     crash: function (t) {
       noise(t, 0.9, 0.7, 'lowpass', 3000, 120);
       tone('sine', 120, t, 0.5, 0.6, 35);
