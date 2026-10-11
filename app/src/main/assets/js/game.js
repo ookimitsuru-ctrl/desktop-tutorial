@@ -479,7 +479,8 @@
 
   // ---------- 画面サイズ ----------
   function resize() {
-    var vw = window.innerWidth, vh = window.innerHeight;
+    var rc = R.canvas.getBoundingClientRect();
+    var vw = rc.width || window.innerWidth, vh = rc.height || window.innerHeight;
     var rot = document.getElementById('rotate');
     if (rot) rot.className = vh > vw ? 'on' : '';
     var aspect = Math.max(vw, 1) / Math.max(vh, 1);
