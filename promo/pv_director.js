@@ -68,7 +68,7 @@
     var steer = G.clamp(0.18 * seg.curve * sp + (PV.lane - P.x) * 2.6, -1, 1);
     if (o.steer !== undefined) steer = o.steer;
     I.steerId = 'pv';
-    I.wheel = steer * I.MAX_DEG;
+    I.direct = steer;
     var ahead = 99;
     for (var k3 = 0; k3 < 14; k3++) {
       var s3 = T.segments[seg.index + k3];
@@ -221,7 +221,7 @@
         // 計器と操作 UI は 16:9 の切り抜きに収まるよう少し下げて描く
         ctx.save(); ctx.translate(0, OY); G.noHud = false; G.HUD.draw(ctx, Game, P); G.noHud = true; ctx.restore();
         slam(jp('スマホ横持ちで、直感操作！', 18, { grad: YEL }), W / 2, OY + 74, lt);
-        callout('右手でハンドル', L.wheel.x - 34, L.wheel.y + OY - 54, L.wheel.x - 6, L.wheel.y + OY - 32, lt - 0.25);
+        callout('右手でスティック', L.stick.x - 40, L.stick.y + OY - 54, L.stick.x - 8, L.stick.y + OY - 30, lt - 0.25);
         callout('左手でアクセル・ブレーキ', 98, L.accel.y + OY - 24, 64, L.accel.y + OY + 4, lt - 0.45);
       }
     },
@@ -280,6 +280,7 @@
   var cur = -1, shot = null;
   PV.init = function () {
     F = G.Font; R = G.R; T = G.Track; Game = G.Game; P = Game.player; I = G.Input;
+    Game.mode = 'hard';   // PV はアーケード仕様 (HARD) で撮る
     G.noHud = true;
   };
   PV.frame = function (i, capture) {

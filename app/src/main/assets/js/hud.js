@@ -1,52 +1,71 @@
 'use strict';
 // ============================================================
-//  hud.js  計器・メッセージ・タイトル画面・操作UI (ハンドル/ブレーキ)
+//  hud.js  計器・メッセージ・タイトル画面・操作UI (スティック/ペダル)
 // ============================================================
 (function () {
   var C = G.col, F = G.Font;
   var HUD = G.HUD = {};
   var YEL = ['#fffbd0', '#ffd020', '#ff8a00'], OUTL = '#3a1400';
 
-  // ---------- ハンドル (回転ごとにドット絵を生成してキャッシュ) ----------
-  var wheelCache = new Map();
-  function wheelImg(deg) {
-    var key = Math.round(deg / 3) * 3;
-    var hit = wheelCache.get(key);
-    if (hit) return hit;
-    var S = 66, c = S / 2, p = new G.PX(S, S), a = key * Math.PI / 180;
-    var ca = Math.cos(a), sa = Math.sin(a);
-    var RIM = ['#0e0e12', '#1c1c24', '#2e2e3a', '#464656', '#6a6a80'].map(function (h) { return C(h); });
-    var SIL = ['#4a5060', '#7a8294', '#a8b0c0', '#d4dae4', '#f4f6fa'].map(function (h) { return C(h); });
+  // ---------- アナログスティック (台座とノブのドット絵) ----------
+  var stickBase = null, stickKnob = [];
+  function buildStick() {
+    var S = 58, c = S / 2, p = new G.PX(S, S);
+    var RING = ['#1a1b22', '#2a2c36', '#3e414e', '#5a5e6e', '#8a90a2'].map(function (h) { return C(h); });
+    var WELL = ['#0a0b0f', '#111218', '#181a22', '#20232c'].map(function (h) { return C(h); });
     for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {
-      var dx = x + 0.5 - c, dy = y + 0.5 - c, r = Math.hypot(dx, dy);
-      if (r > 30.5) continue;
-      // ハンドル座標系 (u: 右, v: 下)
-      var u = dx * ca + dy * sa, v = -dx * sa + dy * ca;
-      var col = 0;
-      if (r >= 24.5) {
-        var nx = dx / r, ny = dy / r;
-        var depth = (r - 24.5) / 6; // 0..1 (内→外)
-        var l = -(nx * -0.6 + ny * -0.8) * 0.6 + (0.5 - Math.abs(depth - 0.5)) * 0.9;
-        var li = G.clamp(Math.floor(l * 4 + 1.5), 0, 4);
-        if (G.dither(x, y, (l * 4 + 1.5) % 1) && li < 4) li++;
-        col = RIM[G.clamp(li, 0, 4)];
-        // 12時の目印
-        if (v < 0 && Math.abs(u) < 2.6) col = Math.abs(u) < 1.2 ? C('#ffffff') : C('#e82a2a');
-        // グリップの縫い目
-        if ((Math.abs(u) > 18) && Math.abs(v) < 12 && ((Math.round(r * 3 + v) & 3) === 0)) col = RIM[1];
-      } else if (r < 9) {
-        col = r < 4.5 ? (r < 2.5 ? C('#ffd040') : C('#e02828')) : (r < 5.5 ? SIL[3] : SIL[1]);
-        if (r >= 5.5 && dx + dy < -2) col = SIL[2];
-      } else if ((Math.abs(v) < 3.2 && Math.abs(u) > 8) || (v > 7 && Math.abs(u) < 3.6)) {
-        var shade = Math.abs(u) > 8 ? (v < -1 ? 3 : (v < 1.2 ? 2 : 1)) : (u < -1 ? 3 : (u < 1.2 ? 2 : 1));
-        col = SIL[shade];
+      var dx = x + 0.5 - c, dy = y + 0.5 - c, r = Math.hypot(dx, dy), col = 0;
+      if (r > 27.5) continue;
+      var nx = dx / (r || 1), ny = dy / (r || 1);
+      if (r >= 23.5) {
+        // 外周の縁: 左上が明るい
+        var l = 2 - (nx * 0.6 + ny * 0.8) * 1.6 - Math.abs(r - 25.5) * 0.35, li = Math.floor(l);
+        if (G.dither(x, y, l - li)) li++;
+        col = RING[G.clamp(li, 0, 4)];
+      } else {
+        // くぼんだ内側: 左上が影, 右下が少し明るい
+        var w = 1.4 + (nx * 0.6 + ny * 0.8) * (r / 23.5) * 1.3, wi = Math.floor(w);
+        if (G.dither(x, y, w - wi)) wi++;
+        col = WELL[G.clamp(wi, 0, 3)];
+        if (Math.abs(r - 15) < 0.6) col = RING[0];   // 中ほどの溝
       }
-      if (col) p.d[y * S + x] = col;
+      p.d[y * S + x] = col;
     }
+    // 左右の矢印
+    [-1, 1].forEach(function (sd) {
+      for (var i = 0; i < 4; i++) p.vline(Math.round(c + sd * (19 - i)), c - i, c + i, C(i === 3 ? '#c8ccd8' : '#8a90a2'));
+    });
     p.outline(C('#060608'));
-    var cv = p.toCanvas();
-    wheelCache.set(key, cv);
-    return cv;
+    stickBase = p.toCanvas();
+
+    [false, true].forEach(function (on) {
+      var K = 28, k = K / 2, q = new G.PX(K, K);
+      var RUB = ['#16171c', '#24262e', '#343742', '#4a4e5c'].map(function (h) { return C(h); });
+      var TOP = ['#2a2d36', '#3a3e4a', '#4e5361', '#666b7c', '#8a90a2'].map(function (h) { return C(h); });
+      // 影
+      q.ellipse(k + 1, k + 2, 12, 12, G.rgba(0, 0, 0, 110));
+      for (var yy = 0; yy < K; yy++) for (var xx = 0; xx < K; xx++) {
+        var ddx = xx + 0.5 - k, ddy = yy + 0.5 - k, rr = Math.hypot(ddx, ddy), cc = 0;
+        if (rr > 12.2) continue;
+        var ux = ddx / (rr || 1), uy = ddy / (rr || 1);
+        if (rr >= 9.6) {
+          // ゴムのグリップ (ぎざぎざ)
+          var ang = Math.atan2(ddy, ddx), knurl = Math.floor((ang + Math.PI) / (Math.PI * 2) * 20) & 1;
+          var lv = 1.5 - (ux * 0.6 + uy * 0.8) * 1.3 + (knurl ? 0.4 : -0.2), lj = Math.floor(lv);
+          cc = RUB[G.clamp(lj, 0, 3)];
+          if (on && rr < 10.6) cc = C('#e0353d');   // 押している間は赤いリング
+        } else {
+          // へこんだ天面: 縁の左上が明るく, 中は右下が明るい
+          var tv = 2.2 + (ux * 0.6 + uy * 0.8) * (rr / 9.6) * 1.4 - (rr > 8.2 ? (ux * 0.6 + uy * 0.8) * 2.4 : 0), ti = Math.floor(tv);
+          if (G.dither(xx, yy, tv - ti)) ti++;
+          cc = TOP[G.clamp(ti, 0, 4)];
+          if (rr < 1.6) cc = TOP[1];
+        }
+        q.set(xx, yy, cc);
+      }
+      q.outline(C('#060608'));
+      stickKnob.push(q.toCanvas());
+    });
   }
 
   // ---------- ブレーキペダル / アクセルペダル ----------
@@ -104,6 +123,7 @@
 
   HUD.resize = function () {
     if (!pedal.length) buildPedal();
+    if (!stickBase) buildStick();
     if (!logo) buildLogo();
   };
 
@@ -134,6 +154,9 @@
     if (!low || blink(4)) {
       F.text(ctx, String(tv), 7, 15, { scale: 3, bold: true, grad: low ? ['#ffffff', '#ff4040', '#c00000'] : YEL, outline: OUTL });
     }
+    // 難易度
+    var ez = Game.mode === 'easy';
+    F.text(ctx, ez ? 'EASY' : 'HARD', 8, 39, { bold: true, color: ez ? '#80ff80' : '#ff7070', outline: '#101018' });
     // SCORE
     F.text(ctx, 'SCORE', 72, 5, { color: '#7ae0ff', outline: '#002040', bold: true });
     F.text(ctx, String(Math.floor(Game.score)), 72, 15, { color: '#ffffff', outline: '#102030', bold: true });
@@ -199,19 +222,24 @@
     var L = G.Input.layout(), I = G.Input;
     var faded = Game.state === 'title';
     ctx.globalAlpha = faded ? 0.55 : 0.9;
-    var wimg = wheelImg(I.wheel);
-    ctx.drawImage(wimg, Math.round(L.wheel.x - wimg.width / 2), Math.round(L.wheel.y - wimg.height / 2));
-    var on = I.braking;
+    // スティック: 触っている間は指を置いた所が中心
+    var o = I.origin || L.stick, held = I.steerId !== null && I.steerId !== 'pv';
+    ctx.drawImage(stickBase, Math.round(o.x - stickBase.width / 2), Math.round(o.y - stickBase.height / 2));
+    var kimg = stickKnob[held ? 1 : 0];
+    ctx.drawImage(kimg, Math.round(o.x + I.stickX * L.stick.r - kimg.width / 2), Math.round(o.y + I.stickY * L.stick.r - kimg.height / 2));
+    var assist = Game.player.assist && Game.state === 'race';
+    var on = I.braking || assist;
     var pimg = pedal[on ? 1 : 0];
     ctx.drawImage(pimg, L.brake.x, L.brake.y + (on ? 2 : 0));
     var onA = I.accel;
     ctx.drawImage(pedalA[onA ? 1 : 0], L.accel.x, L.accel.y + (onA ? 2 : 0));
     ctx.globalAlpha = 1;
+    if (assist && blink(6)) F.text(ctx, 'BRAKE ASSIST', L.brake.x, L.accel.y - 11, { bold: true, color: '#ffe040', outline: '#3a1400' });
     var hint = Game.state === 'countdown';
     if (hint) {
       F.text(ctx, 'BRAKE', L.brake.x + 20, L.brake.y - 9, { color: '#ffffff', outline: '#000000', align: 'center' });
       F.text(ctx, 'ACCEL', L.accel.x + 15, L.accel.y - 9, { color: '#80ff80', outline: '#000000', align: 'center' });
-      F.text(ctx, 'STEER', L.wheel.x, L.wheel.y - 42, { color: '#ffffff', outline: '#000000', align: 'center' });
+      F.text(ctx, 'STEER', L.stick.x, L.stick.y - 40, { color: '#ffffff', outline: '#000000', align: 'center' });
     }
   }
 
@@ -279,13 +307,23 @@
     ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
   }
 
+  // タイトルの難易度ボタン
+  var MODE_BTN = {
+    easy: { label: 'EASY', sub: 'ブレーキアシスト付き', grad: ['#ffffff', '#a0ffa0', '#20c040'], edge: '#60ff70', fill: 'rgba(10,50,20,0.82)' },
+    hard: { label: 'HARD', sub: 'アーケード仕様', grad: ['#ffffff', '#ffb0a0', '#ff3a2a'], edge: '#ff6050', fill: 'rgba(60,10,10,0.82)' }
+  };
+  function modeButtons(W) {
+    var bw = 104, bh = 34, gap = 12, x0 = Math.round(W / 2 - bw - gap / 2), y = 85;
+    return { easy: { x: x0, y: y, w: bw, h: bh }, hard: { x: x0 + bw + gap, y: y, w: bw, h: bh } };
+  }
+
   function drawTitle(ctx, Game) {
-    var W = G.R.W, H = G.R.H, t = Game.stateT;
+    var W = G.R.W, t = Game.stateT;
     // ロゴは拡大しながら登場
     var z = t < 0.6 ? 0.2 + (t / 0.6) * 0.8 : 1 + Math.sin(t * 2) * 0.015;
-    zoomDraw(ctx, logo, W / 2, 50, z);
+    zoomDraw(ctx, logo, W / 2, 44, z);
     if (t > 0.6) {
-      var y = 84;
+      var y = 72;
       var names = G.SEASONS.map(function (s) { return s.name; });
       var tot = 0, gap = 14;
       names.forEach(function (n) { tot += F.width(n, { bold: true }) + gap; });
@@ -297,10 +335,27 @@
         x += gap;
       });
     }
-    if (blink(2)) F.text(ctx, 'TAP TO START', W / 2, 124, { scale: 2, bold: true, grad: YEL, outline: OUTL, align: 'center' });
-    var help = F.renderJP('右のハンドルで操作 / 左のペダルでブレーキ・アクセル', { size: 11, color: '#ffffff', outline: '#101018' });
-    ctx.drawImage(help, Math.round(W / 2 - help.width / 2), 146);
-    F.text(ctx, 'HI-SCORE ' + Game.hiscore, W / 2, 162, { color: '#7ae0ff', outline: '#002040', align: 'center', bold: true });
+    // 難易度ボタン (押すとそのモードでスタート)
+    var btns = modeButtons(W);
+    HUD.modeBtns = btns;
+    ['easy', 'hard'].forEach(function (m) {
+      var b = btns[m], d = MODE_BTN[m], sel = Game.mode === m;
+      ctx.fillStyle = d.fill; ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = sel ? d.edge : '#5a5e6e';
+      ctx.fillRect(b.x, b.y, b.w, 1); ctx.fillRect(b.x, b.y + b.h - 1, b.w, 1); ctx.fillRect(b.x, b.y, 1, b.h); ctx.fillRect(b.x + b.w - 1, b.y, 1, b.h);
+      if (sel) { ctx.fillRect(b.x - 1, b.y - 1, b.w + 2, 1); ctx.fillRect(b.x - 1, b.y + b.h, b.w + 2, 1); ctx.fillRect(b.x - 1, b.y - 1, 1, b.h + 2); ctx.fillRect(b.x + b.w, b.y - 1, 1, b.h + 2); }
+      if (!sel) ctx.globalAlpha = 0.6;
+      F.text(ctx, d.label, b.x + b.w / 2, b.y + 4, { scale: 2, bold: true, grad: d.grad, outline: '#101018', align: 'center' });
+      var sub = F.renderJP(d.sub, { size: 10, color: '#ffffff', outline: '#101018' });
+      ctx.drawImage(sub, Math.round(b.x + b.w / 2 - sub.width / 2), b.y + 21);
+      ctx.globalAlpha = 1;
+      if (sel && blink(2)) F.text(ctx, '>', b.x - 9, b.y + 11, { scale: 2, bold: true, grad: YEL, outline: OUTL });
+    });
+    if (blink(2)) F.text(ctx, 'TAP A MODE TO START', W / 2, 123, { bold: true, grad: YEL, outline: OUTL, align: 'center' });
+    // 操作の説明はスティックの台座 (下から 79px) より上に収める
+    var help = F.renderJP('右のスティックで操作 / 左のペダルでブレーキ・アクセル', { size: W < 360 ? 10 : 11, color: '#ffffff', outline: '#101018' });
+    ctx.drawImage(help, Math.round(W / 2 - help.width / 2), 133);
+    F.text(ctx, 'HI-SCORE ' + (Game.mode === 'easy' ? '(EASY) ' : '(HARD) ') + Game.hiscore, W / 2, 150, { color: '#7ae0ff', outline: '#002040', align: 'center', bold: true });
     // サウンド切替ボタン
     var on = G.Audio ? !G.Audio.muted : false;
     var bx = W - 64, by = 6;
@@ -309,13 +364,19 @@
     HUD.soundBtn = { x: bx, y: by, w: 58, h: 14 };
     F.text(ctx, 'CAR: SMART ROADSTER COUPE', 6, 8, { color: '#ffffff', outline: '#101018' });
   }
+  function hitBox(tap, b, pad) { return b && tap.x >= b.x - pad && tap.x <= b.x + b.w + pad && tap.y >= b.y - pad && tap.y <= b.y + b.h + pad; }
+  // タイトルのタップ: 'sound' (切り替えただけ) / 'start' (スタート)。難易度ボタンならそのモードを選んでスタート
   HUD.titleTap = function (tap) {
-    var b = HUD.soundBtn;
-    if (b && tap.x >= b.x - 6 && tap.x <= b.x + b.w + 6 && tap.y >= b.y - 6 && tap.y <= b.y + b.h + 6) {
+    if (hitBox(tap, HUD.soundBtn, 6)) {
       if (G.Audio) G.Audio.setMuted(!G.Audio.muted);
-      return true;
+      return 'sound';
     }
-    return false;
+    var btns = HUD.modeBtns;
+    if (btns && !tap.key) {
+      if (hitBox(tap, btns.easy, 4)) G.Game.setMode('easy');
+      else if (hitBox(tap, btns.hard, 4)) G.Game.setMode('hard');
+    }
+    return 'start';
   };
 
   function drawGameOver(ctx, Game) {
@@ -346,6 +407,7 @@
     panel(ctx, W / 2 - 120, 18, 240, 168);
     var jp = F.renderJP('おつかれさまでした!', { size: 16, color: '#ffd0e4', outline: '#3a0020' });
     ctx.drawImage(jp, Math.round(W / 2 - jp.width / 2), 26);
+    F.text(ctx, Game.mode === 'easy' ? 'EASY' : 'HARD', W / 2 + 114, 22, { bold: true, color: Game.mode === 'easy' ? '#80ff80' : '#ff7070', align: 'right' });
     var y = 52;
     for (var s = 0; s < 4; s++) {
       var se = G.SEASONS[s];

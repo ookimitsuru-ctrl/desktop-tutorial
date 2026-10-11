@@ -21,6 +21,15 @@
   var STEER_GAIN = 1.65;
   var TIME_PACE = 0.74;             // 制限時間の目安: 最高速の何割で走る想定か
 
+  // ---------- 難易度 ----------
+  //  HARD: アーケードそのまま
+  //  EASY: 他車が半分, ブレーキアシスト (カーブの手前と前の車) を標準装備
+  var MODES = {
+    easy: { traffic: 0.5, assist: true, pace: 0.64, hiKey: 'shiki_hiscore_easy' },   // 時間も少し長め
+    hard: { traffic: 1, assist: false, pace: TIME_PACE, hiKey: 'shiki_hiscore' }
+  };
+  var ASSIST_STEER = 0.6;   // アシストは「スティックを 6 割倒せば曲がれる」速さまで落とす
+
   var Game = G.Game = {
     state: 'boot', stateT: 0, paused: false,
     time: 60, score: 0, hiscore: 0, lapTimes: [], lapStart: 0,
@@ -36,7 +45,20 @@
     skid: 0, rpm: 0, gear: 1, scrape: 0, scrapeT: 0, scrapeObj: null
   };
 
-  try { Game.hiscore = +(localStorage.getItem('shiki_hiscore') || 0); } catch (e) { Game.hiscore = 0; }
+  function mode() { return MODES[Game.mode] || MODES.hard; }
+  function loadHi() {
+    try { Game.hiscore = +(localStorage.getItem(mode().hiKey) || 0); } catch (e) { Game.hiscore = 0; }
+  }
+  Game.setMode = function (m) {
+    if (!MODES[m]) return;
+    Game.mode = m;
+    try { localStorage.setItem('smartrun_mode', m); } catch (e) { /* ignore */ }
+    loadHi();
+  };
+  Game.mode = 'easy';
+  try { var savedMode = localStorage.getItem('smartrun_mode'); if (MODES[savedMode]) Game.mode = savedMode; } catch (e) { /* ignore */ }
+  loadHi();
+  function trafficCount() { return Math.round((G.TRAFFIC_COUNT || 12) * mode().traffic); }
 
   // ---------- 時間設定 ----------
   function seasonSegs(s) {
@@ -45,7 +67,7 @@
     return b - a;
   }
   function seasonTime(s) {
-    var t = seasonSegs(s) / (60 * TIME_PACE);
+    var t = seasonSegs(s) / (60 * mode().pace);
     return Math.ceil(t / 5) * 5 + (s === 0 ? 5 : 0);
   }
   Game.seasonTime = seasonTime;
@@ -134,6 +156,34 @@
     if (G.FX) G.FX.burst('smoke', R.W / 2, R.H - 12, 8);
   }
 
+  // ブレーキアシストが要るか: 先のカーブを「スティックを少し倒せば曲がれる」速さで迎えられるか,
+  // 同じ車線の前の車にぶつからないかを見る
+  var ASSIST_DECEL = -BRAKE * 0.8;
+  function needAssist(playerSeg) {
+    var v = P.speed;
+    if (v < MAX_SPEED * 0.3) return false;
+    var off = (P.z + R.playerZ) - playerSeg.index * SEG;
+    for (var n = 1; n <= 70; n++) {
+      var sg = T.segments[playerSeg.index + n];
+      if (!sg) break;
+      var c = Math.abs(sg.curve);
+      if (c < 1) continue;
+      var vs = MAX_SPEED * Math.min(1, ASSIST_STEER * STEER_GAIN / (CENTRIFUGAL * c));
+      var d = n * SEG - off;
+      if (v * v > vs * vs + 2 * ASSIST_DECEL * d) return true;
+    }
+    for (n = 0; n <= 14; n++) {
+      var sc = T.segments[playerSeg.index + n];
+      if (!sc) break;
+      for (var k = 0; k < sc.cars.length; k++) {
+        var car = sc.cars[k], rel = v - car.speed, gap = car.z - (P.z + R.playerZ);
+        if (rel <= 0 || gap < 0 || !overlap(P.x, PLAYER_W * 1.15, car.x, car.w, 1)) continue;
+        if (gap / rel < 0.9) return true;
+      }
+    }
+    return false;
+  }
+
   function updatePlayer(dt, controlled) {
     var playerSeg = T.findSegment(P.z + R.playerZ);
     var speedPct = P.speed / MAX_SPEED;
@@ -141,6 +191,10 @@
     var steer = controlled ? I.steer : 0;
     var braking = controlled && I.braking;
     var throttle = controlled && I.accel;
+
+    // ブレーキアシスト (EASY): 曲がりきれない速さでカーブに近づいた時と, 前の車に追突しそうな時
+    P.assist = controlled && !Game.demo && mode().assist && !P.crash && needAssist(playerSeg);
+    if (P.assist) { braking = true; throttle = false; }
 
     if (Game.demo) {
       // デモ走行の自動操縦
@@ -275,7 +329,7 @@
     Game.time = seasonTime(0);
     Game.nextCheckpoint = 0;
     resetPlayerAt(T.startIndex - 14);
-    initCars(G.TRAFFIC_COUNT || 12, false);
+    initCars(trafficCount(), false);
     setState('countdown');
     if (G.Music) G.Music.play(null);
     if (G.Audio) G.Audio.engineOn(true);
@@ -303,7 +357,7 @@
     Game.time = seasonTime(s);
     Game.score = 0;
     Game.lapStart = Game.raceT;
-    initCars(G.TRAFFIC_COUNT || 12, false);
+    initCars(trafficCount(), false);
     setState('countdown');
     if (G.Music) G.Music.play(null);
     if (G.Audio) G.Audio.engineOn(true);
@@ -353,10 +407,12 @@
       updateCars(dt);
       // デモ走行がシーズン終盤まで行ったら最初に戻す
       if (P.z > (Game.demoStart + 2600) * SEG) { resetPlayerAt(Game.demoStart); P.speed = MAX_SPEED * 0.7; }
+      // キーボードの ←→ で難易度を選ぶ
+      if (I.keyL && Game.mode !== 'easy') Game.setMode('easy');
+      if (I.keyR && Game.mode !== 'hard') Game.setMode('hard');
       var tap = I.consumeTap();
       if (tap && Game.stateT > 0.4) {
-        if (G.HUD && G.HUD.titleTap && G.HUD.titleTap(tap)) { /* ボタン処理済み */ }
-        else startRace();
+        if (!G.HUD || !G.HUD.titleTap || G.HUD.titleTap(tap) === 'start') startRace();
       }
     } else if (st === 'countdown') {
       updatePlayer(dt, false);
@@ -420,7 +476,7 @@
   function saveHi() {
     if (Game.score > Game.hiscore) {
       Game.hiscore = Math.floor(Game.score);
-      try { localStorage.setItem('shiki_hiscore', String(Game.hiscore)); } catch (e) { /* ignore */ }
+      try { localStorage.setItem(mode().hiKey, String(Game.hiscore)); } catch (e) { /* ignore */ }
     }
   }
 

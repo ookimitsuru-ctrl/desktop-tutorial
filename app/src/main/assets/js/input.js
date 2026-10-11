@@ -1,28 +1,29 @@
 'use strict';
 // ============================================================
-//  input.js  タッチ操作: 右に小型ハンドル / 左にブレーキとアクセル
+//  input.js  タッチ操作: 右にアナログスティック / 左にブレーキとアクセル
 //            (アクセルは押すと加速, 離すとエンジンブレーキで軽く減速)
 //            キーボード: ←→ / A D でハンドル, ↑ / W でアクセル, ↓ / S / Space でブレーキ
 // ============================================================
 (function () {
   var I = G.Input = {
     steer: 0,          // -1..1
-    wheel: 0,          // ハンドル角 (deg)
-    MAX_DEG: 110,      // フルロック角
+    stickX: 0, stickY: 0,   // スティックの倒れ具合 (-1..1, 見た目用に縦も持つ)
+    origin: null,      // スティックの中心 (触っている間)
     brake: false, accel: false,
     taps: [],          // メニュー用タップ
     steerId: null,
     pedals: {},        // 左側を押している指: pointerId -> x
-    lastAng: 0, holdAng: 0,
-    keyL: false, keyR: false, keyB: false, keyA: false,
+    keyL: false, keyR: false, keyB: false, keyA: false, keySteer: 0,
+    direct: null,      // 自動操縦 (デモ映像など) がハンドル量を直接入れる時
     active: false      // タッチ操作中か (ガイド表示用)
   };
+  var DEAD = 0.08;     // 中央の遊び
 
   // 画面上の配置 (内部解像度座標) — hud.js と共有
   I.layout = function () {
     var W = G.R.W, H = G.R.H;
     return {
-      wheel: { x: W - 46, y: H - 48, r: 30 },
+      stick: { x: W - 48, y: H - 50, r: 26 },       // 右: スティック (r = 倒しきる距離)
       brake: { x: 8, y: H - 58, w: 40, h: 50 },     // 左: ブレーキ (幅広)
       accel: { x: 54, y: H - 70, w: 30, h: 62 },    // その右: アクセル (縦長)
       pedalSplitX: 51,                               // これより左はブレーキ, 右はアクセル
@@ -38,9 +39,12 @@
       y: (e.clientY - r.top) / r.height * G.R.H
     };
   }
-  function angOf(p) {
-    var L = I.layout();
-    return Math.atan2(p.y - L.wheel.y, p.x - L.wheel.x) * 180 / Math.PI;
+
+  // 指の位置からスティックの倒れ具合を決める
+  function setStick(p) {
+    var r = I.layout().stick.r, dx = p.x - I.origin.x, dy = p.y - I.origin.y, d = Math.hypot(dx, dy);
+    if (d > r) { dx *= r / d; dy *= r / d; }
+    I.stickX = dx / r; I.stickY = dy / r;
   }
 
   function down(e) {
@@ -50,8 +54,10 @@
     var L = I.layout();
     if (p.x >= L.steerZoneX && I.steerId === null) {
       I.steerId = e.pointerId;
-      I.lastAng = angOf(p);
-      I.lastPos = p;
+      // スティックの上を押したらそこが中心。右半分の別の場所なら, 押した所に出てくる
+      var s = L.stick, near = Math.hypot(p.x - s.x, p.y - s.y) <= s.r * 1.3;
+      I.origin = near ? { x: s.x, y: s.y } : { x: p.x, y: p.y };
+      setStick(p);
       I.active = true;
     } else if (p.x <= L.pedalZoneX) {
       I.pedals[e.pointerId] = p.x;
@@ -75,28 +81,15 @@
       return;
     }
     if (e.pointerId !== I.steerId) return;
-    var p = toLocal(e), L = I.layout();
-    var dist = Math.hypot(p.x - L.wheel.x, p.y - L.wheel.y);
-    if (dist > 7) {
-      var a = angOf(p), d = a - I.lastAng;
-      while (d > 180) d -= 360;
-      while (d < -180) d += 360;
-      I.wheel += d;
-      I.lastAng = a;
-    } else {
-      // 中心付近は横移動で回す
-      I.wheel += (p.x - I.lastPos.x) * 4;
-      I.lastAng = angOf(p);
-    }
-    I.lastPos = p;
-    I.wheel = G.clamp(I.wheel, -I.MAX_DEG, I.MAX_DEG);
+    setStick(toLocal(e));
     e.preventDefault();
   }
+  function releaseStick() { I.steerId = null; I.origin = null; I.stickX = 0; I.stickY = 0; }
   function up(e) {
-    if (e.pointerId === I.steerId) I.steerId = null;
+    if (e.pointerId === I.steerId) releaseStick();
     if (I.pedals[e.pointerId] !== undefined) { delete I.pedals[e.pointerId]; updatePedals(); }
   }
-  I.releaseAll = function () { I.steerId = null; I.pedals = {}; I.brake = false; I.accelTouch = false; };
+  I.releaseAll = function () { releaseStick(); I.pedals = {}; I.brake = false; I.accelTouch = false; };
 
   function key(e, on) {
     var k = e.key;
@@ -106,6 +99,7 @@
     else if (k === 'ArrowUp' || k === 'w' || k === 'W') I.keyA = on;
     else return;
     if (on && G.Audio) G.Audio.unlock();
+    if (on) I.lastKey = k;
     e.preventDefault();
   }
 
@@ -125,22 +119,27 @@
   };
 
   I.update = function (dt) {
-    // キーボードはハンドルを目標角へ回す
-    if (I.keyL || I.keyR) {
-      var target = (I.keyR ? I.MAX_DEG : 0) - (I.keyL ? I.MAX_DEG : 0);
-      var sp = 420 * dt;
-      I.wheel += G.clamp(target - I.wheel, -sp, sp);
-    } else if (I.steerId === null) {
-      // 手を離すとセンターへ戻る
-      var back = 520 * dt;
-      I.wheel = Math.abs(I.wheel) <= back ? 0 : I.wheel - G.sign(I.wheel) * back;
+    var s;
+    if (I.direct !== null) {
+      s = I.direct;
+      I.stickX = s;
+    } else if (I.keyL || I.keyR) {
+      // キーボードは押している間だけ, なめらかに倒していく
+      var target = (I.keyR ? 1 : 0) - (I.keyL ? 1 : 0);
+      I.keySteer += G.clamp(target - I.keySteer, -4 * dt, 4 * dt);
+      s = I.keySteer;
+    } else {
+      I.keySteer = 0;
+      // スティック: 中央の遊びを除いて, 小さく倒した時は細かく効くようにする
+      var a = Math.abs(I.stickX);
+      var f = a <= DEAD ? 0 : (a - DEAD) / (1 - DEAD);
+      s = G.sign(I.stickX) * (0.45 * f + 0.55 * f * f);
     }
-    var s = I.wheel / I.MAX_DEG;
-    I.steer = G.sign(s) * Math.min(1, Math.abs(s) * 1.05);
+    I.steer = G.clamp(s, -1, 1);
     I.braking = I.brake || I.keyB;
     I.accel = (I.accelTouch || I.keyA) && !I.braking;
   };
   I.consumeTap = function () { return I.taps.length ? I.taps.shift() : null; };
   I.clearTaps = function () { I.taps.length = 0; };
-  I.reset = function () { I.wheel = 0; I.steer = 0; };
+  I.reset = function () { I.stickX = 0; I.stickY = 0; I.steer = 0; I.keySteer = 0; };
 })();
