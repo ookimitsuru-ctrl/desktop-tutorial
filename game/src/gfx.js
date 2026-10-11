@@ -29,9 +29,15 @@ void main(){ vUv=aPos*0.5+0.5; gl_Position=vec4(aPos,0.0,1.0); }`;
 
 const FS_TRAIL = `
 precision mediump float; varying vec2 vUv;
-uniform sampler2D uWorld, uPrev; uniform float uDecay;
+uniform sampler2D uWorld, uPrev, uObj, uO1, uO2; uniform float uDecay, uObjK, uBleed;
 void main(){
   vec3 w=texture2D(uWorld,vUv).rgb;
+  // 飛来物 (敵・岩・敵弾) は別レイヤー: 芯を少し弱め、ぼかした光をにじませて足す (色はわずかにずらす)
+  vec2 d=(vUv-0.5)*0.004;
+  vec3 o=texture2D(uObj,vUv).rgb*0.82;
+  vec3 h1=vec3(texture2D(uO1,vUv+d).r, texture2D(uO1,vUv).g, texture2D(uO1,vUv-d).b);
+  vec3 h2=vec3(texture2D(uO2,vUv+d*2.0).r, texture2D(uO2,vUv).g, texture2D(uO2,vUv-d*2.0).b);
+  w+=(o+(h1*0.7+h2*1.0)*uBleed)*uObjK;
   vec3 p=texture2D(uPrev,vUv).rgb*uDecay-vec3(1.6/255.0);
   gl_FragColor=vec4(max(w,max(p,vec3(0.0))),1.0);
 }`;
@@ -185,7 +191,7 @@ export class Gfx {
     // ポスト設定
     this.fx = {
       flash: [0, 0, 0, 0], aber: 0.0016, glitch: 0, vig: 0.55, bloom: 1.0, tint: [1, 1, 1],
-      bgA: [0, 0, 0], bgB: [0, 0, 0], time: 0, decay: 0.8, dim: 1,
+      bgA: [0, 0, 0], bgB: [0, 0, 0], time: 0, decay: 0.8, dim: 1, bleed: 0.85,
     };
     this.tmpP = [0, 0, 0];
     this.lineCount = 0;
@@ -231,6 +237,7 @@ export class Gfx {
     this.tanH = Math.tan(this.cam.fov / 2);
     const W = this.W, H = this.H;
     this._target('world', W, H);
+    this._target('obj', W, H);   // 飛来物 (にじませるレイヤー)
     this._target('hud', W, H);
     this._target('trail0', W, H);
     this._target('trail1', W, H);
@@ -238,6 +245,8 @@ export class Gfx {
     this._target('b0a', hw, hh); this._target('b0b', hw, hh);
     this._target('b1a', hw >> 1, hh >> 1); this._target('b1b', hw >> 1, hh >> 1);
     this._target('b2a', hw >> 2, hh >> 2); this._target('b2b', hw >> 2, hh >> 2);
+    this._target('o1a', hw, hh); this._target('o1b', hw, hh);
+    this._target('o2a', hw >> 1, hh >> 1); this._target('o2b', hw >> 1, hh >> 1);
   }
 
   _bind(t) {
@@ -254,6 +263,22 @@ export class Gfx {
     gl.disable(gl.BLEND);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    this.curTarget = 'world';
+    this.objUsed = false;
+  }
+  // 飛来物を描く区間 (別レイヤーに描き、present でにじみを付けて世界に重ねる)
+  beginObjects() {
+    this.flush();
+    const gl = this.gl;
+    this._bind(this.targets.obj);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    this.curTarget = 'obj';
+    this.objUsed = true;
+  }
+  endObjects() {
+    this.flush();
+    this._bind(this.targets.world);
     this.curTarget = 'world';
   }
   beginHud() {
@@ -474,13 +499,21 @@ export class Gfx {
     this.flush();
     const gl = this.gl, T = this.targets, fx = this.fx;
     gl.disable(gl.BLEND);
-    // 1) トレイル更新
+    // 0) 飛来物のにじみ (1/2 と 1/4 解像度でぼかす)
+    if (this.objUsed) {
+      this._down(T.obj, T.o1a); this._blur(T.o1a, T.o1b, 1.6);
+      this._down(T.o1a, T.o2a); this._blur(T.o2a, T.o2b, 1.8);
+    }
+    // 1) トレイル更新 (世界 + 飛来物 + にじみ)
     const prev = T['trail' + this.trailIdx], next = T['trail' + (1 - this.trailIdx)];
     this._bind(next);
     this._fs(this.prgTrail);
-    this._tex(0, T.world); this._tex(1, prev);
-    gl.uniform1i(this.prgTrail.u.uWorld, 0); gl.uniform1i(this.prgTrail.u.uPrev, 1);
-    gl.uniform1f(this.prgTrail.u.uDecay, Math.pow(fx.decay, dt * 60)); // decay: 60fps換算の1フレーム減衰率
+    const tu = this.prgTrail.u;
+    this._tex(0, T.world); this._tex(1, prev); this._tex(2, T.obj); this._tex(3, T.o1a); this._tex(4, T.o2a);
+    gl.uniform1i(tu.uWorld, 0); gl.uniform1i(tu.uPrev, 1); gl.uniform1i(tu.uObj, 2); gl.uniform1i(tu.uO1, 3); gl.uniform1i(tu.uO2, 4);
+    gl.uniform1f(tu.uObjK, this.objUsed ? 1 : 0);
+    gl.uniform1f(tu.uBleed, fx.bleed);
+    gl.uniform1f(tu.uDecay, Math.pow(fx.decay, dt * 60)); // decay: 60fps換算の1フレーム減衰率
     this._draw();
     this.trailIdx = 1 - this.trailIdx;
     // 2) ブルーム

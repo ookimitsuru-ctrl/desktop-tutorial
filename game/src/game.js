@@ -510,7 +510,7 @@ function render(dt) {
   if (st === 'title') drawTitleWorld(g, t);
   if (st === 'ending') { drawCineWorld(g, t); drawFx(g, dt); }
   else if (st !== 'title') {
-    drawEnemies(g, t);
+    g.beginObjects(); drawEnemies(g, t); g.endObjects();   // 飛来物はにじむレイヤーへ
     drawPlayerWorld(g, t);
     drawFx(g, dt);
   }
