@@ -1,6 +1,6 @@
 'use strict';
 // ============================================================
-//  particles.js  天候 (落ち葉・雪・桜の花びら・花吹雪) と 車の煙/砂ぼこり
+//  particles.js  天候 (落ち葉・雪・桜の花びら・花吹雪) と 車の煙/砂ぼこり/火花
 // ============================================================
 (function () {
   var FX = G.FX = { weather: [], puffs: [], storm: 0, stormTarget: 0, wind: 0, t: 0 };
@@ -100,7 +100,7 @@
 
     // 煙 / 砂ぼこり
     if (Game.carScreen && P.speed > 300) {
-      var cs = Game.carScreen, tw = 28 * (G.CAR_WIDE || 1);
+      var cs = Game.carScreen, tw = G.CAR_TIRE_X;
       if (P.skid > 0.3 && Math.random() < P.skid * 0.9) {
         FX.puffs.push({ type: 'smoke', x: cs.x + (Math.random() < 0.5 ? -tw : tw), y: cs.y - 4, vx: (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 20, life: 0, max: 0.5 + Math.random() * 0.3, r: 2 + Math.random() * 2 });
       }
@@ -109,9 +109,19 @@
         FX.puffs.push({ type: 'dust', col: G.css(col[0][3]), x: cs.x + (Math.random() * 2 - 1) * (tw + 2), y: cs.y - 3, vx: (Math.random() - 0.5) * 60, vy: -20 - Math.random() * 30, life: 0, max: 0.4 + Math.random() * 0.3, r: 2 + Math.random() * 3 });
       }
     }
+    // 木や岩を擦っている側から火花
+    if (Game.carScreen && P.scrape) {
+      var cs2 = Game.carScreen, side = -P.scrape, ns = 2 + Math.floor(Math.random() * (2 + sp * 5));
+      for (var s2 = 0; s2 < ns; s2++) {
+        FX.puffs.push({ type: 'spark', x: cs2.x + side * (G.CAR_BODY_W / 2 - 2 - Math.random() * 4), y: cs2.y - 4 - Math.random() * 18,
+          vx: side * (30 + Math.random() * 130), vy: -40 - Math.random() * 110, life: 0, max: 0.2 + Math.random() * 0.3, r: 0 });
+      }
+    }
     for (i = FX.puffs.length - 1; i >= 0; i--) {
       var f = FX.puffs[i];
-      f.life += dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 30 * dt; f.r += dt * 8;
+      f.px = f.x; f.py = f.y;
+      f.life += dt; f.x += f.vx * dt; f.y += f.vy * dt;
+      if (f.type === 'spark') { f.vy += 420 * dt; } else { f.vy += 30 * dt; f.r += dt * 8; }
       if (f.life > f.max) FX.puffs.splice(i, 1);
     }
     if (FX.puffs.length > 120) FX.puffs.splice(0, FX.puffs.length - 120);
@@ -131,8 +141,25 @@
     }
   };
 
+  // 火花 (車より手前): 前のフレームの位置から線を引いて尾をつける
+  function drawSparks(ctx) {
+    for (var i = 0; i < FX.puffs.length; i++) {
+      var f = FX.puffs[i];
+      if (f.type !== 'spark' || f.px === undefined) continue;
+      var a = 1 - f.life / f.max;
+      // 尾は速度の向きに 3 フレーム分
+      var tx = f.x - f.vx * 0.045, ty = f.y - f.vy * 0.045;
+      ctx.fillStyle = a > 0.5 ? '#ffb020' : '#e05010';
+      var n = Math.max(1, Math.round(Math.max(Math.abs(f.x - tx), Math.abs(f.y - ty))));
+      for (var k = 0; k < n; k++) ctx.fillRect(Math.round(tx + (f.x - tx) * k / n), Math.round(ty + (f.y - ty) * k / n), 1, 1);
+      ctx.fillStyle = a > 0.4 ? '#fffbe0' : '#ffd040';
+      ctx.fillRect(Math.round(f.x), Math.round(f.y), a > 0.6 ? 2 : 1, a > 0.6 ? 2 : 1);
+    }
+  }
+
   // 天候 (最前面)
   FX.drawFront = function (ctx, Game, P, sa, nearOnly) {
+    if (!nearOnly) drawSparks(ctx);
     var W = G.R.W, H = G.R.H, cx = W / 2, cy = H * 0.42, fs = W * 0.5;
     var w = FX.weather, t = FX.t;
     for (var i = 0; i < w.length; i++) {

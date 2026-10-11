@@ -7,6 +7,7 @@
 (function () {
   var PV = window.PV = {};
   var FPS = 60, BAR = 60 / 148 * 4, OY = 8;   // 上 8 行は切り落として 384x216 (x5 = 1920x1080)
+  var SCRAPE_STEER = 0.3;   // 擦るカット: 並木に当たった後もこの強さで右に押しつける
   var F, R, T, Game, P, I;
   var events = PV.events = [];   // 音のためのイベント {t, type}
   var log = PV.log = [];         // 毎フレーム [t, rpm, 速度割合, skid, throttle, shot]
@@ -150,7 +151,7 @@
   }
 
   // ---------- 撮影台本 ----------
-  var crashT = null, goalT = null, cpT = null;
+  var scrapeT = null, goalT = null, cpT = null;
   var SHOTS = [
     { // 0: つかみ — 海沿いを全開で
       t0: 0, t1: b(2),
@@ -224,14 +225,22 @@
         callout('左手でアクセル・ブレーキ', 98, L.accel.y + OY - 24, 64, L.accel.y + OY + 4, lt - 0.45);
       }
     },
-    { // 8: ぶつかると……ぶっ飛ぶ!!
+    { // 8: 木にぶつかっても……ガガガッ!! 擦って減速するだけ
       t0: b(13), t1: b(14),
       setup: function () { place(2596, { x: 0.55, cars: 0 }); PV.override = null; },
-      before: function (lt) { PV.override = lt > 0.12 ? { steer: 1, accel: true, brake: false } : { steer: 0.3 }; },
+      before: function (lt) {
+        // 右の並木に寄せて, 当たったら軽く押しつけたまま擦りつづける
+        if (lt < 0.12) PV.override = { steer: 0.3 };
+        else PV.override = { steer: scrapeT === null ? 1 : SCRAPE_STEER, accel: true, brake: false };
+      },
       over: function (lt) {
         var W = R.W;
-        if (crashT === null) slam(jp('ぶつかると……', 18, {}), W / 2, OY + 60, lt);
-        else slam(jp('ぶっ飛ぶ!!', 30, { grad: ['#ffffff', '#ff6040', '#c00000'] }), W / 2, OY + 60, PV.t - crashT);
+        if (scrapeT === null) slam(jp('木にぶつかっても……', 18, {}), W / 2, OY + 60, lt);
+        else {
+          var g = PV.t - scrapeT;
+          slam(jp('ガガガッ!!', 30, { grad: ['#ffffff', '#ffc040', '#e04010'] }), W / 2, OY + 58, g);
+          if (g > 0.3) slam(jp('擦って減速するだけ。走りつづけろ！', 14, {}), W / 2, OY + 94, g - 0.3);
+        }
         watermark();
       }
     },
@@ -285,13 +294,14 @@
     var lt = t - shot.t0;
     if (shot.before) shot.before(lt);
     // 1 フレーム進める
-    var prevCp = Game.nextCheckpoint, prevState = Game.state, hadCrash = !!P.crash;
+    var prevCp = Game.nextCheckpoint, prevState = Game.state, hadCrash = !!P.crash, prevObj = P.scrapeObj;
     step(PV.override || undefined);
     if (Game.nextCheckpoint !== prevCp && cur === 3) { cpT = t; events.push({ t: t, type: 'checkpoint' }); }
-    if (!hadCrash && P.crash) { if (cur === 8) crashT = t; events.push({ t: t, type: 'crash', kind: P.crash.type, x: +P.x.toFixed(2), shot: cur, seg: Math.floor((P.z + R.playerZ) / T.SEG) }); }
+    if (!hadCrash && P.crash) events.push({ t: t, type: 'crash', kind: P.crash.type, x: +P.x.toFixed(2), shot: cur, seg: Math.floor((P.z + R.playerZ) / T.SEG) });
+    if (P.scrapeObj && P.scrapeObj !== prevObj) { if (cur === 8 && scrapeT === null) scrapeT = t; events.push({ t: t, type: 'scrape', shot: cur }); }
     if (prevState !== 'goal' && Game.state === 'goal') { goalT = t; events.push({ t: t, type: 'goal' }); }
     if (cur === 1 && prevState === 'countdown' && Game.state === 'race') events.push({ t: t, type: 'go' });
-    log.push([t, P.rpm, P.speed / G.MAX_SPEED, P.skid, (P.throttle ? 1 : 0), cur, P.offroad ? 1 : 0]);
+    log.push([t, P.rpm, P.speed / G.MAX_SPEED, P.skid, (P.throttle ? 1 : 0), cur, P.offroad ? 1 : 0, P.scrape ? 1 : 0]);
     Game.render();
     shot.over(lt);
     if (lt < 0.07 && cur > 0 && cur !== 10) flash(lt);
@@ -353,8 +363,10 @@
       if (e.type === 'checkpoint') {
         [72, 76, 79, 84, 88, 91].forEach(function (m, i) { fm('brass', m, e.t + i * 0.07, 0.22, 0.42); });
         fm('bass', 48, e.t, 0.5, 0.5); fm('bass', 60, e.t + 0.42, 0.3, 0.42);
-      } else if (e.type === 'crash') {
-        noise(e.t, 0.9, 0.9, 'lowpass', 3000, 120); tone('sine', 120, e.t, 0.5, 0.8, 35); noise(e.t + 0.25, 0.4, 0.4, 'bandpass', 2500, 800);
+      } else if (e.type === 'crash') {   // 追突してスピン
+        noise(e.t, 0.4, 0.7, 'lowpass', 2500, 200); tone('sine', 140, e.t, 0.3, 0.6, 50);
+      } else if (e.type === 'scrape') {   // 木に当たった瞬間 (ゲームの効果音と同じ)
+        noise(e.t, 0.3, 0.7, 'bandpass', 2400, 500); noise(e.t, 0.12, 0.55, 'lowpass', 1500); tone('square', 92, e.t, 0.16, 0.28, 46);
       } else if (e.type === 'goal') {
         var seq = [[72, 0, 0.1], [72, 0.12, 0.1], [72, 0.24, 0.12], [77, 0.4, 0.26], [81, 0.7, 0.26], [84, 1.0, 0.18], [81, 1.2, 0.18], [84, 1.4, 1.2]];
         seq.forEach(function (n) { fm('brass', n[0], e.t + n[1], n[2], 0.36); fm('brass', n[0] - 5, e.t + n[1], n[2], 0.16); });
@@ -383,10 +395,21 @@
       return g;
     }
     var skG = noiseChain('bandpass', 1100, 3), wdG = noiseChain('bandpass', 700, 0.6), rbG = noiseChain('lowpass', 180, 1);
-    [o1, o2, lfo, tb].forEach(function (o) { o.start(0); });
+    // 擦る音 「ガガガ」 (ゲームと同じ組み方)
+    var scS = nsrc(), scBp = oc.createBiquadFilter(); scBp.type = 'bandpass'; scBp.frequency.value = 1300; scBp.Q.value = 0.9;
+    var scGr = oc.createOscillator(); scGr.type = 'sawtooth';
+    var scLp = oc.createBiquadFilter(); scLp.type = 'lowpass'; scLp.frequency.value = 420;
+    var scGrG = oc.createGain(); scGrG.gain.value = 0.55;
+    var scAM = oc.createGain(); scAM.gain.value = 0.5;
+    var scLfo = oc.createOscillator(); scLfo.type = 'square';
+    var scLfoG = oc.createGain(); scLfoG.gain.value = 0.5; scLfo.connect(scLfoG); scLfoG.connect(scAM.gain);
+    var scG = oc.createGain(); scG.gain.value = 0;
+    scS.connect(scBp); scBp.connect(scAM); scGr.connect(scLp); scLp.connect(scGrG); scGrG.connect(scAM); scAM.connect(scG); scG.connect(master);
+    scS.start(0);
+    [o1, o2, lfo, tb, scGr, scLfo].forEach(function (o) { o.start(0); });
     var revBeat = BAR / 4;
     log.forEach(function (L) {
-      var t = L[0], rpm = L[1], sp = L[2], skid = L[3], thr = L[4], sh = L[5], off = L[6];
+      var t = L[0], rpm = L[1], sp = L[2], skid = L[3], thr = L[4], sh = L[5], off = L[6], scr = L[7];
       if (sh === 1 && t < b(2) + 3 * revBeat) {   // スタート前の空ぶかし (拍ごと)
         var lt = (t - b(2)) % revBeat;
         rpm = 0.3 + 0.62 * Math.exp(-lt / 0.14); thr = 1;
@@ -402,6 +425,8 @@
       skG.gain.setValueAtTime(sh === 10 ? 0 : skid * 0.08, t);
       wdG.gain.setValueAtTime(sh === 10 ? 0 : sp * sp * 0.04, t);
       rbG.gain.setValueAtTime(off && sp > 0.05 && sh !== 10 ? 0.3 : 0, t);
+      scG.gain.setValueAtTime(scr ? 0.34 + sp * 0.4 : 0, t);
+      scLfo.frequency.setValueAtTime(15 + sp * 20, t); scGr.frequency.setValueAtTime(48 + sp * 40, t);
     });
 
     return oc.startRendering().then(function (buf) {

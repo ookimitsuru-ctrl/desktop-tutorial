@@ -14,6 +14,9 @@
   var ENGINE_BRAKE = -MAX_SPEED / 9;   // アクセルを離した時の軽い減速
   var OFFROAD_DECEL = -MAX_SPEED / 1.5;
   var OFFROAD_LIMIT = MAX_SPEED / 3.2;
+  var SCRAPE_DECEL = -MAX_SPEED * 0.9;   // 木や岩を擦っている間の減速
+  var SCRAPE_MIN = MAX_SPEED * 0.18;     // 擦っても これより下までは落とさない
+  var SCRAPE_HOLD = 0.2;                 // 1 回当たると この秒数は擦り続ける
   var CENTRIFUGAL = 0.3;
   var STEER_GAIN = 1.65;
   var TIME_PACE = 0.74;             // 制限時間の目安: 最高速の何割で走る想定か
@@ -30,7 +33,7 @@
   var P = Game.player = {
     x: 0, z: 0, speed: 0, y: 0, turn: 0, turnF: 0,
     crash: null, offroad: false, bounce: 0, wheelT: 0, braking: false,
-    skid: 0, rpm: 0, gear: 1
+    skid: 0, rpm: 0, gear: 1, scrape: 0, scrapeT: 0, scrapeObj: null
   };
 
   try { Game.hiscore = +(localStorage.getItem('shiki_hiscore') || 0); } catch (e) { Game.hiscore = 0; }
@@ -56,7 +59,7 @@
 
   function resetPlayerAt(segIndex) {
     P.z = segIndex * SEG - R.playerZ;
-    P.x = 0; P.speed = 0; P.crash = null; P.turnF = 0; P.skid = 0;
+    P.x = 0; P.speed = 0; P.crash = null; P.turnF = 0; P.skid = 0; P.scrape = 0; P.scrapeT = 0; P.scrapeObj = null;
     I.reset();
   }
 
@@ -120,14 +123,15 @@
     var half = (pct || 1) / 2;
     return !((x1 + w1 * half) < (x2 - w2 * half) || (x1 - w1 * half) > (x2 + w2 * half));
   }
-  var PLAYER_W = 84 * (G.CAR_WIDE || 1) * R.UNIT / R.ROAD_W;   // 当たり判定は見た目の車幅に合わせる
+  var PLAYER_W = G.CAR_BODY_W * R.UNIT / R.ROAD_W;   // 当たり判定は見た目の車幅に合わせる
 
+  // 他車に追突した時のスピン
   function crash(type) {
     if (P.crash) return;
-    P.crash = { type: type, t: 0, dur: type === 'flip' ? 2.3 : 1.3, dir: P.x > 0 ? -1 : 1, x0: P.x };
-    Game.shake = type === 'flip' ? 0.6 : 0.35;
-    if (G.Audio) G.Audio.sfx(type === 'flip' ? 'crash' : 'hit');
-    if (G.FX) G.FX.burst('smoke', R.W / 2, R.H - 12, type === 'flip' ? 14 : 8);
+    P.crash = { type: type, t: 0, dur: 1.3, dir: P.x > 0 ? -1 : 1, x0: P.x };
+    Game.shake = 0.35;
+    if (G.Audio) G.Audio.sfx('hit');
+    if (G.FX) G.FX.burst('smoke', R.W / 2, R.H - 12, 8);
   }
 
   function updatePlayer(dt, controlled) {
@@ -150,13 +154,9 @@
     if (P.crash) {
       var cr = P.crash;
       cr.t += dt;
-      if (cr.type === 'flip') P.speed *= Math.exp(-dt * 7);
-      else P.speed = Math.max(0, P.speed - MAX_SPEED * 1.1 * dt);
-      if (cr.type === 'spin') P.x += cr.dir * dt * 0.4 * (1 - cr.t / cr.dur);
-      if (cr.t >= cr.dur) {
-        if (cr.type === 'flip') P.x = G.clamp(P.x, -0.6, 0.6);
-        P.crash = null;
-      }
+      P.speed = Math.max(0, P.speed - MAX_SPEED * 1.1 * dt);
+      P.x += cr.dir * dt * 0.4 * (1 - cr.t / cr.dur);
+      if (cr.t >= cr.dur) P.crash = null;
       steer = 0; braking = false; throttle = false;
     } else {
       P.x += steer * dx * STEER_GAIN;
@@ -179,8 +179,9 @@
     P.braking = braking && P.speed > 1;
     P.throttle = throttle || (Game.state === 'countdown' && I.accel);
 
-    // 路肩の障害物と衝突
-    if (!P.crash && Math.abs(P.x) > 1.0) {
+    // 路肩の障害物 (木・岩・看板): 壁のように通り抜けられず, ガガガッと擦って減速する
+    var scrape = 0, hitObj = null;
+    if (Math.abs(P.x) > 1.0) {
       for (var n = 0; n < 2; n++) {
         var sg = T.segments[playerSeg.index + n];
         if (!sg) break;
@@ -188,14 +189,32 @@
           var sp = sg.sprites[k], def = G.SPR[sp.key];
           if (!def || !def.hit) continue;
           var sw = def.img.width * R.UNIT * def.zoom * (sp.zoom || 1) / R.ROAD_W;
-          var cxs = sp.offset + (sp.ox || 0) * sw;
-          if (overlap(P.x, PLAYER_W, cxs, sw * def.hit, 1)) {
-            if (P.speed > MAX_SPEED * 0.3) crash('flip');
-            else { P.speed = 0; P.x += (P.x > cxs ? 1 : -1) * 0.05; }
-            break;
+          var cxs = sp.offset + (sp.ox || 0) * sw, ow = sw * def.hit;
+          if (overlap(P.x, PLAYER_W, cxs, ow, 1)) {
+            // 車の中心がある側へ押し出して, 横に接したところで止める (大きな物は数フレームかけて滑り出る)
+            scrape = P.x > cxs ? 1 : -1;
+            var edge = cxs + scrape * ((PLAYER_W + ow) / 2 + 0.004);
+            P.x += G.clamp(edge - P.x, -4 * dt, 4 * dt);
+            hitObj = sp;
           }
         }
       }
+    }
+    if (scrape) {
+      if (hitObj !== P.scrapeObj) {   // 新しい木や岩に当たった瞬間
+        if (G.Audio) G.Audio.sfx('scrape');
+        Game.shake = Math.max(Game.shake, 0.22);
+        P.scrapeObj = hitObj;
+      }
+      P.scrape = scrape;
+      P.scrapeT = SCRAPE_HOLD;
+    } else if (P.scrapeT > 0) {
+      P.scrapeT -= dt;
+      if (P.scrapeT <= 0) { P.scrape = 0; P.scrapeObj = null; }
+    }
+    if (P.scrape) {
+      if (P.speed > SCRAPE_MIN) P.speed = Math.max(SCRAPE_MIN, P.speed + SCRAPE_DECEL * dt);
+      Game.shake = Math.max(Game.shake, 0.08);
     }
     // 他車と衝突
     if (!P.crash) {
@@ -229,6 +248,7 @@
     P.wheelT += dt * (1 + speedPct * 18);
     // 起伏で車体が跳ねる
     P.bounce = P.offroad && P.speed > 200 ? (Math.random() * 2 - 1) * 1.2 * speedPct : 0;
+    if (P.scrape) P.bounce = (Math.random() * 2 - 1) * 1.6;
 
     // 仮想ギア / 回転数 (エンジン音用)
     var gears = [0, 0.16, 0.33, 0.52, 0.74, 1.01];
@@ -451,34 +471,18 @@
   function drawPlayer(ctx) {
     if (!carArt) carArt = G.buildPlayerCar();
     var t = Math.round(G.clamp(P.turnF, -2, 2));
-    var yoff = 0, rot = 0, xoff = 0;
-    if (P.crash) {
-      var cr = P.crash, k = cr.t / cr.dur;
-      if (cr.type === 'spin') {
-        var seq = [0, 1, 2, 1, 0, -1, -2, -1];
-        t = seq[Math.floor(cr.t * 16) % seq.length];
-        xoff = Math.sin(cr.t * 10) * 3;
-      } else {
-        // 跳ね上がって回転 (スプライトの回転)
-        var hop = Math.sin(Math.min(1, k * 1.6) * Math.PI);
-        yoff = -hop * 46;
-        rot = (k < 0.62 ? k / 0.62 : 1) * Math.PI * 2 * cr.dir;
-        t = Math.round(Math.sin(cr.t * 9) * 2);
-      }
+    var xoff = 0;
+    if (P.crash) {   // スピン
+      var seq = [0, 1, 2, 1, 0, -1, -2, -1];
+      t = seq[Math.floor(P.crash.t * 16) % seq.length];
+      xoff = Math.sin(P.crash.t * 10) * 3;
+    } else if (P.scrape) {   // 擦っている間は小刻みに揺れる
+      xoff = Math.round(Math.random() * 2 - 1);
     }
     var wf = Math.floor(P.wheelT) & 1;
     var img = carArt.frames[t][wf][P.braking ? 1 : 0];
-    var cx = Math.round(R.W / 2 + xoff), by = R.H - 1 + Math.round(P.bounce + yoff);
-    var x0 = cx - (img.width >> 1), y0 = by - carArt.groundY;
-    if (rot) {
-      ctx.save();
-      ctx.translate(cx, y0 + img.height / 2);
-      ctx.rotate(rot);
-      ctx.drawImage(img, -(img.width >> 1), -(img.height >> 1));
-      ctx.restore();
-    } else {
-      ctx.drawImage(img, x0, y0);
-    }
+    var cx = Math.round(R.W / 2 + xoff), by = R.H - 1 + Math.round(P.bounce);
+    ctx.drawImage(img, cx - (img.width >> 1), by - carArt.groundY);
     Game.carScreen = { x: cx, y: by, w: img.width };
   }
 

@@ -82,7 +82,21 @@
     var wf = ctx.createBiquadFilter(); wf.type = 'bandpass'; wf.frequency.value = 700; wf.Q.value = 0.6;
     eng.windG = ctx.createGain(); eng.windG.gain.value = 0;
     eng.wind.connect(wf); wf.connect(eng.windG); eng.windG.connect(master);
-    [eng.o1, eng.o2, eng.lfo, eng.turbo, eng.skid, eng.rumble, eng.wind].forEach(function (n) { n.start(); });
+    // 木や岩を擦る音 「ガガガ」: 砂利っぽいノイズと低いうなりを矩形波で刻む
+    eng.scr = noiseSrc();
+    var sbp = ctx.createBiquadFilter(); sbp.type = 'bandpass'; sbp.frequency.value = 1300; sbp.Q.value = 0.9;
+    eng.scrGrind = ctx.createOscillator(); eng.scrGrind.type = 'sawtooth'; eng.scrGrind.frequency.value = 62;
+    var slp = ctx.createBiquadFilter(); slp.type = 'lowpass'; slp.frequency.value = 420;
+    var sgr = ctx.createGain(); sgr.gain.value = 0.55;
+    eng.scrAM = ctx.createGain(); eng.scrAM.gain.value = 0.5;
+    eng.scrLfo = ctx.createOscillator(); eng.scrLfo.type = 'square'; eng.scrLfo.frequency.value = 22;
+    var slg = ctx.createGain(); slg.gain.value = 0.5;
+    eng.scrLfo.connect(slg); slg.connect(eng.scrAM.gain);
+    eng.scrG = ctx.createGain(); eng.scrG.gain.value = 0;
+    eng.scr.connect(sbp); sbp.connect(eng.scrAM);
+    eng.scrGrind.connect(slp); slp.connect(sgr); sgr.connect(eng.scrAM);
+    eng.scrAM.connect(eng.scrG); eng.scrG.connect(master);
+    [eng.o1, eng.o2, eng.lfo, eng.turbo, eng.skid, eng.rumble, eng.wind, eng.scr, eng.scrGrind, eng.scrLfo].forEach(function (n) { n.start(); });
   }
 
   A.engineOn = function (on) { A.engineActive = on; };
@@ -114,6 +128,9 @@
     eng.skidG.gain.setTargetAtTime(racing ? P.skid * 0.09 : 0, t, 0.05);
     eng.rumbleG.gain.setTargetAtTime(racing && P.offroad && sp > 0.05 ? 0.35 * Math.min(1, sp * 2) : 0, t, 0.05);
     eng.windG.gain.setTargetAtTime(racing ? sp * sp * 0.05 : 0, t, 0.2);
+    eng.scrG.gain.setTargetAtTime(racing && P.scrape ? 0.16 + sp * 0.22 : 0, t, P.scrape ? 0.01 : 0.05);
+    eng.scrLfo.frequency.setTargetAtTime(15 + sp * 20, t, 0.05);
+    eng.scrGrind.frequency.setTargetAtTime(48 + sp * 40, t, 0.05);
   };
 
   // ---------- 効果音 ----------
@@ -154,10 +171,11 @@
       fmJ('bass', 41, t + 0.4, 0.6, 0.45); fmJ('bass', 48, t + 1.4, 0.8, 0.45);
     },
     timeup: function (t) { [76, 72, 67, 60].forEach(function (m, i) { fmJ('brass', m, t + i * 0.18, 0.24, 0.32); }); fmJ('bass', 36, t + 0.54, 0.6, 0.45); },
-    crash: function (t) {
-      noise(t, 0.9, 0.7, 'lowpass', 3000, 120);
-      tone('sine', 120, t, 0.5, 0.6, 35);
-      noise(t + 0.25, 0.4, 0.3, 'bandpass', 2500, 800);
+    // 木や岩に当たった瞬間 (この後は擦る音が続く)
+    scrape: function (t) {
+      noise(t, 0.3, 0.55, 'bandpass', 2400, 500);
+      noise(t, 0.12, 0.45, 'lowpass', 1500);
+      tone('square', 92, t, 0.16, 0.22, 46);
     },
     hit: function (t) { noise(t, 0.4, 0.55, 'lowpass', 2500, 200); tone('sine', 140, t, 0.3, 0.5, 50); },
     bump: function (t) { tone('sine', 110, t, 0.18, 0.45, 50); noise(t, 0.12, 0.25, 'lowpass', 1500); },
