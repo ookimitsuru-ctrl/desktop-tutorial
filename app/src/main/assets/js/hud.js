@@ -257,6 +257,7 @@
       if (pz >= b) prog = s + 1;
       else if (pz > a) prog = s + (pz - a) / (b - a);
     }
+    prog = Math.min(prog, 3);   // ゴールしたら春の枠で止める (はみ出して速度計に重ならないように)
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(x0 + bw / 2, y0 + 8, Math.round(prog * (bw + gap)), 1);
     for (s = 0; s < 4; s++) {

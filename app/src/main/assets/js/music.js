@@ -1,7 +1,9 @@
 'use strict';
 // ============================================================
-//  music.js  FM 音源風 BGM シーケンサ (アーケード/メガドライブの YM 系の音色を
-//             WebAudio の発振器どうしで周波数変調して作る)
+//  music.js  BGM の再生
+//   季節の曲 (夏: ハードロック / 秋: ボサノバ / 冬: ジャズ / 春: テクノ) は band.js の生演奏風の曲を
+//   ループ再生する。タイトルとエンディング, ジングルはここの FM 音源風シーケンサで鳴らす
+//   (WebAudio の発振器どうしで周波数変調して作る)
 //  曲はオリジナル (エンディングは日本古謡「さくらさくら」の編曲)
 //  記法: 1 小節 = 16 ステップ (16分音符)
 //    音名+オクターブ = 発音,  '-' = 伸ばす,  '.' = 休符
@@ -334,6 +336,7 @@
 
   // オフライン描画 (動画用): 曲 key を t0〜t1 秒に配置して dest へ
   M.renderOffline = function (octx, dest, key, t0, t1) {
+    if (G.Band && G.Band.has(key)) { G.Band.compose(octx, dest, key, t0, t1); return G.Band.barDur(key); }
     var saved = chGain;
     chGain = makeChannels(octx, dest);
     var c = COMPILED[key], v = VOICING[key];
@@ -342,23 +345,66 @@
     return c.stepDur * 16;   // 1 小節の長さ
   };
   M.fmCtx = function (octx, dest, name, f, t, dur, vol) { fmNote(octx, dest, name, f, t, dur, vol); };
-  M.songBar = function (key) { return COMPILED[key].stepDur * 16; };
+  M.songBar = function (key) { return G.Band && G.Band.has(key) ? G.Band.barDur(key) : COMPILED[key].stepDur * 16; };
+
+  // ---------- 季節の曲 (band.js で書き出したループを鳴らす) ----------
+  var band = null, bandWant = null;
+  function stopBand(fade) {
+    if (!band) return;
+    var ctx = G.Audio.ctx, b = band, now = ctx.currentTime;
+    band = null;
+    b.g.gain.cancelScheduledValues(now);
+    b.g.gain.setValueAtTime(b.g.gain.value, now);
+    b.g.gain.linearRampToValueAtTime(0, now + fade);
+    b.src.stop(now + fade + 0.05);
+  }
+  function startBand(key) {
+    var ctx = G.Audio.ctx;
+    bandWant = key;
+    G.Band.loop(key).then(function (buf) {
+      if (bandWant !== key || M.current !== key) return;   // 書き出し中に別の曲へ変わった
+      var s = ctx.createBufferSource(), g = ctx.createGain(), now = ctx.currentTime;
+      s.buffer = buf; s.loop = true;
+      s.connect(g); g.connect(bus);
+      g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(1, now + 0.2);
+      s.start(now + 0.02);
+      band = { src: s, g: g };
+    });
+  }
+  // 季節の曲を夏から順に先に書き出しておく (書き出しは音を出す許可がなくてもできるので, 読み込み後すぐ始める)
+  var prefetched = false;
+  function prefetch() {
+    if (prefetched || !G.Band || !window.OfflineAudioContext) return;
+    prefetched = true;
+    ['summer', 'autumn', 'winter', 'spring'].reduce(function (p, k) {
+      return p.then(function () { return G.Band.loop(k); });
+    }, Promise.resolve()).catch(function () { /* ignore */ });
+  }
 
   function start(key) {
     var A = G.Audio;
     if (!A || !A.ready) { M.pending = key; return; }
     setup();
-    var ctx = A.ctx;
-    bus.gain.cancelScheduledValues(ctx.currentTime);
+    var ctx = A.ctx, now = ctx.currentTime;
+    stopBand(key ? 0.6 : 0.8);
+    bandWant = null;
+    bus.gain.cancelScheduledValues(now);
     if (!key) {
-      bus.gain.setTargetAtTime(0, ctx.currentTime, 0.2);
+      bus.gain.setTargetAtTime(0, now, 0.2);
       var old = play;
       setTimeout(function () { if (play === old) play = null; }, 900);
       return;
     }
-    bus.gain.setValueAtTime(0, ctx.currentTime);
-    bus.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.4);
-    play = { c: COMPILED[key], step: 0, next: ctx.currentTime + 0.12 };
+    if (G.Band && G.Band.has(key)) {
+      play = null;
+      bus.gain.setValueAtTime(bus.gain.value, now);
+      bus.gain.linearRampToValueAtTime(1, now + 0.2);
+      startBand(key);
+      return;
+    }
+    bus.gain.setValueAtTime(0, now);
+    bus.gain.linearRampToValueAtTime(1, now + 0.4);
+    play = { c: COMPILED[key], step: 0, next: now + 0.12 };
     if (!timer) timer = setInterval(schedule, 40);
   }
 
@@ -367,5 +413,6 @@
     M.current = key;
     start(key);
   };
-  M.onReady = function () { if (M.current) start(M.current); };
+  M.onReady = function () { prefetch(); if (M.current) start(M.current); };
+  window.addEventListener('load', function () { setTimeout(prefetch, 600); });
 })();
