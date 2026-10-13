@@ -51,6 +51,7 @@
   };
 
   // ---------- エンジン (3気筒ターボ風) ----------
+  //  音の高さは回転数 (P.rpm = rpm / 7000) に比例。アイドル 900rpm で約 29Hz, 6300rpm で約 106Hz
   function buildEngine() {
     eng = {};
     eng.out = ctx.createGain(); eng.out.gain.value = 0; eng.out.connect(master);
@@ -107,15 +108,13 @@
     var t = ctx.currentTime, k = 0.06;
     var sp = P.speed / G.MAX_SPEED;
     var racing = Game.state === 'race' || Game.state === 'countdown' || Game.state === 'goal' || Game.state === 'timeup';
-    var rpm = P.rpm;
-    if (Game.state === 'countdown') { A._rev = G.clamp((A._rev || 0) + (P.throttle ? dt * 2.5 : -dt * 1.5), 0, 1); rpm = 0.28 + A._rev * 0.65; } // 空ぶかし
-    if (P.crash) rpm = 0.25;
-    var f = 30 + rpm * 112;
+    var rpm = P.rpm;   // 空ぶかしやシフトの上下は game.js 側で回転数に入っている
+    var f = 16 + rpm * 100;
     eng.o1.frequency.setTargetAtTime(f, t, k);
     eng.o2.frequency.setTargetAtTime(f * 0.5, t, k);
     eng.lfo.frequency.setTargetAtTime(f * 0.5, t, k);
-    eng.filter.frequency.setTargetAtTime(260 + rpm * 1500 + sp * 400, t, k);
-    var vol = racing && A.engineActive ? (0.06 + rpm * 0.05) * (P.throttle ? 1.15 : 0.85) : (Game.state === 'title' ? 0.03 : 0.0);
+    eng.filter.frequency.setTargetAtTime(200 + rpm * 1150 + sp * 300, t, k);
+    var vol = racing && A.engineActive ? (0.07 + rpm * 0.06) * (P.throttle ? 1.15 : 0.85) : (Game.state === 'title' ? 0.03 : 0.0);
     if (Game.state === 'ending' || Game.state === 'gameover') vol = 0;
     eng.out.gain.setTargetAtTime(vol, t, 0.1);
     var accel = P.throttle && racing;

@@ -413,12 +413,12 @@
       var t = L[0], rpm = L[1], sp = L[2], skid = L[3], thr = L[4], sh = L[5], off = L[6], scr = L[7];
       if (sh === 1 && t < b(2) + 3 * revBeat) {   // スタート前の空ぶかし (拍ごと)
         var lt = (t - b(2)) % revBeat;
-        rpm = 0.3 + 0.62 * Math.exp(-lt / 0.14); thr = 1;
+        rpm = 0.13 + 0.8 * Math.exp(-lt / 0.14); thr = 1;
       }
-      var f = 30 + rpm * 112;
+      var f = 16 + rpm * 100;   // ゲームと同じ: rpm / 7000 に比例
       o1.frequency.setValueAtTime(f, t); o2.frequency.setValueAtTime(f * 0.5, t); lfo.frequency.setValueAtTime(f * 0.5, t);
-      flt.frequency.setValueAtTime(260 + rpm * 1500 + sp * 400, t);
-      var vol = (0.05 + rpm * 0.04) * (thr ? 1.15 : 0.85);
+      flt.frequency.setValueAtTime(200 + rpm * 1150 + sp * 300, t);
+      var vol = (0.06 + rpm * 0.05) * (thr ? 1.15 : 0.85);
       if (sh === 10) vol *= Math.max(0, 1 - (t - b(16)) / 0.6);
       eng.gain.setValueAtTime(vol, t);
       tb.frequency.setValueAtTime(1600 + rpm * 2400, t);

@@ -162,25 +162,84 @@
     F.text(ctx, String(Math.floor(Game.score)), 72, 15, { color: '#ffffff', outline: '#102030', bold: true });
     // 季節の進行 (夏→秋→冬→春)
     drawCourseMap(ctx, Game, P);
-    // LAP
+    // 右上: アナログのタコメーター, その左に LAP と速度
+    var tx = W - 4 - TACH_S, rx = tx - 4;
     var lapT = Game.state === 'race' ? Game.raceT - Game.lapStart : (Game.lapTimes[Game.season] || 0);
-    F.text(ctx, 'LAP', W - 74, 5, { color: '#80ff80', outline: '#003010', bold: true });
-    F.text(ctx, fmtLap(lapT), W - 6, 5, { color: '#ffffff', outline: '#102030', align: 'right' });
-    // 速度
+    var lapS = fmtLap(lapT);
+    F.text(ctx, 'LAP', rx - F.width(lapS) - 4, 5, { color: '#80ff80', outline: '#003010', bold: true, align: 'right' });
+    F.text(ctx, lapS, rx, 5, { color: '#ffffff', outline: '#102030', align: 'right' });
     var kmh = Math.round(P.speed / G.MAX_SPEED * G.KMH_MAX);
-    F.text(ctx, String(kmh), W - 34, 16, { scale: 2, bold: true, grad: ['#ffffff', '#c0f0ff', '#60c0ff'], outline: '#001830', align: 'right' });
-    F.text(ctx, 'KM/H', W - 6, 23, { color: '#ffe040', outline: OUTL, align: 'right' });
-    // タコメーター
-    var n = 16, lit = Math.round(P.rpm * n), x0 = W - 6 - n * 4 + 1;
-    for (var i = 0; i < n; i++) {
-      var on = i < lit;
-      var col = i < 9 ? (on ? '#40ff60' : '#0a3010') : (i < 13 ? (on ? '#ffe030' : '#3a3008') : (on ? '#ff3030' : '#3a0808'));
-      ctx.fillStyle = '#000';
-      ctx.fillRect(x0 + i * 4 - 1, 33 - Math.floor(i / 3), 5, 6 + Math.floor(i / 3) + 1);
-      ctx.fillStyle = col;
-      ctx.fillRect(x0 + i * 4, 34 - Math.floor(i / 3), 3, 5 + Math.floor(i / 3));
+    F.text(ctx, String(kmh), rx, 17, { scale: 2, bold: true, grad: ['#ffffff', '#c0f0ff', '#60c0ff'], outline: '#001830', align: 'right' });
+    F.text(ctx, 'KM/H', rx, 34, { color: '#ffe040', outline: OUTL, align: 'right' });
+    drawTach(ctx, tx, 2, P);
+  }
+
+  // ---------- アナログのタコメーター (0〜7000rpm, 目盛りの数字は 1〜7) ----------
+  var TACH_R = 27, TACH_S = TACH_R * 2 + 2, tachFace = null;
+  var TACH_A0 = Math.PI * 0.75, TACH_SWEEP = Math.PI * 1.5;   // 左下 (0rpm) から時計回りに 270°
+  function tachAngle(r) { return TACH_A0 + TACH_SWEEP * G.clamp(r, 0, 1.02); }   // r = rpm / 7000
+  function buildTach() {
+    var S = TACH_S, c = S / 2, p = new G.PX(S, S);
+    var BEZ = ['#2a2c34', '#4a4e5a', '#7a808e', '#b8bec8', '#eef0f4'].map(function (h) { return C(h); });
+    var FACE = ['#07080c', '#0c0e14', '#12141c', '#181b24'].map(function (h) { return C(h); });
+    var red0 = tachAngle(6 / 7), red1 = tachAngle(1);
+    for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {
+      var dx = x + 0.5 - c, dy = y + 0.5 - c, r = Math.hypot(dx, dy), col = 0;
+      if (r > TACH_R + 0.4) continue;
+      var nx = dx / (r || 1), ny = dy / (r || 1);
+      if (r >= TACH_R - 2.2) {
+        // メッキの縁: 左上が明るい
+        var l = 2 - (nx * 0.6 + ny * 0.8) * 1.8, li = Math.floor(l);
+        if (G.dither(x, y, l - li)) li++;
+        col = BEZ[G.clamp(li, 0, 4)];
+      } else {
+        var f = 1.6 - r / TACH_R * 1.2 - (nx * 0.6 + ny * 0.8) * 0.5, fi = Math.floor(f);
+        if (G.dither(x, y, f - fi)) fi++;
+        col = FACE[G.clamp(fi, 0, 3)];
+        // レッドゾーン (6000〜7000rpm) の帯
+        var a = Math.atan2(dy, dx); if (a < TACH_A0 - 0.01) a += Math.PI * 2;
+        if (r >= TACH_R - 6.5 && r < TACH_R - 3 && a >= red0 && a <= red1) col = C(r < TACH_R - 5 ? '#801010' : '#d02020');
+      }
+      p.d[y * S + x] = col;
     }
-    if (W >= 360) F.text(ctx, 'GEAR ' + P.gear, x0 - 4, 33, { color: '#c0c8d8', outline: '#101018', align: 'right' });
+    // 目盛り: 1000rpm ごとに長い線, 500rpm ごとに短い線
+    for (var k = 0; k <= 14; k++) {
+      var ang = tachAngle(k / 14), major = k % 2 === 0, red = k >= 12;
+      var r0 = major ? TACH_R - 8.5 : TACH_R - 5.5, r1 = TACH_R - 2.6;
+      for (var t = r0; t <= r1; t += 0.5) {
+        p.set(c + Math.cos(ang) * t, c + Math.sin(ang) * t, C(red ? '#ff6a5a' : (major ? '#ffffff' : '#9aa0b0')));
+      }
+    }
+    p.outline(C('#060608'));
+    tachFace = p.toCanvas();
+    // 数字 1〜7 (6, 7 は赤)
+    var g = tachFace.getContext('2d');
+    for (k = 1; k <= 7; k++) {
+      var a2 = tachAngle(k / 7);
+      F.text(g, String(k), Math.round(c + Math.cos(a2) * (TACH_R - 14)), Math.round(c + Math.sin(a2) * (TACH_R - 14)) - 3,
+        { color: k >= 6 ? '#ff6a5a' : '#ffffff', align: 'center' });
+    }
+  }
+  function drawTach(ctx, x0, y0, P) {
+    if (!tachFace) buildTach();
+    ctx.drawImage(tachFace, x0, y0);
+    var c = TACH_S / 2, cx = x0 + c, cy = y0 + c;
+    // ギア (下の空いた所)
+    ctx.fillStyle = '#000'; ctx.fillRect(Math.round(cx - 6), Math.round(cy + 9), 12, 11);
+    ctx.fillStyle = '#5a4010'; ctx.fillRect(Math.round(cx - 5), Math.round(cy + 10), 10, 9);
+    F.text(ctx, String(P.gear || 1), Math.round(cx), Math.round(cy + 11), { color: '#ffd040', align: 'center', bold: true });
+    // 針: 影, 本体の順に 1px ずつ打つ
+    var a = tachAngle(P.rpm), ca = Math.cos(a), sa = Math.sin(a), len = TACH_R - 4;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    for (var t = -4; t <= len; t += 0.6) ctx.fillRect(Math.round(cx + ca * t) + 1, Math.round(cy + sa * t) + 1, 1, 1);
+    for (t = -4; t <= len; t += 0.6) {
+      ctx.fillStyle = t > len - 6 ? '#ffd0a0' : '#ff5a20';
+      ctx.fillRect(Math.round(cx + ca * t), Math.round(cy + sa * t), t < len - 6 ? 2 : 1, t < len - 6 ? 2 : 1);
+    }
+    // 中心のキャップ
+    ctx.fillStyle = '#101014'; ctx.fillRect(Math.round(cx) - 2, Math.round(cy) - 2, 5, 5);
+    ctx.fillStyle = '#6a707e'; ctx.fillRect(Math.round(cx) - 1, Math.round(cy) - 1, 3, 3);
+    ctx.fillStyle = '#c8ccd6'; ctx.fillRect(Math.round(cx) - 1, Math.round(cy) - 1, 1, 1);
   }
 
   function drawCourseMap(ctx, Game, P) {

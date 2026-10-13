@@ -7,7 +7,15 @@
   var STEP = 1 / 60;
   var SEG = T.SEG;
   var MAX_SPEED = SEG * 60;         // 1 フレーム 1 セグメント
-  var KMH_MAX = 236;
+  var KMH_MAX = 160;                // 速度計の最高速 (画面の流れる速さとは別)
+  var SCORE_KMH = 236;              // スコア計算用の速度の目盛り (ハイスコアの基準を変えないため)
+
+  // ---------- 6 速トランスミッション ----------
+  //  ギアごとの 1000rpm あたりの速度 (km/h)。6300rpm でシフトアップ, 2600rpm を切るとシフトダウン
+  //  6 速・最高速 160km/h で約 6200rpm
+  var GEAR_KMH = [0, 7.1, 11.4, 15.9, 19.7, 23.0, 25.8];
+  var IDLE_RPM = 900, SHIFT_UP = 6300, SHIFT_DOWN = 2600, MAX_RPM = 7000;
+  G.MAX_RPM = MAX_RPM;
   var ACCEL = MAX_SPEED / 4.6;
   var BRAKE = -MAX_SPEED * 1.05;
   var DECEL = -MAX_SPEED / 3.5;
@@ -42,7 +50,7 @@
   var P = Game.player = {
     x: 0, z: 0, speed: 0, y: 0, turn: 0, turnF: 0,
     crash: null, offroad: false, bounce: 0, wheelT: 0, braking: false,
-    skid: 0, rpm: 0, gear: 1, scrape: 0, scrapeT: 0, scrapeObj: null
+    skid: 0, rpm: 0, rpmVal: IDLE_RPM, gear: 1, rev: 0, scrape: 0, scrapeT: 0, scrapeObj: null
   };
 
   function mode() { return MODES[Game.mode] || MODES.hard; }
@@ -82,6 +90,7 @@
   function resetPlayerAt(segIndex) {
     P.z = segIndex * SEG - R.playerZ;
     P.x = 0; P.speed = 0; P.crash = null; P.turnF = 0; P.skid = 0; P.scrape = 0; P.scrapeT = 0; P.scrapeObj = null;
+    P.gear = 1; P.rev = 0; P.rpmVal = IDLE_RPM; P.rpm = IDLE_RPM / MAX_RPM;
     I.reset();
   }
 
@@ -304,19 +313,35 @@
     P.bounce = P.offroad && P.speed > 200 ? (Math.random() * 2 - 1) * 1.2 * speedPct : 0;
     if (P.scrape) P.bounce = (Math.random() * 2 - 1) * 1.6;
 
-    // 仮想ギア / 回転数 (エンジン音用)
-    var gears = [0, 0.16, 0.33, 0.52, 0.74, 1.01];
-    var g = 1;
-    while (g < 5 && speedPct > gears[g]) g++;
-    P.gear = g;
-    var lo = gears[g - 1], hi = gears[g];
-    P.rpm = 0.32 + 0.68 * G.clamp((speedPct - lo) / (hi - lo), 0, 1);
-    if (P.speed < 50) P.rpm = 0.25;
+    updateEngine(dt, speedPct);
 
     var pct = (P.z + R.playerZ) % SEG / SEG;
     P.y = G.lerp(playerSeg.p1.world.y, playerSeg.p2.world.y, pct);
     P.seg = playerSeg;
     return playerSeg;
+  }
+
+  // ---------- ギアと回転数 (計器とエンジン音) ----------
+  function updateEngine(dt, speedPct) {
+    var kmh = speedPct * KMH_MAX, g = P.gear || 1;
+    function rpmIn(n) { return kmh / GEAR_KMH[n] * 1000; }
+    while (g < 6 && rpmIn(g) > SHIFT_UP) g++;
+    while (g > 1 && rpmIn(g) < SHIFT_DOWN && rpmIn(g - 1) < SHIFT_UP - 400) g--;
+    P.gear = g;
+    var target = Math.max(IDLE_RPM, rpmIn(g));
+    if (Game.state === 'countdown') {
+      // スタート前の空ぶかし
+      P.rev = G.clamp(P.rev + (P.throttle ? dt * 2.5 : -dt * 1.5), 0, 1);
+      target = IDLE_RPM + P.rev * (6500 - IDLE_RPM);
+    } else {
+      P.rev = 0;
+      // 発進は半クラッチで回転を保つ
+      if (g === 1 && P.throttle && !P.crash) target = Math.max(target, 2400 + speedPct * 4000);
+    }
+    if (P.crash) target = Math.min(target, 1600);
+    target = Math.min(target, MAX_RPM);
+    P.rpmVal += (target - P.rpmVal) * Math.min(1, dt * 12);
+    P.rpm = P.rpmVal / MAX_RPM;
   }
 
   // ---------- 進行 ----------
@@ -430,7 +455,7 @@
       updatePlayer(dt, true);
       updateCars(dt);
       Game.time -= dt;
-      var kmh = P.speed / MAX_SPEED * KMH_MAX;
+      var kmh = P.speed / MAX_SPEED * SCORE_KMH;
       Game.score += Math.pow(kmh, 1.5) * dt * 0.45;
       if (Game.time <= 10 && Math.ceil(Game.time) !== Math.ceil(Game.time + dt) && Game.time > 0 && G.Audio) G.Audio.sfx('tick');
       checkProgress();
