@@ -408,7 +408,7 @@
       Game.banner = { kind: 'goal', t: 0 };
       setState('goal');
       if (G.Audio) G.Audio.sfx('goal');
-      if (G.Music) G.Music.play('ending');
+      if (G.Music) G.Music.play('victory');   // ファンファーレからビクトリーの曲へ
       if (G.FX) G.FX.setStorm(1);
     }
   }
@@ -516,6 +516,7 @@
     var sa = T.seasonAt(P.z + R.playerZ);
     if (G.BG) G.BG.draw(ctx, sa, P, segNow);
     else { ctx.fillStyle = '#4af'; ctx.fillRect(0, 0, W, H); }
+    if (G.FX && G.FX.drawFireworks) G.FX.drawFireworks(ctx);   // ゴール後の花火 (空に)
     R.renderRoad({ z: P.z, x: P.x, y: P.y });
     R.renderSprites(drawCars);
     if (G.FX) G.FX.drawBehind(ctx, Game, P);
@@ -630,6 +631,8 @@
       if (document.hidden) Game.pause(true);
     });
     startTitle();
+    // Android アプリ (WebView) では触る前から音を出せるので, タイトル曲をすぐ鳴らす (ブラウザでは最初のタップまで待つ)
+    if (G.Audio && /; wv\)/.test(navigator.userAgent)) G.Audio.unlock();
     // デバッグ: #seg=1234 でその位置からデモ走行
     var m = /seg=(\d+)/.exec(location.hash);
     if (m) { Game.demoStart = +m[1]; resetPlayerAt(+m[1]); P.speed = MAX_SPEED * 0.8; initCars(10, false); }

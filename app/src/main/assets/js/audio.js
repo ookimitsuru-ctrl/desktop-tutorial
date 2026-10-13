@@ -153,7 +153,45 @@
     s.start(start, Math.random()); s.stop(start + dur + 0.05);
   }
   function fmJ(patch, m, t, dur, vol) {
-    if (G.Music && G.Music.fm) G.Music.fm(patch, 440 * Math.pow(2, (m - 69) / 12), t, dur, vol, sfxBus);
+    if (G.Music && G.Music.fmCtx) G.Music.fmCtx(ctx, sfxBus, patch, 440 * Math.pow(2, (m - 69) / 12), t, dur, vol);
+  }
+  // 拍手と指笛 (ゴールのお祝い): 短いノイズを共鳴フィルタに通した「パチ」を大勢分重ねて作る
+  var applause = [];
+  function applauseBuf(c) {
+    for (var i = 0; i < applause.length; i++) if (applause[i].c === c) return applause[i].b;
+    var sr = c.sampleRate, dur = 5.5, n = Math.floor(sr * dur), ch = [new Float32Array(n), new Float32Array(n)];
+    var sd = 777; function r() { sd = (sd * 16807) % 2147483647; return sd / 2147483647; }
+    function env(t) { return t < 0.5 ? t / 0.5 : (t < 3.2 ? 1 : Math.max(0, 1 - (t - 3.2) / 2.3)); }
+    var len = Math.floor(sr * 0.012), dk = sr * 0.0025;
+    for (var k = 0; k < dur * 150; k++) {
+      var t0 = r() * dur;
+      if (r() > env(t0)) continue;
+      var fc = 900 + r() * 2300, q = 3 + r() * 4, w = 2 * Math.PI * fc / sr, al = Math.sin(w) / (2 * q), cw = Math.cos(w);
+      var b0 = al / (1 + al), a1 = -2 * cw / (1 + al), a2 = (1 - al) / (1 + al), x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+      var g = 0.4 + r() * 0.6, pan = r(), st = Math.floor(t0 * sr);
+      for (var j = 0; j < len && st + j < n; j++) {
+        var x = (r() * 2 - 1) * Math.exp(-j / dk), y = b0 * x - b0 * x2 - a1 * y1 - a2 * y2;
+        x2 = x1; x1 = x; y2 = y1; y1 = y;
+        ch[0][st + j] += y * g * (1 - pan); ch[1][st + j] += y * g * pan;
+      }
+    }
+    // 指笛 2 回
+    [[0.6, 2300, 3100, 0.25], [1.5, 2500, 3300, 0.75]].forEach(function (w2) {
+      var s0 = Math.floor(w2[0] * sr), wl = Math.floor(sr * 0.45), ph = 0;
+      for (var j = 0; j < wl; j++) {
+        var u = j / wl, f = w2[1] + (w2[2] - w2[1]) * Math.min(1, u * 1.6) + Math.sin(j / sr * 2 * Math.PI * 7) * 60;
+        ph += 2 * Math.PI * f / sr;
+        var a = Math.sin(ph) * 0.12 * Math.min(1, u * 8) * Math.min(1, (1 - u) * 5);
+        ch[0][s0 + j] += a * (1 - w2[3]); ch[1][s0 + j] += a * w2[3];
+      }
+    });
+    var peak = 0;
+    for (i = 0; i < n; i++) peak = Math.max(peak, Math.abs(ch[0][i]), Math.abs(ch[1][i]));
+    var b = c.createBuffer(2, n, sr);
+    for (var q2 = 0; q2 < 2; q2++) { var d = b.getChannelData(q2); for (i = 0; i < n; i++) d[i] = ch[q2][i] * 0.8 / (peak || 1); }
+    applause.push({ c: c, b: b });
+    if (applause.length > 3) applause.shift();
+    return b;
   }
   var SFX = {
     beep: function (t) { tone('square', 440, t, 0.22, 0.25); },
@@ -164,10 +202,20 @@
       [72, 76, 79, 84, 88, 91].forEach(function (m, i) { fmJ('brass', m, t + i * 0.07, 0.22, 0.32); });
       fmJ('bass', 48, t, 0.5, 0.45); fmJ('bass', 60, t + 0.42, 0.3, 0.35);
     },
+    // ゴール: 拍手と指笛 (ファンファーレはビクトリーの曲の前奏)
     goal: function (t) {
-      var seq = [[72, 0, 0.1], [72, 0.12, 0.1], [72, 0.24, 0.12], [77, 0.4, 0.26], [81, 0.7, 0.26], [84, 1.0, 0.18], [81, 1.2, 0.18], [84, 1.4, 0.8]];
-      seq.forEach(function (n) { fmJ('brass', n[0], t + n[1], n[2], 0.34); fmJ('brass', n[0] - 5, t + n[1], n[2], 0.16); });
-      fmJ('bass', 41, t + 0.4, 0.6, 0.45); fmJ('bass', 48, t + 1.4, 0.8, 0.45);
+      var s = ctx.createBufferSource(), g = ctx.createGain();
+      s.buffer = applauseBuf(ctx); s.connect(g); g.connect(sfxBus);
+      g.gain.setValueAtTime(0.55, t); s.start(t + 0.15);
+    },
+    // 花火: ドーンと低い音のあとにパチパチ
+    firework: function (t) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(36, t + 0.4);
+      g.gain.setValueAtTime(0.5, t); g.gain.setTargetAtTime(0.0001, t, 0.16);
+      o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + 0.9);
+      noise(t, 0.5, 0.35, 'lowpass', 600, 120);
+      for (var k = 0; k < 12; k++) noise(t + 0.22 + Math.random() * 0.75, 0.012, 0.05 + Math.random() * 0.1, 'highpass', 2500 + Math.random() * 3000);
     },
     timeup: function (t) { [76, 72, 67, 60].forEach(function (m, i) { fmJ('brass', m, t + i * 0.18, 0.24, 0.32); }); fmJ('bass', 36, t + 0.54, 0.6, 0.45); },
     // 木や岩に当たった瞬間 (この後は擦る音が続く)
@@ -180,6 +228,21 @@
     bump: function (t) { tone('sine', 110, t, 0.18, 0.45, 50); noise(t, 0.12, 0.25, 'lowpass', 1500); },
     blowoff: function (t) { noise(t, 0.35, 0.12, 'highpass', 2500, 6000); },
     select: function (t) { tone('square', 988, t, 0.06, 0.15); tone('square', 1319, t + 0.06, 0.1, 0.15); }
+  };
+  // 動画用: 効果音 name を別のコンテキスト (OfflineAudioContext) の dest へ t 秒に鳴らす
+  var offNoise = [];
+  A.renderSfx = function (octx, dest, name, t) {
+    var fn = SFX[name];
+    if (!fn) return;
+    var saved = [ctx, sfxBus, noiseBuf], nb = null;
+    for (var i = 0; i < offNoise.length; i++) if (offNoise[i].c === octx) nb = offNoise[i].b;
+    if (!nb) {
+      nb = octx.createBuffer(1, octx.sampleRate * 2, octx.sampleRate);
+      var d = nb.getChannelData(0); for (i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      offNoise.push({ c: octx, b: nb }); if (offNoise.length > 3) offNoise.shift();
+    }
+    ctx = octx; sfxBus = dest; noiseBuf = nb;
+    try { fn(t); } finally { ctx = saved[0]; sfxBus = saved[1]; noiseBuf = saved[2]; }
   };
   A.sfx = function (name) {
     if (!ctx || !A.ready || ctx.state !== 'running') return;

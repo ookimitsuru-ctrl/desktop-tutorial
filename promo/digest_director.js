@@ -152,55 +152,22 @@
     var go = sfxLog.filter(function (e) { return e.name === 'go'; })[0];
     var gT = goal ? goal.t : DUR, goT = go ? go.t : GO_T;
 
-    // BGM: GO から夏の曲, ゴールで止めてエンディングの曲へ
+    // BGM: GO から夏の曲, ゴールの瞬間にファンファーレ → ビクトリーの曲 (ゲームと同じ)
     var m1 = oc.createGain(); m1.connect(master);
     m1.gain.setValueAtTime(1.3, 0);
     M.renderOffline(oc, m1, 'summer', goT, gT);
     m1.gain.setValueAtTime(1.3, gT - 0.03); m1.gain.linearRampToValueAtTime(0, gT + 0.06);
-    if (gT + 1.4 < DUR) {
+    if (gT < DUR) {
       var m2 = oc.createGain(); m2.connect(master); m2.gain.value = 1.3;
-      M.renderOffline(oc, m2, 'ending', gT + 1.4, DUR + 0.5);
+      M.renderOffline(oc, m2, 'victory', gT, DUR + 0.5);
     }
 
-    // 効果音 (audio.js と同じ音)
     var sfx = oc.createGain(); sfx.gain.value = 1.0; sfx.connect(master);
     var nb = oc.createBuffer(1, SR * 2, SR), nd = nb.getChannelData(0);
     for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     function nsrc() { var s = oc.createBufferSource(); s.buffer = nb; s.loop = true; return s; }
-    function hzm(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-    function fm(pt, m, t, d, v) { M.fmCtx(oc, sfx, pt, hzm(m), t, d, v); }
-    function tone(type, f, t, d, v, f2) {
-      var o = oc.createOscillator(), g = oc.createGain();
-      o.type = type; o.frequency.setValueAtTime(f, t);
-      if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-      o.connect(g); g.connect(sfx); o.start(t); o.stop(t + d + 0.05);
-    }
-    function noise(t, d, v, type, f0, f1) {
-      var s = nsrc(), f = oc.createBiquadFilter(), g = oc.createGain();
-      f.type = type; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + d);
-      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-      s.connect(f); f.connect(g); g.connect(sfx); s.start(t); s.stop(t + d + 0.05);
-    }
-    var SFX = {
-      beep: function (t) { tone('square', 440, t, 0.22, 0.2); },
-      go: function (t) { tone('square', 880, t, 0.6, 0.22); tone('square', 1760, t, 0.3, 0.06); },
-      checkpoint: function (t) {
-        [72, 76, 79, 84, 88, 91].forEach(function (m, k) { fm('brass', m, t + k * 0.07, 0.22, 0.42); });
-        fm('bass', 48, t, 0.5, 0.5); fm('bass', 60, t + 0.42, 0.3, 0.42);
-      },
-      goal: function (t) {
-        var seq = [[72, 0, 0.1], [72, 0.12, 0.1], [72, 0.24, 0.12], [77, 0.4, 0.26], [81, 0.7, 0.26], [84, 1.0, 0.18], [81, 1.2, 0.18], [84, 1.4, 0.8]];
-        seq.forEach(function (n) { fm('brass', n[0], t + n[1], n[2], 0.36); fm('brass', n[0] - 5, t + n[1], n[2], 0.16); });
-        fm('bass', 41, t + 0.4, 0.6, 0.55); fm('bass', 48, t + 1.4, 0.8, 0.55);
-      },
-      hit: function (t) { noise(t, 0.4, 0.6, 'lowpass', 2500, 200); tone('sine', 140, t, 0.3, 0.55, 50); },
-      bump: function (t) { tone('sine', 110, t, 0.18, 0.5, 50); noise(t, 0.12, 0.3, 'lowpass', 1500); },
-      blowoff: function (t) { noise(t, 0.35, 0.12, 'highpass', 2500, 6000); },
-      scrape: function (t) { noise(t, 0.3, 0.6, 'bandpass', 2400, 500); noise(t, 0.12, 0.5, 'lowpass', 1500); tone('square', 92, t, 0.16, 0.25, 46); },
-      tick: function (t) { tone('square', 1320, t, 0.05, 0.1); }
-    };
-    sfxLog.forEach(function (e) { if (SFX[e.name]) SFX[e.name](e.t); });
+    // 効果音はゲームの音 (audio.js) をそのまま鳴らす: カウントダウン, チェックポイント, 拍手, 花火…
+    sfxLog.forEach(function (e) { G.Audio.renderSfx(oc, sfx, e.name, e.t); });
 
     // エンジン (3 気筒ターボ風) と走行音: 撮ったコマの回転数・速度に追従 (カットの所で切り替わる)
     var eng = oc.createGain(); eng.gain.value = 0; eng.connect(master);

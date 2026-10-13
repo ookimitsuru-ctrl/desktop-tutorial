@@ -281,6 +281,7 @@
   PV.init = function () {
     F = G.Font; R = G.R; T = G.Track; Game = G.Game; P = Game.player; I = G.Input;
     Game.mode = 'hard';   // PV はアーケード仕様 (HARD) で撮る
+    G.Audio.sfx = function (name) { if (name === 'firework') events.push({ t: PV.t, type: 'firework' }); };   // 花火の音の時刻を記録
     G.noHud = true;
   };
   PV.frame = function (i, capture) {
@@ -333,15 +334,13 @@
     m1.gain.setValueAtTime(1.3, 0);
     M.renderOffline(oc, m1, 'summer', 0, gT);
     m1.gain.setValueAtTime(1.3, gT - 0.03); m1.gain.linearRampToValueAtTime(0, gT + 0.06);
-    // 2) エンドカード: タイトル曲で締める
+    // 2) ゴールの瞬間からファンファーレ → ビクトリーの曲 (ゲームと同じ), エンドカードまで
     var m2 = oc.createGain(); m2.connect(master);
-    M.renderOffline(oc, m2, 'title', b(16), DUR + 0.5);
+    M.renderOffline(oc, m2, 'victory', gT, DUR + 0.5);
     m2.gain.setValueAtTime(1.3, 0); m2.gain.setValueAtTime(1.3, DUR - 0.9); m2.gain.linearRampToValueAtTime(0, DUR - 0.02);
 
     // 3) 効果音
     var sfx = oc.createGain(); sfx.gain.value = 1.0; sfx.connect(master);
-    function hzm(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-    function fm(pt, m, t, d, v) { M.fmCtx(oc, sfx, pt, hzm(m), t, d, v); }
     var nb = oc.createBuffer(1, SR * 2, SR), nd = nb.getChannelData(0);
     for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     function nsrc() { var s = oc.createBufferSource(); s.buffer = nb; s.loop = true; return s; }
@@ -352,31 +351,12 @@
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
       o.connect(g); g.connect(sfx); o.start(t); o.stop(t + d + 0.05);
     }
-    function noise(t, d, v, type, f0, f1) {
-      var s = nsrc(), f = oc.createBiquadFilter(), g = oc.createGain();
-      f.type = type; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + d);
-      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-      s.connect(f); f.connect(g); g.connect(sfx); s.start(t); s.stop(t + d + 0.05);
-    }
     var beat = BAR / 4;
     for (var k = 0; k < 3; k++) tone('square', 440, b(2) + k * beat, 0.22, 0.16);
     tone('square', 880, b(2) + 3 * beat, 0.6, 0.18); tone('square', 1760, b(2) + 3 * beat, 0.3, 0.05);
-    events.forEach(function (e) {
-      if (e.type === 'checkpoint') {
-        [72, 76, 79, 84, 88, 91].forEach(function (m, i) { fm('brass', m, e.t + i * 0.07, 0.22, 0.42); });
-        fm('bass', 48, e.t, 0.5, 0.5); fm('bass', 60, e.t + 0.42, 0.3, 0.42);
-      } else if (e.type === 'crash') {   // 追突してスピン
-        noise(e.t, 0.4, 0.7, 'lowpass', 2500, 200); tone('sine', 140, e.t, 0.3, 0.6, 50);
-      } else if (e.type === 'scrape') {   // 木に当たった瞬間 (ゲームの効果音と同じ)
-        noise(e.t, 0.3, 0.7, 'bandpass', 2400, 500); noise(e.t, 0.12, 0.55, 'lowpass', 1500); tone('square', 92, e.t, 0.16, 0.28, 46);
-      } else if (e.type === 'goal') {
-        var seq = [[72, 0, 0.1], [72, 0.12, 0.1], [72, 0.24, 0.12], [77, 0.4, 0.26], [81, 0.7, 0.26], [84, 1.0, 0.18], [81, 1.2, 0.18], [84, 1.4, 1.2]];
-        seq.forEach(function (n) { fm('brass', n[0], e.t + n[1], n[2], 0.36); fm('brass', n[0] - 5, e.t + n[1], n[2], 0.16); });
-        fm('bass', 41, e.t + 0.4, 0.6, 0.55); fm('bass', 48, e.t + 1.4, 1.2, 0.55);
-        [60, 64, 67, 72].forEach(function (m) { fm('strings', m, e.t + 1.4, b(16) - (e.t + 1.4), 0.2); });
-        noise(e.t, 1.2, 0.12, 'highpass', 6000, 9000);   // シャラーン
-      }
-    });
+    // それ以外の効果音はゲームの音 (audio.js) をそのまま鳴らす
+    var SFX_OF = { checkpoint: 'checkpoint', crash: 'hit', scrape: 'scrape', goal: 'goal', firework: 'firework' };
+    events.forEach(function (e) { if (SFX_OF[e.type]) G.Audio.renderSfx(oc, sfx, SFX_OF[e.type], e.t); });
 
     // 4) エンジン (3 気筒ターボ風) と走行音: 撮影ログの回転数に追従
     var eng = oc.createGain(); eng.gain.value = 0; eng.connect(master);

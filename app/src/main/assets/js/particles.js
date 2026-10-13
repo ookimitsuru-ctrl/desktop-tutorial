@@ -41,7 +41,7 @@
 
   FX.setStorm = function (v) { FX.stormTarget = v; };
 
-  FX.reset = function () { FX.weather.length = 0; FX.puffs.length = 0; FX.storm = 0; FX.stormTarget = 0; };
+  FX.reset = function () { FX.weather.length = 0; FX.puffs.length = 0; FX.storm = 0; FX.stormTarget = 0; FX.fw.rockets.length = 0; FX.fw.sparks.length = 0; };
 
   FX.burst = function (type, x, y, n) {
     for (var i = 0; i < n; i++) {
@@ -54,6 +54,7 @@
 
   FX.update = function (dt, Game, P) {
     FX.t += dt;
+    updateFireworks(dt, Game);
     var T = G.Track;
     var sa = T.seasonAt(P.z + G.R.playerZ);
     var seg = P.seg || T.segments[0];
@@ -125,6 +126,76 @@
       if (f.life > f.max) FX.puffs.splice(i, 1);
     }
     if (FX.puffs.length > 120) FX.puffs.splice(0, FX.puffs.length - 120);
+  };
+
+  // ---------- 花火 (ゴールしたら空に打ち上げる) ----------
+  //  昼の空でも目立つよう, 濃い色の 2px の火花に暗い縁と短い尾をつける
+  var FW_COLS = [['#ff2a8a', '#ffd0e6', '#5a0028'], ['#ffb000', '#fff4c0', '#5a3000'], ['#00b0ff', '#d8f6ff', '#00305a'],
+    ['#30e040', '#e0ffe0', '#004010'], ['#ff5000', '#ffe0c8', '#501000'], ['#a040ff', '#f0e0ff', '#2a0050']];
+  var fw = FX.fw = { rockets: [], sparks: [], next: 0.3 };
+  function launch() {
+    var R = G.R, y0 = R.HOR + R.pitch + 2, ty = 12 + Math.random() * 46;
+    var side = Math.random() < 0.5 ? 0.06 + Math.random() * 0.28 : 0.66 + Math.random() * 0.28;   // 文字を避けて左右に
+    fw.rockets.push({ x: R.W * side, y: y0, vx: (Math.random() - 0.5) * 12, vy: -Math.sqrt(2 * 80 * Math.max(10, y0 - ty)), col: FW_COLS[Math.floor(Math.random() * FW_COLS.length)] });
+  }
+  function burst(r) {
+    var willow = Math.random() < 0.22, filled = !willow && Math.random() < 0.5, n = (filled ? 70 : 44) + Math.floor(Math.random() * 20), sp = 62 + Math.random() * 26;
+    for (var i = 0; i < n; i++) {
+      // 輪 / 中まで詰まった菊 / しだれ柳
+      var a = i / n * Math.PI * 2 + Math.random() * 0.1, s = sp * (willow ? 0.9 + Math.random() * 0.2 : (filled ? 0.25 + Math.sqrt(Math.random()) * 0.8 : 0.8 + Math.random() * 0.25));
+      fw.sparks.push({ x: r.x, y: r.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: willow ? 2.2 : 1.5 + Math.random() * 0.3, max: willow ? 2.2 : 1.8,
+        col: willow ? ['#ffa020', '#fff0b0', '#4a2400'] : r.col, g: willow ? 30 : 20 });
+    }
+    // 内側の輪 (別の色)
+    if (!willow && !filled) {
+      var c2 = FW_COLS[(FW_COLS.indexOf(r.col) + 2) % FW_COLS.length];
+      for (i = 0; i < 18; i++) {
+        var a2 = i / 18 * Math.PI * 2;
+        fw.sparks.push({ x: r.x, y: r.y, vx: Math.cos(a2) * sp * 0.45, vy: Math.sin(a2) * sp * 0.45, life: 1.2, max: 1.2, col: c2, g: 16 });
+      }
+    }
+    fw.flash = { x: r.x, y: r.y, t: 0.12 };
+    if (fw.sparks.length > 800) fw.sparks.splice(0, fw.sparks.length - 800);
+    if (G.Audio) G.Audio.sfx('firework');
+  }
+  function updateFireworks(dt, Game) {
+    if (Game.state === 'goal' || Game.state === 'ending') {
+      fw.next -= dt;
+      if (fw.next <= 0) { launch(); if (Math.random() < 0.3) launch(); fw.next = 0.4 + Math.random() * 0.45; }
+    } else fw.next = 0.3;
+    if (fw.flash) { fw.flash.t -= dt; if (fw.flash.t <= 0) fw.flash = null; }
+    for (var i = fw.rockets.length - 1; i >= 0; i--) {
+      var r = fw.rockets[i];
+      r.x += r.vx * dt; r.y += r.vy * dt; r.vy += 80 * dt;
+      if (r.vy > -10) { burst(r); fw.rockets.splice(i, 1); }
+    }
+    for (i = fw.sparks.length - 1; i >= 0; i--) {
+      var s = fw.sparks[i], k = Math.max(0, 1 - 1.6 * dt);
+      s.vx *= k; s.vy = s.vy * k + s.g * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+      if (s.life <= 0) fw.sparks.splice(i, 1);
+    }
+  }
+  FX.drawFireworks = function (ctx) {
+    if (!fw.rockets.length && !fw.sparks.length) return;
+    var blink = Math.floor((G.time || 0) * 20) & 1;
+    if (fw.flash) {   // 開いた瞬間の光
+      var f = fw.flash, rr = Math.round(6 + (0.12 - f.t) * 60);
+      ctx.fillStyle = 'rgba(255,255,240,' + (f.t * 5).toFixed(2) + ')';
+      ctx.fillRect(Math.round(f.x - rr), Math.round(f.y - rr / 2), rr * 2, rr); ctx.fillRect(Math.round(f.x - rr / 2), Math.round(f.y - rr), rr, rr * 2);
+    }
+    fw.rockets.forEach(function (r) {
+      ctx.fillStyle = '#ff9020'; ctx.fillRect(Math.round(r.x), Math.round(r.y) + 2, 1, 4);
+      ctx.fillStyle = '#fffbe0'; ctx.fillRect(Math.round(r.x) - 1, Math.round(r.y) - 1, 2, 3);
+    });
+    fw.sparks.forEach(function (s) {
+      var a = s.life / s.max;
+      if (a < 0.28 && ((Math.round(s.x * 7 + s.y * 3) & 1) ^ blink)) return;   // 消える前はチラチラ
+      var x = Math.round(s.x), y = Math.round(s.y), tx = Math.round(s.x - s.vx * 0.05), ty = Math.round(s.y - s.vy * 0.05);
+      ctx.fillStyle = s.col[0]; ctx.fillRect(tx, ty, 1, 1);                 // 尾
+      if (a > 0.35) { ctx.fillStyle = s.col[2]; ctx.fillRect(x - 1, y - 1, 4, 4); }   // 暗い縁
+      ctx.fillStyle = a > 0.75 ? s.col[1] : s.col[0];
+      ctx.fillRect(x, y, a > 0.35 ? 2 : 1, a > 0.35 ? 2 : 1);
+    });
   };
 
   // 車の後ろの煙 (車より奥)
