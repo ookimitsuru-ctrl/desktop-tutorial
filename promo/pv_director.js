@@ -313,6 +313,7 @@
     return PV.out.toDataURL('image/png');
   };
   PV.BAR = BAR;
+  PV.step = step;   // ダイジェスト PV (digest_director.js) も同じ自動運転を使う
 
   // ============================================================
   //  サウンドトラック: ゲームの FM 音源 BGM と効果音をオフラインで合成し WAV (base64) で返す

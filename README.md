@@ -72,6 +72,15 @@ ffmpeg -framerate 60 -i out/frames/%05d.png -i out/audio.wav \
 
 カット割りや字幕は `promo/pv_director.js` にあります。乱数を固定しているので、毎回同じ映像になります。
 
+`promo/smart_run_gameplay_pv.mp4` は字幕なしのゲーム画面のダイジェスト（30秒）です。1回のレースを自動運転で最後まで走り、スタート・夏・チェックポイント・秋・冬・春・ゴールを BGM の小節に合わせて切り出しています。計器や操作UIもゲームのままです。
+
+```sh
+node promo/make_digest.js out      # out/frames/*.png (384x224) と out/audio.wav
+ffmpeg -framerate 60 -i out/frames/%05d.png -i out/audio.wav \
+  -vf "crop=384:216:0:3,scale=1920:1080:flags=neighbor,fade=t=out:st=29.4:d=0.6,format=yuv420p" \
+  -c:v libx264 -tune animation -b:v 6400k -c:a aac -b:a 160k -movflags +faststart -shortest smart_run_gameplay_pv.mp4
+```
+
 ## ビルド方法
 
 ```sh
