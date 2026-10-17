@@ -2,6 +2,7 @@ package com.starwire.game;
 
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.os.Build;
@@ -11,8 +12,11 @@ import android.os.Vibrator;
 import android.view.Display;
 import android.view.View;
 import android.view.Window;
+import android.util.Log;
 import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -38,6 +42,8 @@ public class MainActivity extends Activity {
         }
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
 
+        // デバッグ版 (assembleDebug) だけ WebView のリモートデバッグを有効にする (エミュレータでの自動テスト用)
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
         web = new WebView(this);
         web.setBackgroundColor(Color.BLACK);
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -62,6 +68,16 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 // 外部ページへは遷移させない
                 return !request.getUrl().toString().startsWith("file:///android_asset/");
+            }
+        });
+        // JavaScript のエラー・警告を logcat (タグ WIRED) へ出す
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage m) {
+                if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR || m.messageLevel() == ConsoleMessage.MessageLevel.WARNING) {
+                    Log.w("WIRED", m.messageLevel() + " " + m.message() + " @" + m.sourceId() + ":" + m.lineNumber());
+                }
+                return true;
             }
         });
         setContentView(web);
