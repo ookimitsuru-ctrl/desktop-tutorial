@@ -34,7 +34,7 @@ export function boot(canvas) {
     if (document.hidden) { if (G.state === 'play') setState('pause'); G.audio.suspend(); }
     else if (G.state !== 'pause') G.audio.resume();
   });
-  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); G.glLost = true; if (G.state === 'play') { setState('pause'); } });
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); G.glLost = true; if (G.state === 'play') { setState('pause'); G.audio.suspend(); } });   // ポーズ画面と同じく音も止める
   canvas.addEventListener('webglcontextrestored', () => {
     G.gfx = new Gfx(canvas); G.input.gfx = G.gfx; resize();
     initWorld(G.stage && G.state !== 'title' ? G.stage.theme : 'belt');
