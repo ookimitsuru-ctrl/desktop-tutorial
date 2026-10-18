@@ -81,7 +81,7 @@ Controls: analog stick on the right, brake and accelerator pedals on the left. H
 Modes: EASY (brake assist, half traffic, more time) and HARD. If time runs out you can CONTINUE from the start of the season within 10 s.
 Expected music: title=title song, each season its own song, goal/results=victory, time up=silence.
 
-Normal behavior (NOT bugs): the car slows down when braking, off the road, scraping trees/rocks/signs ("scrape" events), spinning after hitting a car, or when brake assist acts in EASY; speed is capped at 160 km/h; gears change automatically (1-6, max 7000 rpm); the title screen shows a self-driving demo car; during the countdown the car does not move; time-up happens when time_left reaches 0; music is silent for a few seconds while a song is being prepared; after BACK the game is paused until the screen is tapped.
+Normal behavior (NOT bugs): the car slows down when braking, off the road, scraping trees/rocks/signs ("scrape" events), spinning after hitting a car, or when brake assist acts in EASY; speed is capped at 160 km/h; gears change automatically (1-6, max 7000 rpm); the title screen and the title-after-results screen show a self-driving demo car (speed 0-160 km/h and spins there are normal); during the countdown the car does not move; time-up happens when time_left reaches 0; music is silent for a few seconds while a song is being prepared; after BACK the game is paused until the screen is tapped.
 
 Your job for this session is to find bugs: errors, freezes, stuck controls, wrong screen/state, wrong music, numbers out of range, performance drops, anything odd.
 Each turn you get the current game state and the result of your previous action. Then you:
@@ -323,6 +323,15 @@ function stateLine(s) {
     if (prev) log({ kind: 'verdict', step: steps, action: prev.action, verdict: d.verdict, note: d.note });
     if (prev && d.verdict === 'bug') log({ kind: 'llm-bug', step: steps, action: prev.action, note: d.note, result: prev.result, shot: await shot('llmbug') });
 
+    // 小さなモデルは同じ動きばかり選ぶので, 1 回おきに「いちばん試していない動き」に差し替えて穴をなくす
+    if (steps % 2 === 1 && !(sNow.state === 'race' && !sNow.paused && sNow.time < 12)) {
+      const cands = Object.keys(menuNow).filter(k => !k.startsWith('wait'));
+      cands.sort((a, b) => (tried[a] || 0) - (tried[b] || 0) || Math.random() - 0.5);
+      if (cands.length && (tried[cands[0]] || 0) < (tried[d.action] || 0)) {
+        log({ kind: 'coverage-override', wanted: d.action, used: cands[0] });
+        d = Object.assign({}, d, { action: cands[0], seconds: Math.max(6, d.seconds), intent: 'coverage: least-tried action' });
+      }
+    }
     // 実行
     const before = sNow;
     await page.evaluate(() => PT.drain());

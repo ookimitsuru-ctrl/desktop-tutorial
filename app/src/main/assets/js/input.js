@@ -51,6 +51,7 @@
     if (G.Audio) G.Audio.unlock();
     var p = toLocal(e);
     I.taps.push(p);
+    if (I.taps.length > 8) I.taps.shift();   // メニュー以外では消費されないので, 溜め込まない
     var L = I.layout();
     if (p.x >= L.steerZoneX && I.steerId === null) {
       I.steerId = e.pointerId;

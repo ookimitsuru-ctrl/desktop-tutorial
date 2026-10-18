@@ -613,8 +613,9 @@
   Game.pause = function (on) {
     Game.paused = on;
     if (G.Audio) G.Audio.suspend(on);
-    // 押しっぱなしのまま中断されたタッチを解除
+    // 押しっぱなしのまま中断されたタッチを解除 (走行中に溜まったタップで, すぐ再開してしまわないようにする)
     I.releaseAll();
+    I.clearTaps();
     if (!on) { I.clearTaps(); last = 0; }
   };
 
