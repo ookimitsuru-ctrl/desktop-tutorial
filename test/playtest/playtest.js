@@ -81,21 +81,23 @@ Controls: analog stick on the right, brake and accelerator pedals on the left. H
 Modes: EASY (brake assist, half traffic, more time) and HARD. If time runs out you can CONTINUE from the start of the season within 10 s.
 Expected music: title=title song, each season its own song, goal/results=victory, time up=silence.
 
+Normal behavior (NOT bugs): the car slows down when braking, off the road, scraping trees/rocks/signs ("scrape" events), spinning after hitting a car, or when brake assist acts in EASY; speed is capped at 160 km/h; gears change automatically (1-6, max 7000 rpm); the title screen shows a self-driving demo car; during the countdown the car does not move; time-up happens when time_left reaches 0; music is silent for a few seconds while a song is being prepared; after BACK the game is paused until the screen is tapped.
+
 Your job for this session is to find bugs: errors, freezes, stuck controls, wrong screen/state, wrong music, numbers out of range, performance drops, anything odd.
 Each turn you get the current game state and the result of your previous action. Then you:
 1) judge the previous result: "ok" or "bug" (only "bug" when something really looks wrong; explain in "note"),
 2) choose the next action from the list for the current state, how many seconds to run it, and your intent.
 Balance: spend about half of the race time on drive_good so the run reaches later seasons and the goal (coverage), and use the rest for edge cases. Prefer actions you have not tried yet; do not repeat the same edge case many times in a row.
-Answer with JSON only.`;
+Keep "note" and "intent" short (under 20 words each). Answer with JSON only.`;
 
 const SCHEMA = {
   type: 'object',
   properties: {
     verdict: { type: 'string', enum: ['ok', 'bug'] },
-    note: { type: 'string' },
+    note: { type: 'string', maxLength: 140 },
     action: { type: 'string', enum: ALL },
     seconds: { type: 'integer', minimum: 2, maximum: 60 },
-    intent: { type: 'string' }
+    intent: { type: 'string', maxLength: 100 }
   },
   required: ['verdict', 'note', 'action', 'seconds', 'intent']
 };
