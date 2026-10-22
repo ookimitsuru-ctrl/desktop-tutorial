@@ -28,8 +28,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # Android SDK は GitHub のランナーに最初から入っている ($ANDROID_HOME)
 
       - name: Simulation sanity check (AI vs AI)
         working-directory: web
@@ -40,7 +39,8 @@ jobs:
       - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
