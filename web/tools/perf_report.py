@@ -26,18 +26,20 @@ def table(facts):
 def totals(facts):
     if not facts:
         return {}
+    spikes = [f"{f['updMaxMs']}ms（{f['updMaxAt'].split(' [')[0]}）" for f in facts if (f['updMaxMs'] or 0) > 16]
     return {
-        '区間数': len(facts),
-        '完走': sum(1 for f in facts if f['finished']),
-        '実時間(分)': round(sum(f['realMinutes'] for f in facts), 1),
-        '処理時間の95%値の最大(ms)': max((f['updP95Ms'] or 0) for f in facts),
-        '処理時間の最大(ms)': max((f['updMaxMs'] or 0) for f in facts),
-        '16ms超の合計': sum(f['spikesOver16ms'] for f in facts),
+        '試合数': len(facts),
+        '最後まで終わった試合': sum(1 for f in facts if f['finished']),
+        '処理時間の平均(ms)': f"{min(f['updMeanMs'] for f in facts)}〜{max(f['updMeanMs'] for f in facts)}",
+        '処理時間の95%値(ms)': f"{min(f['updP95Ms'] for f in facts)}〜{max(f['updP95Ms'] for f in facts)}",
+        '16msを超えたフレームの合計': sum(f['spikesOver16ms'] for f in facts),
+        '16msを超えたときの値と場面': spikes,
         '試合中のシェーダ作成の合計': sum(len(f['shaderCompiles']) for f in facts),
-        'シェーダ作成の原因': sorted({w for f in facts for s in f['shaderCompiles'] for w in (s.get('who') or [])}),
+        'シェーダ作成の原因': sorted({w.split(' diff')[0] for f in facts for s in f['shaderCompiles'] for w in (s.get('who') or [])}),
         '進行不能の合計': sum(len(f['stuck']) for f in facts),
         'エラーの合計': sum(len(f['errors']) for f in facts),
-        'メモリ増加の最大(MB)': max(((f['heapEndMB'] or 0) - (f['heapStartMB'] or 0)) for f in facts),
+        'メモリ(MB)の範囲': f"{min(f['heapStartMB'] for f in facts)}〜{max(f['heapMaxMB'] for f in facts)}",
+        '試合の最初から最後までのメモリ増加の最大(MB)': round(max((f['heapEndMB'] or 0) - (f['heapStartMB'] or 0) for f in facts), 1),
     }
 
 
@@ -65,10 +67,17 @@ phone = phone_summary(PHONE)
 
 SYSTEM = """あなたはスマホ向けサッカーゲームの性能テストのレポート担当です。与えられたデータだけを根拠に、日本語で、ゲームの作者（専門家ではない）向けに分かりやすく書いてください。
 数値はデータにあるものだけを使い、新しい数値を作らないこと。データに無いことは書かないこと。
+修正内容に書かれていても、計測データで確かめられていないことを「確認できた」「防がれた」と書かないこと（「対策した」と書く）。
+修正前後で変わっていない数値を「改善した」と書かないこと。
 用語: 「処理時間」= 1フレーム分のゲーム処理にかかった時間。「シェーダ作成」= 試合中に新しい描画プログラムが作られること（その瞬間に画面が一瞬止まる＝もたつき）。
 この試験環境にはGPUが無いので、fps（滑らかさ）はスマホ実機テストでしか分からない、という点を必ず書くこと。"""
 
-facts_for_llm = {'修正前': tb, '修正後': ta}
+facts_for_llm = {'修正前': tb, '修正後': ta, '注記': [
+    '処理時間の平均と95%値は、もともと軽く、修正前後でほぼ同じ',
+    'メモリは試合中に上下するだけで、増え続けてはいない（メモリリークなし）',
+    'このテストの画質は高・中・低の固定で、画質「自動」で途中に下がる場面は測っていない（スマホ実機テストの「自動」で確かめる）',
+    '最初のゴールの瞬間の処理時間（19〜26ms→約4ms）は、別に行った計測の結果',
+]}
 user = f"""次のデータから、レポートの「まとめ」を書いてください。見出しは付けず、次の3つの段落だけを書いてください。
 1段落目: テストの結果、どんな問題が見つかったか（修正前の数値を引用）
 2段落目: 何を修正し、修正後どうなったか（修正後の数値を引用）
@@ -87,13 +96,45 @@ else:
 
 from llama_cpp import Llama
 llm = Llama(model_path=os.environ.get('LLM_MODEL', '/home/user/llm/qwen2.5-7b-instruct-q4_k_m.gguf'), n_ctx=8192, n_threads=4, verbose=False, seed=7)
-t0 = time.time()
-res = llm.create_chat_completion(messages=[{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': user}], temperature=0.2, max_tokens=900)
-summary = res['choices'][0]['message']['content'].strip()
-print(f"[llm] {res['usage']} {time.time() - t0:.0f}s", file=sys.stderr)
+import re
 
-seg_before = open(os.path.join(BEFORE, 'llm_segments.md'), encoding='utf-8').read() if os.path.exists(os.path.join(BEFORE, 'llm_segments.md')) else ''
-seg_after = open(os.path.join(AFTER, 'llm_segments.md'), encoding='utf-8').read() if os.path.exists(os.path.join(AFTER, 'llm_segments.md')) else ''
+
+def overclaims(text):
+    """計測で確かめていないことを確認済みのように書いた文を探す（小さいモデルが書きすぎるため）"""
+    bad = []
+    for sent in re.split(r'(?<=。)', text):
+        if '自動' in sent and re.search(r'解消|防が|防げ|確認でき|改善され', sent) and not re.search(r'確認できていない|確認されていない|確認されていません|確認できていません|まだ|していない|未計測|測っていない', sent):
+            bad.append(sent.strip())
+        if re.search(r'平均|95%値', sent) and re.search(r'大幅に改善|大きく改善', sent):
+            bad.append(sent.strip())
+    return bad
+
+
+t0 = time.time()
+extra = []
+for attempt in range(4):
+    prompt = user + (('\n\n特に注意（前回の書きすぎ）:\n' + '\n'.join(f'- 「{b}」のように書かないこと' for b in extra)) if extra else '')
+    res = llm.create_chat_completion(messages=[{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}], temperature=0.2, max_tokens=900, seed=7 + attempt)
+    summary = res['choices'][0]['message']['content'].strip()
+    bad = overclaims(summary)
+    paras = [p for p in re.split(r'\n\s*\n', summary) if p.strip()]
+    short = len(paras) < 3 or len(summary) < 250
+    print(f"[llm] 試行{attempt + 1} {res['usage']} {time.time() - t0:.0f}s 書きすぎ: {bad} 段落数: {len(paras)}", file=sys.stderr)
+    if not bad and not short:
+        break
+    extra += bad
+CHECK_NOTE = '' if not bad else '（注: 自動チェックで書きすぎの可能性がある文が残っています: ' + ' / '.join(bad) + '）'
+
+def segments(d):
+    p = os.path.join(d, 'llm_segments.md')
+    if not os.path.exists(p):
+        return ''
+    body = open(p, encoding='utf-8').read().split('\n## ', 1)
+    return ('\n#### ' + body[1].replace('\n## ', '\n#### ')) if len(body) > 1 else ''
+
+
+seg_before = segments(BEFORE)
+seg_after = segments(AFTER)
 
 md = f"""# ワールドストライカーズ 性能テスト レポート
 
@@ -102,6 +143,7 @@ md = f"""# ワールドストライカーズ 性能テスト レポート
 ## まとめ（ローカルLLM）
 
 {summary}
+{CHECK_NOTE}
 
 ## テストの方法
 
@@ -129,13 +171,13 @@ md = f"""# ワールドストライカーズ 性能テスト レポート
 
 ## 付録: 区間ごとの判定（判定は基準どおりスクリプトで決定、説明文はローカルLLM）
 
-最初は Qwen2.5-3B に判定もさせたが、判定基準を守れず誤判定した（例: 試合中のシェーダ作成が3回あるのに「1回しかなく問題なし」）。そのため、判定は基準どおりにスクリプトで決め、説明文だけを Qwen2.5-7B に書かせている。説明文には言い回しの不正確な箇所が残ることがある。
+最初は Qwen2.5-3B に判定もさせたが、判定基準を守れず誤判定した（例: 試合中のシェーダ作成が3回あるのに「1回しかなく問題なし」）。そのため、判定は基準どおりにスクリプトで決め、説明文だけを Qwen2.5-7B に書かせている。説明文には言い回しの不正確な箇所が残ることがある。「滑らか」などの表現は1フレームの処理時間についてのもので、fps（画面の滑らかさ）はこの環境では計測していない。
 
 ### 修正前
-{seg_before.split(chr(10), 2)[-1] if seg_before else ''}
+{seg_before}
 
 ### 修正後
-{seg_after.split(chr(10), 2)[-1] if seg_after else ''}
+{seg_after}
 """
 open(OUT, 'w', encoding='utf-8').write(md)
 print(OUT)
