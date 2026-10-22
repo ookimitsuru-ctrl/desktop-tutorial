@@ -562,14 +562,17 @@ export class App {
       case 'goal': {
         const userGoal = e.team === this.mv.match.user.team;
         haptic(userGoal ? 120 : 40);
+        this.controls?.setVisible(false);
         break;
       }
+      case 'kickoffSetup':
+        if (!this.mv.hold && !this.pauseEl) this.controls?.setVisible(true);
+        break;
       case 'replayStart':
         if (!this.settings.replays) this.mv.skipReplay();
         this.controls?.setVisible(false);
         break;
       case 'replayEnd':
-        this.controls?.setVisible(true);
         break;
       case 'halftime':
         setTimeout(() => this.showHalftime(), 1500);
@@ -783,7 +786,8 @@ export class App {
       c.poll();
       const st = c.state;
       m.setUserInput(st.x, -st.y, st.mag, st.sprint);
-      c.setMode(this.controlsMode());
+      if (this.shootout) c.setMode(this.shootout.userKick ? 'penalty' : this.shootout.userKeep ? 'keeper' : 'defend');
+      else c.setMode(this.controlsMode());
     }
     if (this.pending) {
       this.pending.t -= dt;

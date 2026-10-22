@@ -10,9 +10,9 @@ import { FORMATIONS } from '../data/formations.js';
 // ボールと選手の接触、ルール判定（ゴール・ラインアウト・オフサイド・ファウル）、審判、操作の反映
 
 const DIFFICULTY = {
-  easy: { reaction: 1.35, noise: 0.05, slide: 0.04, aiShot: 0.75, aiTackle: 0.75, userTackle: 1.25, gk: 0.9, userGk: 1.08 },
-  normal: { reaction: 1.0, noise: 0.03, slide: 0.06, aiShot: 1.0, aiTackle: 1.0, userTackle: 1.05, gk: 1.0, userGk: 1.0 },
-  hard: { reaction: 0.8, noise: 0.015, slide: 0.08, aiShot: 1.15, aiTackle: 1.2, userTackle: 0.95, gk: 1.08, userGk: 0.95 },
+  easy: { reaction: 1.3, noise: 0.05, slide: 0.04, aiShot: 0.8, aiTackle: 0.8, userTackle: 1.15, gk: 0.92, userGk: 1.08 },
+  normal: { reaction: 0.95, noise: 0.025, slide: 0.06, aiShot: 1.05, aiTackle: 1.1, userTackle: 0.9, gk: 1.02, userGk: 0.97 },
+  hard: { reaction: 0.75, noise: 0.012, slide: 0.08, aiShot: 1.2, aiTackle: 1.35, userTackle: 0.75, gk: 1.1, userGk: 0.9 },
 };
 
 export class Match {
@@ -375,6 +375,7 @@ export class Match {
     b.inGoal = 0;
     if (prevTeam !== p.team || this.lastPossession !== p.team.index) {
       this.possessionStartT = this.time;
+      p.team.possSince = this.time;
       this.emit({ type: 'possession', team: p.team.index, player: p });
     } else if (this.time - this.possessionStartT > 0.5) this.possessionStartT = this.time;
     p.decideT = 0.1;
@@ -408,6 +409,38 @@ export class Match {
       b.y = under ? 0.9 : 2.25;
       b.vx = b.vz = b.vy = 0;
       return;
+    }
+    // 進路にいる守備者の足元にボールが入ったら奪われることがある
+    if (p.state === 'move' || p.state === 'kick') {
+      for (const o of this.teams[1 - p.team.index].players) {
+        if (o.busy || o.kickCd > 0 || o.isGK) continue;
+        const ox = o.x + Math.cos(o.facing) * 0.3;
+        const oz = o.z + Math.sin(o.facing) * 0.3;
+        const d = Math.hypot(b.x - ox, b.z - oz);
+        if (d > 0.62) continue;
+        const facingBall = Math.cos(o.facing) * (b.x - o.x) + Math.sin(o.facing) * (b.z - o.z) > 0;
+        // 守備者がドリブラーの進路上（前方）にいるときだけ
+        const ahead = Math.cos(p.facing) * (o.x - p.x) + Math.sin(p.facing) * (o.z - p.z) > 0.2;
+        if (!facingBall || !ahead) continue;
+        // ボールが守備者の足に当たる: 全力で突っ込むほど奪われやすい
+        const skill = 1.6 + (o.attrs.defending - p.attrs.dribbling) * 0.04;
+        const rate = Math.max(0.5, skill) * (o.team.isUser ? this.diff.userTackle : this.diff.aiTackle) * (p.speed > 6 ? 2.2 : p.speed > 3.5 ? 1.3 : 0.8);
+        if (this.rng() < rate * dt) {
+          if (this.offsideSet && this.offsideSet.team !== o.team) this.offsideSet = null;
+          b.owner = null;
+          p.kickCd = 0.4;
+          if (this.rng() < 0.5) this.giveBall(o);
+          else {
+            const a = Math.atan2(b.z - p.z, b.x - p.x) + (this.rng() - 0.5) * 1.5;
+            b.vx = Math.cos(a) * 3 + p.vx * 0.4;
+            b.vz = Math.sin(a) * 3 + p.vz * 0.4;
+            b.lastTouch = o;
+            o.kickCd = 0.15;
+          }
+          this.emit({ type: 'tackle', player: o, success: true, block: true });
+          return;
+        }
+      }
     }
     const sp = p.speed;
     p.anim.touch = (p.anim.touch || 0) + sp * dt * 0.75;
@@ -646,7 +679,7 @@ export class Match {
     let pS = 0.34 + (d.attrs.defending - c.attrs.dribbling) * 0.009 + (c.speed > 6 ? 0.08 : 0) + (front ? 0.08 : -0.15);
     pS *= d.team.isUser ? this.diff.userTackle : this.diff.aiTackle;
     pS = clamp(pS, 0.06, 0.82);
-    const foulP = front ? 0.015 + (1 - d.attrs.defending / 100) * 0.04 : 0.13;
+    const foulP = front ? 0.01 + (1 - d.attrs.defending / 100) * 0.03 : 0.07;
     const r = this.rng();
     if (r < foulP) {
       this.callFoul(d, c, front ? 0.1 : 0.35);
@@ -777,8 +810,8 @@ export class Match {
       const d = Math.hypot(tx - b.x, tz - b.z);
       const skill = p.attrs.passing / 100;
       const err = d * (0.025 + (1 - skill) * 0.07 + pressure * 0.03) * (kind === 'clear' ? 2.5 : 1);
-      const ex = tx + this.rngGauss() * err;
-      const ez = tz + this.rngGauss() * err;
+      const ex = clamp(tx, -PITCH.HL + 4, PITCH.HL - 4) + this.rngGauss() * err;
+      const ez = clamp(tz, -PITCH.HW + 4, PITCH.HW - 4) + this.rngGauss() * err;
       let apex = clamp(2.5 + d * 0.13, 3, 13);
       let targetY = BALL_R;
       if (kind === 'cross') {
@@ -1073,6 +1106,14 @@ export class Match {
   checkRules() {
     const b = this.ball;
     if (this.phase !== 'play') return;
+    // スローイン中（投げる前）はボールはまだインプレーではない
+    if (b.owner && b.owner.state === 'throw') return;
+    if (b.owner && b.owner.isGK && (b.owner.state === 'hold' || b.owner.sd.holding || b.owner.state === 'dive')) {
+      // GKが手で持っているボールはゴールラインの手前に留める
+      const lim = PITCH.HL - 0.3;
+      if (Math.abs(b.x) > lim) b.x = Math.sign(b.x) * lim;
+      return;
+    }
     // ゴール
     if (b.inGoal || (Math.abs(b.x) > PITCH.HL + BALL_R && Math.abs(b.z) < PITCH.goalHalfW && b.y < PITCH.goalH)) {
       const side = b.inGoal || Math.sign(b.x);
@@ -1392,6 +1433,8 @@ export class Match {
         const tz = b.z + Math.sin(a) * d;
         p.setState('throw', 0.85, { release: true });
         const exec = () => {
+          // タッチラインのすぐ内側から投げ入れる
+          b.z = Math.sign(sp.z) * (PITCH.HW - 0.05);
           const s = solveLob(b.x, 2.2, b.z, tx, tz, 2.6 + d * 0.06, BALL_R);
           b.owner = null;
           b.y = 2.2;
@@ -1724,6 +1767,14 @@ export class Match {
     for (const p of ps) {
       p.x = clamp(p.x, -PITCH.HL - 4, PITCH.HL + 4);
       p.z = clamp(p.z, -PITCH.HW - 3, PITCH.HW + 3);
+      // GKはゴールの中に入らない（ボールを持ったまま入るとゴールになってしまう）
+      if (p.isGK && Math.abs(p.z) < PITCH.goalHalfW + 0.5) {
+        const lim = PITCH.HL - (this.ball.owner === p ? 0.6 : 0.15);
+        if (Math.abs(p.x) > lim) {
+          p.x = Math.sign(p.x) * lim;
+          if (p.vx * Math.sign(p.x) > 0) p.vx = 0;
+        }
+      }
     }
   }
 

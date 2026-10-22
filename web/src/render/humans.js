@@ -162,6 +162,20 @@ function buildGeometries() {
   return G;
 }
 
+/** 背番号用の数字アトラス（0-9 を横に並べる） */
+function makeDigitTexture() {
+  const c = makeCanvas(640, 96);
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 640, 96);
+  g.fillStyle = '#ffffff';
+  g.font = '800 84px "BarlowC", "Arial Narrow", Arial, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (let i = 0; i < 10; i++) g.fillText(String(i), i * 64 + 32, 50);
+  const t = canvasTexture(c, { srgb: false, aniso: 4 });
+  return t;
+}
+
 // パーツ定義: 骨インデックスと1人あたりの個数
 const B = {
   root: 0,
@@ -237,20 +251,27 @@ export class Humans {
       this.looks.push(defaultLook());
     }
     const baseMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.62, metalness: 0 });
+    this.digits = makeDigitTexture();
+    // フォントの読み込み後に背番号を描き直す
+    document.fonts?.ready.then(() => {
+      const fresh = makeDigitTexture();
+      this.digits.image = fresh.image;
+      this.digits.needsUpdate = true;
+    });
     const colorInject = (sh) => {
       sh.vertexShader = sh.vertexShader
         .replace(
           '#include <common>',
-          '#include <common>\nattribute vec3 iColA;\nattribute vec3 iColB;\nattribute float slot;\nattribute float iPattern;\nvarying vec3 vColA;\nvarying vec3 vColB;\nvarying float vSlot;\nvarying float vPattern;\nvarying vec3 vLocal;',
+          '#include <common>\nattribute vec3 iColA;\nattribute vec3 iColB;\nattribute float slot;\nattribute float iPattern;\nattribute float iNumber;\nvarying vec3 vColA;\nvarying vec3 vColB;\nvarying float vSlot;\nvarying float vPattern;\nvarying float vNumber;\nvarying vec3 vLocal;',
         )
         .replace(
           '#include <begin_vertex>',
-          '#include <begin_vertex>\nvColA = iColA; vColB = iColB; vSlot = slot; vPattern = iPattern; vLocal = position;',
+          '#include <begin_vertex>\nvColA = iColA; vColB = iColB; vSlot = slot; vPattern = iPattern; vNumber = iNumber; vLocal = position;',
         );
       sh.fragmentShader = sh.fragmentShader
         .replace(
           '#include <common>',
-          '#include <common>\nvarying vec3 vColA;\nvarying vec3 vColB;\nvarying float vSlot;\nvarying float vPattern;\nvarying vec3 vLocal;',
+          '#include <common>\nvarying vec3 vColA;\nvarying vec3 vColB;\nvarying float vSlot;\nvarying float vPattern;\nvarying float vNumber;\nvarying vec3 vLocal;\nuniform sampler2D uDigits;',
         )
         .replace(
           '#include <color_fragment>',
@@ -268,7 +289,38 @@ export class Humans {
               else if (p == 5.0) m = step(0.0, L.x);
               else if (p == 6.0) m = max(step(abs(L.y - 0.30), 0.045) * step(0.0, L.z), step(0.455, L.y));
             }
-            diffuseColor.rgb *= mix(vColA, vColB, m);
+            vec3 base = mix(vColA, vColB, m);
+            if (vPattern > 0.5 && vPattern < 9.5 && vNumber > 0.5) {
+              // 背番号
+              vec3 L = vLocal;
+              float back = smoothstep(-0.05, -0.08, L.z);
+              float n = floor(vNumber + 0.5);
+              float tens = floor(n / 10.0);
+              float ones = n - tens * 10.0;
+              float two = step(9.5, n);
+              float w = two > 0.5 ? 0.15 : 0.08;
+              // 背中側から見て左→右 = x の正→負
+              vec2 uv = vec2((w * 0.5 - L.x) / w, (L.y - 0.13) / 0.22);
+              if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0 && back > 0.0) {
+                float digit = two > 0.5 ? (uv.x < 0.5 ? tens : ones) : ones;
+                float lx = two > 0.5 ? fract(uv.x * 2.0) : uv.x;
+                float a = texture2D(uDigits, vec2((digit + lx) / 10.0, uv.y)).a;
+                vec3 numCol = dot(vColA, vec3(0.3, 0.6, 0.1)) > 0.45 ? vec3(0.06, 0.08, 0.14) : vec3(0.96);
+                if (m > 0.5) numCol = dot(vColB, vec3(0.3, 0.6, 0.1)) > 0.45 ? vec3(0.06, 0.08, 0.14) : vec3(0.96);
+                base = mix(base, numCol, a * back);
+              }
+            }
+            if (vPattern > 19.5) {
+              // 顔: 目・眉・口
+              vec3 L = vLocal;
+              float front = smoothstep(0.05, 0.085, L.z);
+              float eye = 1.0 - smoothstep(0.009, 0.014, length(vec2(abs(L.x) - 0.033, (L.y - 0.163) * 1.4)));
+              float brow = (1.0 - smoothstep(0.004, 0.008, abs(L.y - 0.188 + abs(L.x) * 0.12))) * step(0.012, abs(L.x)) * step(abs(L.x), 0.056);
+              float mouth = (1.0 - smoothstep(0.003, 0.006, abs(L.y - 0.112 + L.x * L.x * 6.0))) * step(abs(L.x), 0.022);
+              float nose = (1.0 - smoothstep(0.0, 0.014, length(vec2(L.x, (L.y - 0.135) * 0.8)))) * 0.25;
+              base *= 1.0 - front * (eye * 0.88 + brow * 0.65 + mouth * 0.45 + nose);
+            }
+            diffuseColor.rgb *= base;
           }`,
         );
     };
@@ -279,6 +331,7 @@ export class Humans {
       geo.setAttribute('iColA', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
       geo.setAttribute('iColB', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
       geo.setAttribute('iPattern', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+      geo.setAttribute('iNumber', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       if (!geo.attributes.slot) geo.setAttribute('slot', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count), 1));
       const mat = baseMat.clone();
       if (part.name === 'head' || part.name === 'foreArm') mat.roughness = 0.5;
@@ -287,7 +340,7 @@ export class Humans {
         mat.roughness = 0.35;
         mat.metalness = 0.1;
       }
-      patchMaterial(mat, { rim: 0.9, key: `human-${part.name}`, extraVert: colorInject });
+      patchMaterial(mat, { rim: 0.9, key: `human-${part.name}`, extraVert: colorInject, uniforms: { uDigits: { value: this.digits } } });
       const mesh = new THREE.InstancedMesh(geo, mat, n);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.castShadow = true;
@@ -361,8 +414,11 @@ export class Humans {
     };
     const hands = look.gloves || look.skin;
     set('torso', i, look.shirt, look.shirt2, look.pattern + 1);
+    const num = this.meshes.torso.mesh.geometry.attributes.iNumber;
+    num.setX(i, look.number || 0);
+    num.needsUpdate = true;
     set('shorts', i, look.shorts, look.shorts);
-    set('head', i, look.skin, look.skin);
+    set('head', i, look.skin, look.skin, 20);
     set('hair', i, look.hair, look.hair);
     for (let s = 0; s < 2; s++) {
       set('upperArm', i * 2 + s, look.sleeve, look.longSleeve ? look.sleeve : look.skin);

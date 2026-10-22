@@ -374,8 +374,8 @@ export class Shootout {
     for (const f of w.flags) f.visible = false;
     // カメラ
     const cam = w.camera;
-    const pos = new THREE.Vector3(SPOT - 8.5, 3.0, 0.0);
-    const look = new THREE.Vector3(GX, 1.1, 0);
+    const pos = new THREE.Vector3(SPOT - 6.0, 2.3, 0.5);
+    const look = new THREE.Vector3(GX, 1.0, 0);
     if (this.state === 'result' && this.t > 0.4) {
       pos.set(GX - 4, 2.2, 7);
       look.set(GX - 1, 1, 0);
@@ -389,7 +389,7 @@ export class Shootout {
     }
     cam.position.copy(this.camPos);
     cam.lookAt(this.camLook);
-    cam.fov = 40;
+    cam.fov = 36;
     cam.updateProjectionMatrix();
     w.stadium.setBroadcastView(false);
     // 照準をスクリーン座標へ

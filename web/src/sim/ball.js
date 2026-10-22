@@ -163,12 +163,20 @@ export class Ball {
           this.x = side * back;
           if (side * this.vx > 0) {
             this.events.push({ type: 'net', v: Math.abs(this.vx) + Math.abs(this.vz), side, x: this.x, y: this.y, z: this.z });
-            this.vx *= -0.12;
+            this.vx *= -0.06;
             this.vz *= 0.3;
             this.vy *= 0.3;
           }
         }
         if (this.inGoal) {
+          // ネットに吸収されて外に転がり出ない
+          const k = Math.exp(-2.5 / 120);
+          this.vx *= k;
+          this.vz *= k;
+          if (side * this.x < GOAL_X + 0.25 && side * this.vx < 0) {
+            this.vx = 0;
+            this.x = side * (GOAL_X + 0.25);
+          }
           const sideLim = POST_Z - BALL_R;
           if (Math.abs(this.z) > sideLim) {
             if (this.z * this.vz > 0) {

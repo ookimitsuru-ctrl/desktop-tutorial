@@ -390,9 +390,11 @@ export function championScreen(team, onNext) {
   return h(
     'div.screen.champion',
     {},
-    h('div.vignette'),
-    h('div.big', {}, 'CHAMPIONS'),
-    h('div.jp', {}, `${team.name} ワールドカップ優勝！`),
-    h('div', { style: { marginTop: '18px', animation: 'rise .5s 1.4s ease both' } }, btn('メニューへ', 'primary', onNext)),
+    h(
+      'div.row',
+      {},
+      h('div', {}, h('div.big', {}, 'CHAMPIONS'), h('div.jp', {}, `${team.name} ワールドカップ優勝！`)),
+      h('div', { style: { animation: 'rise .5s 1.4s ease both' } }, btn('次へ', 'primary', onNext)),
+    ),
   );
 }

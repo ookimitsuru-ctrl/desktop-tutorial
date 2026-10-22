@@ -1093,7 +1093,23 @@ table.standings td.pts {
   background-clip: text;
   color: transparent;
   filter: drop-shadow(0 6px 0 #6a3d00) drop-shadow(0 16px 30px rgba(0, 0, 0, 0.6));
-  animation: goalIn 0.8s cubic-bezier(0.15, 0.9, 0.25, 1.3) both;
+  animation: goalIn 0.8s cubic-bezier(0.15, 0.9, 0.25, 1.3) both, goalAway 0.6s 1.5s ease-in both;
+}
+
+.goal-overlay .goal-sub {
+  animation: rise 0.5s 0.5s ease both, subAway 0.6s 1.5s ease-in both;
+}
+
+@keyframes goalAway {
+  to {
+    transform: translateY(-34vh) scale(0.42) rotate(-4deg);
+  }
+}
+
+@keyframes subAway {
+  to {
+    transform: translateY(-28vh) scale(0.8) skewX(var(--skew));
+  }
 }
 
 @keyframes goalIn {
@@ -1464,16 +1480,25 @@ table.standings td.pts {
 
 .champion {
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
-  padding-bottom: 6vh;
+  padding: 0 var(--safe-r) 5vh var(--safe-l);
+  background: linear-gradient(0deg, rgba(2, 6, 20, 0.75), rgba(2, 6, 20, 0) 45%);
+}
+
+.champion .row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  gap: 20px;
 }
 
 .champion .big {
   font-family: var(--num);
   font-weight: 800;
   font-style: italic;
-  font-size: clamp(44px, 10vw, 110px);
+  font-size: clamp(38px, 7.5vw, 86px);
   line-height: 0.9;
   background: linear-gradient(180deg, #fff 0%, #fff3c4 45%, #ffcf3a 55%, #ffb300 100%);
   -webkit-background-clip: text;
@@ -1481,7 +1506,6 @@ table.standings td.pts {
   color: transparent;
   filter: drop-shadow(0 5px 0 #6a3d00) drop-shadow(0 12px 30px rgba(0, 0, 0, 0.7));
   animation: goalIn 1s ease both;
-  text-align: center;
 }
 
 .champion .jp {

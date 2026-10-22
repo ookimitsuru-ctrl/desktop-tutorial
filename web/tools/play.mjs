@@ -39,7 +39,7 @@ await T.step(100); // 笛を待つ
 await tapBtn('pass'); // キックオフ
 await T.step(60);
 await log('after kickoff');
-if (scenario === 'basic' || scenario === 'pk') {
+if (scenario === 'basic') {
   // 右(攻撃方向)へドリブル → パス → シュート を繰り返す
   for (let r = 0; r < 14; r++) {
     const i = await T.info();
@@ -71,6 +71,63 @@ if (scenario === 'basic' || scenario === 'pk') {
   await log('half');
   await wait(800);
   await T.shot('p3');
+}
+if (scenario === 'goal') {
+  // ゴール前で強制的にシュート → ゴール → セレブレーション → リプレイ
+  await page.evaluate(() => {
+    const m = window.__app.mv.match;
+    const st = m.teams[0].players[10];
+    const gk = m.teams[1].players[0];
+    st.x = 40; st.z = 4; st.facing = 0;
+    for (const p of m.teams[1].players) if (!p.isGK) p.x = Math.min(p.x, 20);
+    gk.x = 50; gk.z = -3;
+    m.ball.owner = null; m.ball.place(40.6, 4);
+    m.giveBall(st, true);
+    m.setControlled(st);
+  });
+  await T.step(2);
+  await T.btn('shoot', true); await T.step(20); await T.btn('shoot', false, 0.4);
+  for (let k = 0; k < 6; k++) { await T.step(10); }
+  await log('after shot');
+  await T.shot('g0-shot');
+  await T.step(60); await log('goal+1s'); await T.shot('g1-goal');
+  await T.step(90); await T.shot('g2-celebrate');
+  await T.step(120); await log('replay?'); await T.shot('g3-replay');
+  await T.step(150); await T.shot('g4-replay2');
+  for (let k = 0; k < 12; k++) { await T.step(60); const i = await T.info(); if (i.phase === 'kickoff') break; }
+  await log('back to kickoff'); await T.shot('g5-kickoff');
+}
+if (scenario === 'pk') {
+  // 試合終了まで進めて PK 戦
+  await page.evaluate(() => { const m = window.__app.mv.match; m.half = 2; m.clock = m.settings.halfLength + 30; m.addedTime = 1; });
+  for (let k = 0; k < 20; k++) { await T.step(60); const i = await T.info(); if (i.shootout) break; }
+  await wait(2500);
+  await log('shootout');
+  await T.step(80); await T.shot('k1-setup');
+  for (let kick = 0; kick < 12; kick++) {
+    const st = await page.evaluate(() => { const s = window.__app.shootout; return s ? { state: s.state, user: s.userKick, keep: s.userKeep, res: s.results } : null; });
+    if (!st) break;
+    if (st.state === 'aim') {
+      await T.input(kick % 2 ? 1 : -1, 0.3, 1);
+      await T.step(25);
+      await T.input(0, 0, 0);
+      if (kick === 0) await T.shot('k2-aim');
+      await T.btn('shoot', true); await T.btn('shoot', false, 0.4);
+    } else if (st.keep && st.state === 'runup') {
+      await T.input(kick % 3 ? 1 : -1, 0, 1);
+    }
+    await T.step(40);
+    if (kick === 1) await T.shot('k3-flight');
+    await T.step(160);
+    console.log('pk', JSON.stringify(st.res));
+  }
+  await wait(1500);
+  await log('after pk'); await T.shot('k4-result');
+}
+if (scenario === 'ceremony') {
+  await page.evaluate(() => { const a = window.__app; a.startCeremony(a.mv.match.teams[0].data); });
+  await T.step(120); await T.shot('c1');
+  await T.step(240); await T.shot('c2');
 }
 console.log(logs.slice(0, 20).join('\n'));
 await browser.close();

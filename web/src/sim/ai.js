@@ -387,6 +387,8 @@ export class TeamAI {
     }
     const tempo = this.team.data.style.tempo;
     p.decideT = lerp(0.42, 0.22, tempo) * m.aiReactionScale(this.team) * (0.8 + m.rng() * 0.4);
+    // 寄せられていたら早く判断する
+    if (this.pressureOn(p).nd < 3) p.decideT *= 0.5;
     // ボールを受けた直後は少し間を置く
     if (m.time - m.possessionStartT < 0.18) {
       p.sd.dribble = { x: p.x + Math.cos(p.facing) * 2, z: p.z + Math.sin(p.facing) * 2, speed: 3 };
@@ -440,10 +442,16 @@ export class TeamAI {
     const lossHere = this.lossCost(pax, paz);
     const noise = m.aiNoise(this.team);
 
-    // --- シュート
-    const shot = this.evalShot(p);
-    if (shot) opts.push({ kind: 'shot', score: shot.score * (0.85 + st.shootiness * 0.3), shot });
+    // ボールを保持していること自体の価値（自陣でも安全なパスを選ぶ）
+    const KEEP = 0.09;
+    // チームとして長くボールを持つほど前進したくなる
+    const teamHeld = m.time - (this.team.possSince ?? m.time);
+    const urge = 0.25 + Math.min(1, teamHeld / 10) * (0.6 + st.directness * 0.6);
+    const prog = (tx) => ((this.ax(tx) - pax) / 52) * 0.12 * urge;
 
+    // --- シュート
+    const shot = this.evalShot(p, urge);
+    if (shot) opts.push({ kind: 'shot', score: shot.score * (0.85 + st.shootiness * 0.3) + 0.06 + Math.max(0, urge - 0.6) * 0.05, shot });
     // ボールを持っている時間が長いほどパスを出したくなる
     const held = m.time - m.possessionStartT;
     const passBias = 0.012 + st.tempo * 0.02 + Math.min(held, 4) * 0.006;
@@ -470,7 +478,7 @@ export class TeamAI {
           const off = this.offsideRisk(t);
           const val = this.value(this.ax(rx), rz * dir);
           const space = Math.min(this.match.nearestOpponentDist(t), 7);
-          let score = pSafe * (val + space * 0.004 + passBias) - (1 - pSafe) * this.lossCost(this.ax(rx), rz * dir) - off;
+          let score = pSafe * (val + KEEP + space * 0.004 + passBias + prog(rx)) - (1 - pSafe) * this.lossCost(this.ax(rx), rz * dir) - off;
           // 後ろ向きのパスは少し割り引く
           if (tax < pax - 5) score -= 0.01 * (1 - pressure);
           if (t.isGK) score -= 0.08;
@@ -478,8 +486,9 @@ export class TeamAI {
         }
       }
       // スルーパス（前線の裏へ）
-      if ((t.role === 'FW' || t.role === 'MF') && tax > pax - 3) {
-        const runLen = clamp(8 + (t.speed > 5 ? 4 : 0), 6, 14);
+      const offLine = this.offsideLine();
+      if ((t.role === 'FW' || t.role === 'MF') && tax > pax - 3 && tax > offLine - 8) {
+        const runLen = clamp(Math.max(offLine + 7 - tax, 6) + (t.speed > 5 ? 3 : 0), 6, 16);
         let tx = this.ax(t.x) + runLen;
         let tz = t.z * dir * 0.85;
         tx = Math.min(tx, PITCH.HL - 6);
@@ -499,10 +508,10 @@ export class TeamAI {
             const to = o.reaction + Math.max(0, Math.hypot(o.x - wx, o.z - wz) - (o.isGK ? 1.8 : 1)) / (o.topSpeed * 0.95);
             oppFirst = Math.min(oppFirst, to - Math.max(tb, recvT));
           }
-          const pSafe = (1 / (1 + Math.exp(-(margin - 0.1) * 8))) * (1 / (1 + Math.exp(-(oppFirst + 0.1) * 6)));
+          const pSafe = (1 / (1 + Math.exp(-(margin + 0.05) * 7))) * (1 / (1 + Math.exp(-(oppFirst + 0.2) * 5)));
           const off = this.offsideRisk(t);
-          const val = this.value(tx, tz) * 1.05;
-          const score = pSafe * val - (1 - pSafe) * lossHere * 0.7 - off;
+          const val = this.value(tx, tz) * 1.2 + 0.02;
+          const score = pSafe * (val + KEEP + prog(wx)) - (1 - pSafe) * lossHere * 0.7 - off;
           opts.push({ kind: 'through', t, x: wx, z: wz, v0, score, pSafe });
         }
       }
@@ -511,15 +520,18 @@ export class TeamAI {
       if (dist > 26 || crossing) {
         const rx = t.x + t.vx * 1.0;
         const rz = t.z + t.vz * 1.0;
-        const dMe = Math.hypot(t.x - rx, t.z - rz);
+        // 滞空時間のあいだに誰が先に落下点へ着くか
+        const flight = 0.6 + dist / 18;
+        const tMe = t.reaction + Math.max(0, Math.hypot(t.x - rx, t.z - rz) - 0.8) / (t.topSpeed * 0.9);
         let contest = 9;
         for (const o of this.opp.players) {
-          const dOpp = Math.hypot(o.x - rx, o.z - rz);
-          contest = Math.min(contest, dOpp - dMe * 0.9 - (o.isGK && crossing ? 1.5 : 0));
+          const reach = o.isGK && crossing ? 2.2 : 0.9;
+          const tO = o.reaction + Math.max(0, Math.hypot(o.x - rx, o.z - rz) - reach) / (o.topSpeed * 0.9);
+          contest = Math.min(contest, Math.max(tO, flight) - Math.max(tMe, flight));
         }
-        const pSafe = (1 / (1 + Math.exp(-(contest - 2.2) * 1.4))) * (crossing ? 0.7 : 0.8) * lerp(0.8, 1, p.attrs.passing / 100);
+        const pSafe = (1 / (1 + Math.exp(-(contest - 0.15) * 4))) * (crossing ? 0.72 : 0.82) * lerp(0.8, 1, p.attrs.passing / 100);
         const val = this.value(this.ax(rx), rz * dir) * (crossing ? 0.9 : 0.85);
-        const score = pSafe * val - (1 - pSafe) * this.lossCost(this.ax(rx), rz * dir) * 0.6 - this.offsideRisk(t) + st.directness * 0.015 - 0.02;
+        const score = pSafe * (val + KEEP + prog(rx)) - (1 - pSafe) * this.lossCost(this.ax(rx), rz * dir) * 0.6 - this.offsideRisk(t) + st.directness * 0.015 - 0.02;
         opts.push({ kind: crossing ? 'cross' : 'lob', t, x: rx, z: rz, score, pSafe });
       }
     }
@@ -539,22 +551,32 @@ export class TeamAI {
         space = Math.min(space, dO - L * 0.75);
       }
       const skill = p.attrs.dribbling / 100;
-      const pSafe = 1 / (1 + Math.exp(-(space - 0.6 + skill * 1.2) * 1.5));
+      // すぐ近くに相手がいる状態でのドリブルはそれだけで奪われやすい
+      const close = 1 - smoothstep(1.0, 3.2, nd);
+      const pSafe = (1 / (1 + Math.exp(-(space - 0.6 + skill * 1.2) * 1.5))) * (1 - close * (0.55 - skill * 0.25));
       const val = this.value(this.ax(x), z * dir);
-      const dribBias = (skill - 0.8) * 0.06 - pressure * 0.04 - Math.min(held, 5) * 0.006;
-      const score = pSafe * val - (1 - pSafe) * this.lossCost(this.ax(x), z * dir) + dribBias;
+      const toBox = this.ax(x) > PITCH.HL - 26 && Math.abs(z) < PITCH.boxHalfW + 4 ? 0.02 : 0;
+      // 正面から寄せてくる相手がいる方向へのドリブルは避ける
+      let block = 0;
+      for (const o of this.opp.players) {
+        const ox = o.x - p.x;
+        const oz = o.z - p.z;
+        const od = Math.hypot(ox, oz);
+        if (od < 3.5 && (ox * Math.cos(a) + oz * Math.sin(a)) / (od || 1) > 0.6) block = Math.max(block, 1 - od / 3.5);
+      }
+      const dribBias = (skill - 0.8) * 0.06 - pressure * 0.05 - block * 0.12 - Math.min(held, 5) * 0.006 + toBox;
+      const score = pSafe * (val + KEEP + prog(x)) - (1 - pSafe) * this.lossCost(this.ax(x), z * dir) + dribBias;
       opts.push({ kind: 'dribble', x, z, a, score, pSafe, space });
     }
 
     // --- 自陣で囲まれたらクリア
-    if (pax < -30 && pressure > 0.7) {
-      opts.push({ kind: 'clear', score: 0.05 + pressure * 0.04 });
+    if (pax < -32 && pressure > 0.75) {
+      opts.push({ kind: 'clear', score: 0.04 + pressure * 0.03 });
     }
 
     // ノイズ（難易度・チームの判断力）
     for (const o of opts) o.score += m.rngGauss() * noise;
     opts.sort((a, b2) => b2.score - a.score);
-    void nd;
     void b;
     return opts[0] || { kind: 'dribble', x: p.x + dir * 3, z: p.z, score: 0 };
   }
@@ -574,7 +596,7 @@ export class TeamAI {
     return 0;
   }
 
-  evalShot(p) {
+  evalShot(p, urge = 0.25) {
     const m = this.match;
     const dir = this.dir;
     const gx = PITCH.HL * dir;
@@ -606,9 +628,10 @@ export class TeamAI {
     xg *= lerp(0.7, 1.15, p.attrs.shooting / 100);
     const { pressure } = this.pressureOn(p);
     xg *= 1 - pressure * 0.25;
-    const thresh = lerp(0.07, 0.035, this.team.data.style.shootiness);
+    const thresh = lerp(0.05, 0.025, this.team.data.style.shootiness) * (urge > 0.8 ? 0.7 : 1);
     if (xg < thresh * 0.7) return null;
-    return { xg, score: xg * 1.15 + (d < 12 ? 0.05 : 0) };
+    const inBox = this.isInOppBox(p.x, p.z);
+    return { xg, score: xg * 1.7 + (inBox ? 0.04 : 0) + (d < 12 ? 0.05 : 0) };
   }
 
   /** シュートの狙いを決める（GKから遠いサイド） */
@@ -648,8 +671,8 @@ export class TeamAI {
         m.kickLob(p, c.t, c.x, c.z, c.kind);
         break;
       case 'clear': {
-        const tx = clamp(p.x + this.dir * 40, -45, 45);
-        const tz = clamp(p.z * 1.4 + (m.rng() - 0.5) * 20, -30, 30);
+        const tx = clamp(p.x + this.dir * 38, -42, 42);
+        const tz = clamp(p.z * 0.5 + (m.rng() - 0.5) * 16, -22, 22);
         m.kickLob(p, null, tx, tz, 'clear');
         break;
       }

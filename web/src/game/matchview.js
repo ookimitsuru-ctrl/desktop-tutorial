@@ -29,6 +29,7 @@ function lookFrom(kit, pd, gkKit) {
     look.height = pd.look.height;
     look.build = pd.look.build;
     look.boots.set(pd.look.boots);
+    look.number = pd.num;
   }
   if (gkKit) {
     look.gloves = new THREE.Color('#f2f2f2');
