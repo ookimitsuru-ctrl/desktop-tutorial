@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+local.properties
+.kotlin/
+
+# Web build
+web/node_modules/
+web/dist/
+web/test-output/
+
+# ゲームのビルド成果物（web/ からビルドして生成）
+app/src/main/assets/game/
+
+# macOS
+.DS_Store
+
+*.apk
+*.aab
+captures/
