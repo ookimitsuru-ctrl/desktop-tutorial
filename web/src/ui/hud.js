@@ -1,5 +1,6 @@
 import { h, icon, tap } from './dom.js';
 import { flagImg } from './flags.js';
+import { PITCH } from '../config.js';
 
 // 試合中のHUD: スコアボード、時計、イベントのバナー、ゴール演出、操作中の選手表示
 
@@ -21,6 +22,123 @@ const SP_HINTS = {
   penaltyKeep: 'スティックでGKが飛ぶ方向を選ぶ',
   kickoff: '<b>パス</b>または<b>シュート</b>でキックオフ',
 };
+
+// レーダー: ピッチ全体の選手とボールの位置、カメラに映っている範囲
+const RM = 3; // ピッチ外の余白[m]
+
+class Radar {
+  constructor(match) {
+    this.match = match;
+    this.el = h('canvas.radar');
+    this.g = this.el.getContext('2d');
+    this.footprint = null;
+    this.frame = 0;
+    this.resize();
+  }
+
+  resize() {
+    const w = Math.round(Math.min(190, Math.max(128, innerWidth * 0.17)));
+    const hh = Math.round((w * (PITCH.HW + RM)) / (PITCH.HL + RM));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.w = w;
+    this.h = hh;
+    this.dpr = dpr;
+    this.el.width = Math.round(w * dpr);
+    this.el.height = Math.round(hh * dpr);
+    this.el.style.width = `${w}px`;
+    this.el.style.height = `${hh}px`;
+  }
+
+  px(x) {
+    return ((x + PITCH.HL + RM) / (2 * (PITCH.HL + RM))) * this.w;
+  }
+
+  py(z) {
+    return ((z + PITCH.HW + RM) / (2 * (PITCH.HW + RM))) * this.h;
+  }
+
+  draw() {
+    // 描画は30fpsで十分
+    if (this.frame++ % 2) return;
+    const g = this.g;
+    const m = this.match;
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    g.clearRect(0, 0, this.w, this.h);
+    // ピッチ
+    const x0 = this.px(-PITCH.HL);
+    const x1 = this.px(PITCH.HL);
+    const z0 = this.py(-PITCH.HW);
+    const z1 = this.py(PITCH.HW);
+    const sx = (x1 - x0) / PITCH.L;
+    g.fillStyle = 'rgba(20, 70, 36, 0.55)';
+    g.fillRect(x0, z0, x1 - x0, z1 - z0);
+    // カメラに映っている範囲
+    const fp = this.footprint;
+    if (fp) {
+      g.save();
+      g.beginPath();
+      g.rect(x0, z0, x1 - x0, z1 - z0);
+      g.clip();
+      g.beginPath();
+      fp.forEach((p, i) => (i ? g.lineTo(this.px(p.x), this.py(p.z)) : g.moveTo(this.px(p.x), this.py(p.z))));
+      g.closePath();
+      g.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      g.fill();
+      g.restore();
+    }
+    g.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    g.lineWidth = 1;
+    g.strokeRect(x0, z0, x1 - x0, z1 - z0);
+    const cx = this.px(0);
+    const cz = this.py(0);
+    g.beginPath();
+    g.moveTo(cx, z0);
+    g.lineTo(cx, z1);
+    g.moveTo(cx + PITCH.circleR * sx, cz);
+    g.arc(cx, cz, PITCH.circleR * sx, 0, Math.PI * 2);
+    for (const s of [-1, 1]) {
+      const gx = this.px(s * PITCH.HL);
+      const bx = this.px(s * (PITCH.HL - PITCH.boxDepth));
+      g.moveTo(gx, this.py(-PITCH.boxHalfW));
+      g.lineTo(bx, this.py(-PITCH.boxHalfW));
+      g.lineTo(bx, this.py(PITCH.boxHalfW));
+      g.lineTo(gx, this.py(PITCH.boxHalfW));
+    }
+    g.stroke();
+    // 選手
+    const ctrl = m.user.controlled;
+    for (const t of m.teams) {
+      g.fillStyle = t.kit.shirt;
+      for (const p of t.players) {
+        if (p === ctrl) continue;
+        g.beginPath();
+        g.arc(this.px(p.x), this.py(p.z), 2.7, 0, Math.PI * 2);
+        g.fill();
+        g.lineWidth = 1;
+        g.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+        g.stroke();
+      }
+    }
+    if (ctrl) {
+      g.beginPath();
+      g.arc(this.px(ctrl.x), this.py(ctrl.z), 3.6, 0, Math.PI * 2);
+      g.fillStyle = ctrl.team.kit.shirt;
+      g.fill();
+      g.lineWidth = 1.6;
+      g.strokeStyle = '#ffe14a';
+      g.stroke();
+    }
+    // ボール
+    const b = m.ball;
+    g.beginPath();
+    g.arc(this.px(b.x), this.py(b.z), 2.4, 0, Math.PI * 2);
+    g.fillStyle = '#ffffff';
+    g.fill();
+    g.lineWidth = 1;
+    g.strokeStyle = '#000000';
+    g.stroke();
+  }
+}
 
 export class HUD {
   constructor(parent, match, { onPause } = {}) {
@@ -48,7 +166,10 @@ export class HUD {
     this.bannerSlot = h('div');
     this.goalSlot = h('div');
     this.replayTag = h('div', { style: { display: 'none' } }, h('div.replay-tag', {}, 'REPLAY'), h('div.skip-hint', {}, 'タップでスキップ'));
-    this.el.append(this.board, this.halfTag, this.pause, this.ptag, this.hint, this.bannerSlot, this.goalSlot, this.replayTag);
+    this.radar = new Radar(match);
+    // 操作中の選手が画面外にいるときの矢印
+    this.offArrow = h('div.off-arrow', { style: { display: 'none' } }, h('i'), h('span', {}, ''));
+    this.el.append(this.board, this.halfTag, this.pause, this.radar.el, this.offArrow, this.ptag, this.hint, this.bannerSlot, this.goalSlot, this.replayTag);
     parent.append(this.el);
     this.bannerT = 0;
     this.lastScores = [0, 0];
@@ -58,6 +179,22 @@ export class HUD {
   fitScale() {
     const s = Math.min(1.25, Math.max(0.8, innerHeight / 400));
     this.board.style.transform = `scale(${s})`;
+    this.radar?.resize();
+  }
+
+  setRadar(on) {
+    this.radarOn = on;
+    this.radarShown = null;
+  }
+
+  /**
+   * カメラの情報: 画面に映る地面の四隅と、ワールド座標→画面座標の変換
+   * @param {{x:number,z:number}[]|null} footprint
+   * @param {(x:number,y:number,z:number)=>{x:number,y:number,behind:boolean}} project
+   */
+  setView(footprint, project) {
+    this.radar.footprint = footprint;
+    this.project = project;
   }
 
   banner(main, sub = '', cls = '', dur = 1.8) {
@@ -170,6 +307,17 @@ export class HUD {
       this.ptag.children[1].textContent = p.name;
       this.ptag.children[2].firstChild.style.width = `${Math.round(p.stamina * 100)}%`;
     } else this.ptag.style.display = 'none';
+    // レーダー
+    // 追従カメラのときだけ（PKや喜びの寄りのカメラ、ピッチ全体が映るワイドでは不要）
+    const live = !!this.radar.footprint && m.phase !== 'replay' && m.phase !== 'halftime' && m.phase !== 'fulltime';
+    const show = !!this.radarOn && live;
+    if (show !== this.radarShown) {
+      this.radarShown = show;
+      this.radar.el.style.display = show ? '' : 'none';
+      this.el.classList.toggle('with-radar', show);
+    }
+    if (show) this.radar.draw();
+    this.updateOffArrow(p && (m.phase === 'play' || m.phase === 'setpiece') ? p : null);
     // セットプレーのヒント
     let hint = '';
     if (m.phase === 'setpiece' && m.sp && m.sp.ready && m.sp.team.isUser) {
@@ -188,6 +336,32 @@ export class HUD {
       this.hint.style.display = hint ? '' : 'none';
     }
     void controlsMode;
+  }
+
+  /** 操作中の選手が画面外なら、画面の端にその方向を指す矢印と背番号を出す */
+  updateOffArrow(p) {
+    const a = this.offArrow;
+    const s = p && this.project ? this.project(p.x, 1.0, p.z) : null;
+    const W = innerWidth;
+    const H = innerHeight;
+    const pad = 40;
+    if (!s || (!s.behind && s.x > 0 && s.x < W && s.y > 0 && s.y < H)) {
+      if (a.style.display !== 'none') a.style.display = 'none';
+      return;
+    }
+    let dx = s.x - W / 2;
+    let dy = s.y - H / 2;
+    if (s.behind) {
+      dx = -dx;
+      dy = -dy;
+    }
+    const k = Math.min((W / 2 - pad) / Math.max(1e-3, Math.abs(dx)), (H / 2 - pad) / Math.max(1e-3, Math.abs(dy)));
+    const x = W / 2 + dx * k;
+    const y = H / 2 + dy * k;
+    a.style.display = '';
+    a.style.transform = `translate(${x}px, ${y}px)`;
+    a.firstChild.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+    a.lastChild.textContent = p.num;
   }
 
   setVisible(v) {

@@ -18,6 +18,8 @@ import { Ceremony } from './ceremony.js';
 
 // アプリ全体の流れ: タイトル → メニュー → 大会/フレンドリー → 試合 → 結果
 
+const _camDir = new THREE.Vector3();
+
 export class App {
   constructor() {
     const style = document.createElement('style');
@@ -35,6 +37,7 @@ export class App {
     if (qp.get('quality')) this.settings.quality = qp.get('quality');
     if (qp.get('half')) this.settings.halfMinutes = +qp.get('half');
     if (qp.get('replays')) this.settings.replays = qp.get('replays') === '1';
+    if (qp.get('cam')) this.settings.camera = qp.get('cam');
     this.testMode = qp.get('test') === '1';
     if (this.testMode) this.installTestHooks();
     this.gfx = new Graphics(this.root);
@@ -99,6 +102,12 @@ export class App {
     // 重い初期化の前に一度描画させる
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 30)));
     this.world = new World(this.gfx);
+    this.world.onAfterResize = () => this.hud?.fitScale();
+    const pv = new THREE.Vector3();
+    this.projectToScreen = (x, y, z) => {
+      pv.set(x, y, z).project(this.world.camera);
+      return { x: ((pv.x + 1) / 2) * innerWidth, y: ((1 - pv.y) / 2) * innerHeight, behind: pv.z > 1 };
+    };
     this.world.setShadowQuality(this.gfx.quality.shadow);
     if (this.gfx.quality.crowd < 1) this.world.crowd.build(this.gfx.quality.crowd);
     this.startDemo();
@@ -342,7 +351,8 @@ export class App {
           if (key === 'sound' || key === 'music') this.audio.setVolumes(this.settings.sound, this.settings.music);
           if (key === 'haptics') setHaptics(this.settings.haptics);
           if (key === 'autoSwitch' && this.mv) this.mv.match.user.autoSwitch = this.settings.autoSwitch;
-          if (key === 'camera' && this.mv) this.mv.zoomCamera = this.settings.camera === 'zoom';
+          if (key === 'camera' && this.mv) this.mv.cameraMode = this.settings.camera;
+          if (key === 'radar') this.hud?.setRadar(this.settings.radar);
           this.audio.ui('tap');
         },
       }),
@@ -432,12 +442,13 @@ export class App {
     });
     this.audio.setRain(cfg.weather === 'rain');
     const m = this.mv.match;
-    this.mv.zoomCamera = s.camera === 'zoom';
+    this.mv.cameraMode = s.camera;
     m.user.autoSwitch = s.autoSwitch;
     this.mv.start();
     this.mv.hold = true;
     this.mv.introT = 0;
     this.hud = new HUD(this.ui, m, { onPause: () => this.togglePause() });
+    this.hud.setRadar(s.radar);
     this.controls = new Controls(this.ui);
     this.controls.on('down', (n) => this.onButton(n, true));
     this.controls.on('up', (n, hold) => this.onButton(n, false, hold));
@@ -780,6 +791,13 @@ export class App {
         return [((v.x + 1) / 2) * innerWidth, ((1 - v.y) / 2) * innerHeight];
       },
       skipIntro: () => this.endIntro(),
+      setpiece: (kind, ti, x, z) => {
+        const m = this.mv.match;
+        m.startSetPiece(kind, m.teams[ti], x, z);
+      },
+      camera: (mode) => {
+        if (this.mv) this.mv.cameraMode = mode;
+      },
       step: (n = 1, dt = 1 / 60) => {
         for (let i = 0; i < n; i++) {
           if (this.mode === 'match' && this.mv) this.updateMatch(dt);
@@ -906,7 +924,18 @@ export class App {
     if (c) {
       c.poll();
       const st = c.state;
-      m.setUserInput(st.x, -st.y, st.mag, st.sprint);
+      // スティックの上下左右は画面上の向き（追従カメラはゴール前で少し振れるため、カメラの向きで回す）
+      let fx = 0;
+      let fz = -1;
+      if (mv.isFollow && !mv.externalCamera) {
+        const d = this.world.camera.getWorldDirection(_camDir);
+        const l = Math.hypot(d.x, d.z);
+        if (l > 0.2) {
+          fx = d.x / l;
+          fz = d.z / l;
+        }
+      }
+      m.setUserInput(-fz * st.x + fx * st.y, fx * st.x + fz * st.y, st.mag, st.sprint);
       if (this.shootout) c.setMode(this.shootout.userKick ? 'penalty' : this.shootout.userKeep ? 'keeper' : 'defend');
       else c.setMode(this.controlsMode());
     }
@@ -925,7 +954,10 @@ export class App {
     if (this.shootout) this.shootout.update(dt);
     else if (this.ceremony) this.ceremony.update(dt);
     else mv.update(dt);
-    this.hud?.update(dt);
+    if (this.hud) {
+      this.hud.setView(this.shootout || this.ceremony ? null : mv.footprint, this.projectToScreen);
+      this.hud.update(dt);
+    }
     this.updatePowerGauge();
     this.updatePenaltyAim(dt);
     // 観客の音

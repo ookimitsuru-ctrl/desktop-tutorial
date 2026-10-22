@@ -203,6 +203,8 @@ export class Environment {
     sc.bottom = -48;
     sc.near = 10;
     sc.far = 400;
+    this.sunDirVec = new THREE.Vector3(0, 1, 0);
+    this.shadowFocus = null;
     this.sun.shadow.bias = -0.0006;
     this.sun.shadow.normalBias = 0.03;
     this.sun.shadow.radius = 2;
@@ -268,8 +270,11 @@ export class Environment {
     shared.uSunDir.value.copy(dir);
     shared.uRoofShadow.value = p.roofShadow;
     shared.uInsideOnly.value = name === 'night' ? 1 : 0;
+    this.sunDirVec.copy(dir);
     this.sun.position.copy(dir).multiplyScalar(200);
     this.sun.target.position.set(0, 0, 0);
+    this.shadowFocus = null;
+    this.resetShadowBounds();
     this.sun.color.set(p.sunColor);
     this.sun.intensity = p.sunIntensity;
     this.hemi.color.set(p.hemiSky);
@@ -339,4 +344,83 @@ export class Environment {
   update(time) {
     this.skyUniforms.uTime.value = time;
   }
+
+  resetShadowBounds() {
+    const sc = this.sun.shadow.camera;
+    sc.left = -SHADOW_FULL.hr;
+    sc.right = SHADOW_FULL.hr;
+    sc.top = SHADOW_FULL.hu;
+    sc.bottom = -SHADOW_FULL.hu;
+    sc.updateProjectionMatrix();
+  }
+
+  /**
+   * 影を描く範囲を画面に映っている地面に絞り、影の解像度を上げる。null でピッチ全体に戻す。
+   * 範囲の大きさは段階的にしか変えず、中心はシャドウマップの1テクセル単位で動かす（影のちらつき防止）。
+   * @param {{x:number,z:number}[]|null} pts 画面に映る地面の四隅
+   */
+  focusShadow(pts) {
+    const sun = this.sun;
+    const sc = sun.shadow.camera;
+    const dir = this.sunDirVec;
+    if (!pts) {
+      if (this.shadowFocus) {
+        this.shadowFocus = null;
+        sun.position.copy(dir).multiplyScalar(200);
+        sun.target.position.set(0, 0, 0);
+        this.resetShadowBounds();
+      }
+      return;
+    }
+    // 光源カメラの座標軸（Camera.lookAt と同じ作り方）
+    _ax.crossVectors(_up, dir);
+    if (_ax.lengthSq() < 1e-6) _ax.set(1, 0, 0);
+    _ax.normalize();
+    _ay.crossVectors(dir, _ax);
+    let r0 = Infinity;
+    let r1 = -Infinity;
+    let u0 = Infinity;
+    let u1 = -Infinity;
+    for (const p of pts) {
+      for (const y of [0, 2.6]) {
+        _p.set(p.x, y, p.z);
+        const r = _p.dot(_ax);
+        const u = _p.dot(_ay);
+        r0 = Math.min(r0, r);
+        r1 = Math.max(r1, r);
+        u0 = Math.min(u0, u);
+        u1 = Math.max(u1, u);
+      }
+    }
+    const step = 6;
+    const hr = Math.ceil(((r1 - r0) / 2 + 3) / step) * step;
+    const hu = Math.ceil(((u1 - u0) / 2 + 3) / step) * step;
+    if (hr * hu >= SHADOW_FULL.hr * SHADOW_FULL.hu) {
+      this.focusShadow(null);
+      return;
+    }
+    const size = sun.shadow.mapSize.x;
+    const tr = (2 * hr) / size;
+    const tu = (2 * hu) / size;
+    const cr = Math.round((r0 + r1) / 2 / tr) * tr;
+    const cu = Math.round((u0 + u1) / 2 / tu) * tu;
+    _p.copy(_ax).multiplyScalar(cr).addScaledVector(_ay, cu);
+    sun.target.position.copy(_p);
+    sun.position.copy(_p).addScaledVector(dir, 200);
+    const f = this.shadowFocus;
+    if (!f || f.hr !== hr || f.hu !== hu) {
+      this.shadowFocus = { hr, hu };
+      sc.left = -hr;
+      sc.right = hr;
+      sc.top = hu;
+      sc.bottom = -hu;
+      sc.updateProjectionMatrix();
+    }
+  }
 }
+
+const SHADOW_FULL = { hr: 66, hu: 48 };
+const _up = new THREE.Vector3(0, 1, 0);
+const _ax = new THREE.Vector3();
+const _ay = new THREE.Vector3();
+const _p = new THREE.Vector3();

@@ -6,6 +6,7 @@ import * as A from '../render/anim.js';
 import { POSE_KEYS, makePose } from '../render/anim.js';
 import { clamp, lerp, wrapAngle, smoothstep } from '../util/math.js';
 import { flagCanvas } from '../ui/flags.js';
+import { FollowCamera, groundFootprint } from '../render/cameras.js';
 
 // 試合の見た目: シミュレーションを固定ステップで進め、補間して人物・ボール・カメラに反映する。
 // ゴール後のセレブレーション/リプレイのカメラワークもここで行う。
@@ -171,6 +172,12 @@ export class MatchView {
     this.externalCamera = false;
     this.introT = null;
     this.pkCamUntil = 0;
+    // 試合中のカメラ: 'normal' / 'close' はボールを追ってスクロール、'wide' はピッチ全体
+    this.cameraMode = 'normal';
+    this.follow = new FollowCamera();
+    this.followKey = '';
+    this.followWas = false;
+    this.lastBall = { x: 0, z: 0 };
     this.setupWorld();
   }
 
@@ -651,6 +658,16 @@ export class MatchView {
   // ------------------------------------------------------------ カメラ
 
   updateCamera(dt) {
+    const was = this.followWas;
+    this.followWas = false;
+    this.cameraBody(dt, was);
+    if (!this.followWas) {
+      this.footprint = null;
+      this.world.env.focusShadow(null);
+    }
+  }
+
+  cameraBody(dt, wasFollow) {
     if (this.externalCamera) return;
     const w = this.world;
     const cam = w.camera;
@@ -670,7 +687,7 @@ export class MatchView {
     }
     if (this.introT !== null && this.introT !== undefined) {
       // 試合前: スタジアム上空から中継カメラ位置へ降りてくる
-      const f = w.broadcast;
+      const f = this.playFrame();
       w.gfx.post.uniforms.uFade.value = 1 - smoothstep(3.8, 4.2, this.introT);
       const k = smoothstep(3.8, 6.4, this.introT);
       const a = (1 - k) * 1.2;
@@ -724,25 +741,83 @@ export class MatchView {
       return;
     }
     if (this.camMode !== 'broadcast' && m.phase !== 'goal') this.camMode = 'broadcast';
-    if (this.zoomCamera) {
-      // ズームカメラ: 中継カメラと同じ角度で、ボールを追いながら寄る
-      const f = w.broadcast;
+    if (this.isFollow) {
+      this.syncFollow();
+      const f = this.followTarget();
       const b = m.ball;
-      const bx = clamp(b.owner ? b.owner.x : b.x, -34, 34);
-      const bz = clamp(b.owner ? b.owner.z : b.z, -20, 20);
-      if (!this.zoomState) this.zoomState = { x: bx, z: bz };
-      this.zoomState.x = lerp(this.zoomState.x, bx, 1 - Math.exp(-dt * 2.2));
-      this.zoomState.z = lerp(this.zoomState.z, bz, 1 - Math.exp(-dt * 1.6));
-      const dir = new THREE.Vector3().subVectors(f.target, f.position);
-      const target = new THREE.Vector3(this.zoomState.x, 0, f.target.z + this.zoomState.z * 0.55);
-      cam.position.copy(target).addScaledVector(dir, -0.55);
-      cam.lookAt(target);
-      cam.fov = f.fov;
-      cam.updateProjectionMatrix();
+      // 別のカメラから戻った直後や、ボールが置き直されたときは切り替え（カット）
+      f.snap = !wasFollow || Math.hypot(b.x - this.lastBall.x, b.z - this.lastBall.z) > 20;
+      this.follow.update(dt, f, cam);
       w.stadium.setBroadcastView(true);
+      this.footprint = groundFootprint(cam);
+      w.env.focusShadow(this.footprint);
+      this.followWas = true;
+      this.lastBall.x = b.x;
+      this.lastBall.z = b.z;
       return;
     }
     w.setBroadcastCamera();
+  }
+
+  get isFollow() {
+    return this.cameraMode !== 'wide';
+  }
+
+  /** 画面比率や設定が変わったら追従カメラを作り直す */
+  syncFollow() {
+    const aspect = this.world.gfx.aspect;
+    const key = `${this.cameraMode}:${aspect.toFixed(3)}`;
+    if (key !== this.followKey) {
+      this.followKey = key;
+      this.follow.configure(aspect, this.cameraMode);
+    }
+  }
+
+  /** プレー中のカメラの姿勢（入場演出の着地点） */
+  playFrame() {
+    if (!this.isFollow) return this.world.broadcast;
+    this.syncFollow();
+    const f = this.followTarget();
+    const c = new THREE.PerspectiveCamera();
+    this.follow.ready = false;
+    this.follow.update(0, f, c);
+    this.follow.ready = false;
+    const dir = new THREE.Vector3();
+    c.getWorldDirection(dir);
+    return { position: c.position.clone(), target: c.position.clone().addScaledVector(dir, this.follow.dist), fov: this.follow.fov };
+  }
+
+  /** 追従カメラの目標: ボール（持っている選手）の少し先。セットプレーではゴール前も入れる */
+  followTarget() {
+    const m = this.match;
+    const b = m.ball;
+    const o = b.owner;
+    const x = o ? o.x : b.x;
+    const z = o ? o.z : b.z;
+    const vx = o ? o.vx : b.vx;
+    const vz = o ? o.vz : b.vz;
+    let tx = x + clamp(vx * 0.35, -7, 7);
+    let tz = z + clamp(vz * 0.25, -4, 4);
+    if (o) tx += o.team.dir * 3.5;
+    const sp = m.sp;
+    if (m.phase === 'setpiece' && sp) {
+      const gx = sp.team.dir * PITCH.HL;
+      if (sp.type === 'corner') {
+        const s = Math.sign(sp.x) || 1;
+        tx = lerp(sp.x, s * (PITCH.HL - 11), 0.6);
+        tz = lerp(sp.z, 0, 0.6);
+      } else if (sp.type === 'freekick' && Math.hypot(gx - sp.x, sp.z) < 36) {
+        tx = lerp(sp.x, gx, 0.4);
+        tz = lerp(sp.z, 0, 0.4);
+      } else if (sp.type === 'goalkick') {
+        tx = lerp(sp.x, 0, 0.25);
+        tz = sp.z * 0.5;
+      } else {
+        tx = sp.x + sp.team.dir * 4;
+        tz = sp.z;
+      }
+    }
+    return { tx, tz, bx: b.x, bz: b.z, by: Math.max(0, b.y - BALL_R) };
   }
 
   // ------------------------------------------------------------ リプレイ
@@ -758,6 +833,8 @@ export class MatchView {
     this.replayState = { t: start, start, end, goal, speed: 0.55, side: this.match.teams[goal.team].dir, netIdx: 0 };
     this.world.ball.resetTrail();
     this.world.stadium.setBroadcastView(false);
+    this.followWas = false;
+    this.world.env.focusShadow(null);
     this.emit({ type: 'replayStart' });
   }
 

@@ -10,12 +10,21 @@ export const DEFAULT_SETTINGS = {
   haptics: true,
   autoSwitch: true,
   replays: true,
-  camera: 'wide',
+  camera: 'normal',
+  radar: true,
   seenHint: false,
+  v: 2,
 };
 
 export function loadSettings() {
-  return { ...DEFAULT_SETTINGS, ...load('settings', {}) };
+  const saved = load('settings', {});
+  // v1 は既定がピッチ全体のワイドだった。ボールを追うカメラを既定にしたので一度だけ戻す
+  if ((saved.v || 1) < 2) {
+    delete saved.camera;
+    saved.v = 2;
+  }
+  if (saved.camera === 'zoom') saved.camera = 'normal';
+  return { ...DEFAULT_SETTINGS, ...saved };
 }
 
 export function saveSettings(s) {

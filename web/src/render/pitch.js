@@ -54,6 +54,9 @@ vec4 pitchSurface(vec2 p, vec3 viewDirW) {
   vec4 n2 = texture2D(uNoise, p * 0.07 + 0.37);
   vec4 n3 = texture2D(uNoise, p * 0.9);
   vec4 n4 = texture2D(uNoise, p * 4.3 + 0.11);
+  // 寄りのカメラで見える芝の粒と、刈り込み方向に伸びる筋
+  vec4 n5 = texture2D(uNoise, p * 0.18 + 0.53);
+  vec4 n6 = texture2D(uNoise, vec2(p.x * 0.23, p.y * 0.031) + 0.71);
 
   // 刈り込みパターン
   float fx = p.x / uStripeW;
@@ -81,6 +84,8 @@ vec4 pitchSurface(vec2 p, vec3 viewDirW) {
   col *= 0.92 + 0.14 * n2.g;
   col *= 0.88 + 0.22 * n3.b;
   col *= 0.94 + 0.10 * n4.b;
+  col *= 0.9 + 0.2 * n5.b;
+  col *= 0.93 + 0.14 * n6.b;
   col = mix(col, col * vec3(1.06, 1.1, 0.9), smoothstep(0.55, 0.85, n1.a) * 0.6);
   col *= 1.0 + sheen;
 

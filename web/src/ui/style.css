@@ -1240,6 +1240,70 @@ table.standings td.pts {
   color: var(--gold);
 }
 
+.hud.with-radar .hint-bar {
+  bottom: 124px;
+}
+
+/* レーダー（画面下中央） */
+.radar {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  border-radius: 4px;
+  background: rgba(7, 16, 40, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+/* 画面外にいる操作中の選手を指す矢印 */
+.off-arrow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.off-arrow i {
+  position: absolute;
+  left: -30px;
+  top: -30px;
+  width: 60px;
+  height: 60px;
+  display: block;
+}
+
+.off-arrow i::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  margin-top: -9px;
+  border-left: 14px solid var(--gold);
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+
+.off-arrow span {
+  position: absolute;
+  left: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 16, 40, 0.85);
+  border: 2px solid var(--gold);
+  color: var(--gold);
+  font-family: var(--num);
+  font-weight: 800;
+  font-size: 15px;
+}
+
 /* ------------------------------------------------------------ 操作 */
 
 .controls {
