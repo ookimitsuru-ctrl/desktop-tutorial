@@ -1,0 +1,30 @@
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { createServer } from 'node:http';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, extname } from 'node:path';
+const root = new URL('../../app/src/main/assets/game/', import.meta.url).pathname;
+const out = process.argv[2] || '.';
+const server = createServer((req, res) => {
+  const p = join(root, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html');
+  if (!existsSync(p)) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { 'content-type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' }[extname(p)] || 'application/octet-stream' });
+  res.end(readFileSync(p));
+}).listen(0);
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const page = await browser.newPage({ viewport: { width: 800, height: 360 }, deviceScaleFactor: 2 });
+page.on('pageerror', (e) => console.log('pageerror', e.message));
+await page.goto(`http://localhost:${server.address().port}/index.html?test=1&quality=low&half=3`);
+await page.waitForTimeout(2500);
+await page.evaluate(() => { window.__test.quick('JPN', 'VAL', 0); window.__test.step(30); window.__test.skipIntro(); window.__test.step(400); });
+const snap = async (name) => { await page.evaluate(() => window.__test.render()); await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${name}.png` }); };
+await page.evaluate(() => window.__app.togglePause());
+await snap('d1-pause');
+await page.evaluate(() => window.__app.togglePause());
+await page.evaluate(() => window.__app.showFulltime({ h: 4, a: 3 }));
+await snap('d2-full');
+await page.evaluate(() => { document.querySelectorAll('.overlay').forEach((e) => e.remove()); window.__app.leaveMatch(); window.__app.showMenu(); window.__app.showHowTo(); });
+await snap('d3-howto');
+await page.evaluate(() => { document.querySelectorAll('.overlay').forEach((e) => e.remove()); window.__app.showSettings(() => {}); });
+await snap('d4-settings');
+await browser.close();
+server.close();

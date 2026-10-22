@@ -10,6 +10,7 @@ import { Markers } from '../render/markers.js';
 import { Effects } from '../render/fx.js';
 import { shared } from '../render/shading.js';
 import { computeBroadcastFrame } from '../render/cameras.js';
+import { Rain } from '../render/rain.js';
 
 // 3Dの世界（スタジアム一式）。タイトル画面から試合まで使い回す。
 
@@ -27,6 +28,8 @@ export class World {
     this.ball = new BallView(this.scene);
     this.markers = new Markers(this.scene);
     this.fx = new Effects(this.scene);
+    this.rain = new Rain(this.scene);
+    this.weather = 'clear';
     this.camera = new THREE.PerspectiveCamera(30, gfx.aspect, 0.5, 4000);
     this.time = 0;
     this.buildFlags();
@@ -66,9 +69,17 @@ export class World {
     });
   }
 
+  setWeather(w) {
+    this.weather = w;
+    this.setPreset(this.presetName);
+  }
+
   setPreset(name) {
     this.presetName = name;
-    this.env.apply(name, this.gfx.post);
+    this.env.apply(name, this.gfx.post, this.weather);
+    const wet = this.weather === 'rain';
+    this.rain.setEnabled(wet, name === 'night');
+    this.pitch.userData.uniforms.uWet.value = wet ? 1 : 0;
     this.stadium.setLighting(this.env.preset);
     this.crowd.setLighting(this.env);
     this.humans.setBlobMode(name === 'night', name === 'night' ? 0.32 : name === 'sunset' ? 0.42 : 0.4);
@@ -116,6 +127,7 @@ export class World {
     this.crowd.update(dt);
     this.goals.update(this.time);
     this.fx.update(dt);
+    this.rain.update(this.time, this.camera);
   }
 
   render() {

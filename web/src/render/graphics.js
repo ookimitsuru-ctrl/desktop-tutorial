@@ -41,6 +41,21 @@ export class Graphics {
     addEventListener('resize', () => this.resize());
   }
 
+  /** GPU名から初期の画質を推定 */
+  guessQuality() {
+    try {
+      const gl = this.renderer.getContext();
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '';
+      this.gpuName = name;
+      if (/Mali-(T|G5[0-9]|G31|G52|G57)|Adreno \(TM\) (3|4|5)\d\d|PowerVR|SwiftShader/i.test(name)) return 'medium';
+      if (/Adreno \(TM\) 6[0-3]\d/i.test(name)) return 'medium';
+    } catch {
+      /* 取得できない */
+    }
+    return 'high';
+  }
+
   setQuality(name) {
     this.qualityName = name;
     this.quality = QUALITY[name] || QUALITY.high;
@@ -95,8 +110,14 @@ export class Graphics {
     const p50 = sorted[Math.floor(sorted.length * 0.5)];
     this.frameTimes.length = 0;
     let next = this.dynScale;
-    if (p50 > 1 / 45) next = Math.max(0.55, this.dynScale - 0.1);
-    else if (p50 < 1 / 58 && this.dynScale < 1) next = Math.min(1, this.dynScale + 0.05);
+    if (p50 > 1 / 45) {
+      if (this.dynScale <= 0.6) {
+        // 解像度を下げきっても重い: 画質プリセットを一段下げる
+        this.onDegrade?.();
+        return;
+      }
+      next = Math.max(0.55, this.dynScale - 0.1);
+    } else if (p50 < 1 / 58 && this.dynScale < 1) next = Math.min(1, this.dynScale + 0.05);
     if (Math.abs(next - this.dynScale) > 1e-3) {
       this.dynScale = next;
       this.resize();

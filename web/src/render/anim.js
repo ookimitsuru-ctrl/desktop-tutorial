@@ -408,3 +408,45 @@ export function pointArm(p, side = 1, up = 0) {
   p[`${s}Elbow`] = 0.05;
   return p;
 }
+
+/** ベンチに座る */
+export function seated(p, time, seed = 0) {
+  base(p);
+  p.groundLock = 0;
+  p.rootY = -0.46;
+  p.bodyPitch = -0.05 + Math.sin(time * 0.7 + seed) * 0.03;
+  p.lHipSwing = 1.5;
+  p.rHipSwing = 1.5;
+  p.lKnee = 1.55;
+  p.rKnee = 1.55;
+  p.lHipAbd = 0.12;
+  p.rHipAbd = 0.12;
+  p.lShSwing = 0.5;
+  p.rShSwing = 0.5;
+  p.lElbow = 0.9;
+  p.rElbow = 0.9;
+  p.neckYaw = Math.sin(time * 0.4 + seed * 2) * 0.4;
+  return p;
+}
+
+/** 監督: 腕組み / 指示を出す */
+export function coach(p, time, seed = 0, shout = 0) {
+  base(p);
+  const k = Math.sin(time * 0.5 + seed);
+  if (shout > 0.5) {
+    p.rShSwing = 1.2 + Math.sin(time * 6) * 0.2;
+    p.rShAbd = 0.5;
+    p.rElbow = 0.3;
+    p.lShAbd = 0.4;
+  } else {
+    p.lShSwing = 0.9;
+    p.rShSwing = 0.9;
+    p.lShTwist = -0.8;
+    p.rShTwist = 0.8;
+    p.lElbow = 1.9;
+    p.rElbow = 1.9;
+  }
+  p.neckYaw = k * 0.3;
+  p.bodyPitch = 0.04;
+  return p;
+}

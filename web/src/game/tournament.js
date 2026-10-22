@@ -34,7 +34,7 @@ export class Tournament {
       [others[i], others[j]] = [others[j], others[i]];
     }
     const [A, B, C, D] = [userTeamId, ...others];
-    const fx = (round, home, away, venue) => ({ id: `${round}-${home}-${away}`, round, stage: 'group', home, away, venue, result: null });
+    const fx = (round, home, away, venue) => ({ id: `${round}-${home}-${away}`, round, stage: 'group', home, away, venue, result: null, weather: rng() < 0.25 ? 'rain' : 'clear' });
     const fixtures = [
       fx(1, A, B, 0),
       fx(1, C, D, 1),
@@ -159,8 +159,9 @@ export class Tournament {
     const s = this.s;
     if (s.stage === 'group' && s.fixtures.filter((f) => f.stage === 'group').every((f) => f.result)) {
       const st = this.standings();
-      s.fixtures.push({ id: 'third', round: 'third', stage: 'knockout', home: st[2].id, away: st[3].id, venue: 1, result: null });
-      s.fixtures.push({ id: 'final', round: 'final', stage: 'knockout', home: st[0].id, away: st[1].id, venue: 3, result: null });
+      const wr = makeRng(s.seed + 31);
+      s.fixtures.push({ id: 'third', round: 'third', stage: 'knockout', home: st[2].id, away: st[3].id, venue: 1, result: null, weather: wr() < 0.2 ? 'rain' : 'clear' });
+      s.fixtures.push({ id: 'final', round: 'final', stage: 'knockout', home: st[0].id, away: st[1].id, venue: 3, result: null, weather: wr() < 0.2 ? 'rain' : 'clear' });
       s.stage = 'knockout';
       s.groupFinal = st.map((r) => r.id);
     }

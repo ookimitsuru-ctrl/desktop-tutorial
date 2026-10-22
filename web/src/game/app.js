@@ -61,7 +61,14 @@ export class App {
     };
     addEventListener('pointerdown', unlock);
     addEventListener('keydown', unlock);
+    addEventListener('contextmenu', (e) => e.preventDefault());
 
+    // GPUのコンテキストが失われたら作り直す（バックグラウンド復帰時など）
+    this.gfx.canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.ui.append(h('div.loading', {}, h('div', { style: { color: '#9fb0d8', fontSize: '13px' } }, 'グラフィックを再初期化しています…')));
+    });
+    this.gfx.canvas.addEventListener('webglcontextrestored', () => location.reload());
     window.__hostBack = () => this.back();
     window.__hostPause = () => this.onHostPause();
     window.__hostResume = () => this.onHostResume();
@@ -71,7 +78,17 @@ export class App {
   applyQuality() {
     const q = this.settings.quality;
     this.gfx.autoQuality = q === 'auto';
-    this.gfx.setQuality(q === 'auto' ? 'high' : q);
+    this.autoTier = this.autoTier || this.gfx.guessQuality();
+    this.gfx.setQuality(q === 'auto' ? this.autoTier : q);
+    this.gfx.onDegrade = () => {
+      if (this.settings.quality !== 'auto') return;
+      const order = ['high', 'medium', 'low'];
+      const i = order.indexOf(this.gfx.qualityName);
+      if (i < 0 || i >= order.length - 1) return;
+      this.autoTier = order[i + 1];
+      this.gfx.dynScale = 0.8;
+      this.applyQuality();
+    };
     if (this.world) {
       this.world.setShadowQuality(this.gfx.quality.shadow);
       this.world.crowd.build(this.gfx.quality.crowd);
@@ -258,11 +275,12 @@ export class App {
         opp,
         kit: myKit,
         venue,
+        weather: f.weather,
         fixtureLabel: roundName(f.round),
         onBack: () => this.go(this.showHub, tour),
         onKickoff: () => {
           this.audio.ui('ok');
-          this.startMatch({ home, away, kits, userTeam: userHome ? 0 : 1, venue, fixture: f, knockout: f.stage === 'knockout', label: roundName(f.round) });
+          this.startMatch({ home, away, kits, userTeam: userHome ? 0 : 1, venue, fixture: f, knockout: f.stage === 'knockout', label: roundName(f.round), weather: f.weather || 'clear' });
         },
       }),
     );
@@ -301,11 +319,11 @@ export class App {
     this.setScreen(
       S.venueSelect({
         onBack: () => this.go(this.friendlyPickOpp, myId),
-        onPick: (vi) => {
+        onPick: (vi, weather) => {
           const home = teamById(myId);
           const away = teamById(oppId);
           this.audio.ui('ok');
-          this.startMatch({ home, away, kits: chooseKits(home, away), userTeam: 0, venue: VENUES[vi], fixture: null, knockout: false, label: 'フレンドリーマッチ' });
+          this.startMatch({ home, away, kits: chooseKits(home, away), userTeam: 0, venue: VENUES[vi], fixture: null, knockout: false, label: 'フレンドリーマッチ', weather });
         },
       }),
     );
@@ -331,10 +349,11 @@ export class App {
   }
 
   showHowTo() {
+    const prevClose = this.overlayClose;
     const close = () => {
       this.audio.ui('back');
       dlg.remove();
-      this.overlayClose = null;
+      this.overlayClose = prevClose || null;
     };
     const dlg = S.dialog('遊び方', 'HOW TO PLAY', S.howToContent(), [S_btn('閉じる', 'primary', close)]);
     this.overlayClose = close;
@@ -408,7 +427,9 @@ export class App {
       seed: (Math.random() * 1e6) | 0,
       preset: cfg.venue.preset,
       pitchStyle: cfg.venue.pitch,
+      weather: cfg.weather || 'clear',
     });
+    this.audio.setRain(cfg.weather === 'rain');
     const m = this.mv.match;
     m.user.autoSwitch = s.autoSwitch;
     this.mv.start();
@@ -466,8 +487,14 @@ export class App {
     mv.paused = true;
     this.controls?.setVisible(false);
     const resume = () => this.togglePause();
-    this.pauseEl = S.dialog('ポーズ', 'PAUSED', S.howToContent(), [
+    const info = h(
+      'div',
+      { style: { textAlign: 'center', fontSize: '13px', color: '#9fb0d8', marginBottom: '4px' } },
+      `${this.cfg.home.name} ${mv.match.teams[0].score} - ${mv.match.teams[1].score} ${this.cfg.away.name}　${mv.match.displayClock.text}`,
+    );
+    this.pauseEl = S.dialog('ポーズ', 'PAUSED', info, [
       S_btn('試合を続ける', 'primary', resume),
+      S_btn('操作方法', 'ghost', () => this.showHowTo()),
       S_btn('試合をやめる', 'ghost', () => {
         this.confirm('試合をやめますか？', this.cfg.fixture ? '大会の試合は不戦敗にはならず、もう一度挑戦できます' : '', () => {
           this.pauseEl?.remove();
@@ -483,6 +510,8 @@ export class App {
   }
 
   leaveMatch() {
+    this.audio.setRain(false);
+    this.world.weather = 'clear';
     this.hud?.destroy();
     this.controls?.destroy();
     this.hud = null;
@@ -708,10 +737,14 @@ export class App {
   /** 自動テスト用: 時間を手動で進め、入力を注入する */
   installTestHooks() {
     window.__test = {
-      quick: (hid, aid, venue = 0, knockout = false) => {
+      quick: (hid, aid, venue = 0, knockout = false, userTeam = 0, weather = 'clear') => {
         const home = teamById(hid);
         const away = teamById(aid);
-        this.startMatch({ home, away, kits: chooseKits(home, away), userTeam: 0, venue: VENUES[venue], fixture: null, knockout, label: 'TEST' });
+        this.startMatch({ home, away, kits: chooseKits(home, away), userTeam, venue: VENUES[venue], fixture: null, knockout, label: 'TEST', weather });
+      },
+      project: (x, y, z) => {
+        const v = new THREE.Vector3(x, y, z).project(this.world.camera);
+        return [((v.x + 1) / 2) * innerWidth, ((1 - v.y) / 2) * innerHeight];
       },
       skipIntro: () => this.endIntro(),
       step: (n = 1, dt = 1 / 60) => {

@@ -423,7 +423,7 @@ export class Humans {
     for (let s = 0; s < 2; s++) {
       set('upperArm', i * 2 + s, look.sleeve, look.longSleeve ? look.sleeve : look.skin);
       set('foreArm', i * 2 + s, look.longSleeve ? look.sleeve : look.skin, hands);
-      set('thigh', i * 2 + s, look.shorts, look.skin);
+      set('thigh', i * 2 + s, look.shorts, look.trousers || look.skin);
       set('shin', i * 2 + s, look.socks, look.socks2 || look.socks);
       set('foot', i * 2 + s, look.boots, look.boots);
     }

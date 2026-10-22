@@ -104,6 +104,8 @@ vec4 pitchSurface(vec2 p, vec3 viewDirW) {
   float outside = smoothstep(0.0, 1.0, max(q.x - ${PITCH.HL.toFixed(2)}, q.y - ${PITCH.HW.toFixed(2)}));
   col *= 1.0 - outside * 0.06;
   col = mix(col, uLineColor * (0.92 + 0.08 * n2.g), line);
+  // 雨で濡れた芝は暗く、少し青みがかる
+  col *= 1.0 - uWet * (0.2 - 0.08 * n2.r);
   return vec4(col, line);
 }
 `;

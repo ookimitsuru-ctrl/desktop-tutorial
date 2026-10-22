@@ -836,6 +836,7 @@ table.standings td.pts {
 /* ------------------------------------------------------------ 設定 */
 
 .settings {
+  touch-action: pan-y;
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -1328,12 +1329,26 @@ table.standings td.pts {
 }
 
 .dialog {
+  display: flex;
+  flex-direction: column;
   min-width: min(560px, 90vw);
   max-width: 92vw;
-  max-height: 92vh;
-  overflow-y: auto;
-  padding: 16px 22px 18px;
+  max-height: 94vh;
+  overflow: hidden;
+  padding: 16px 22px 14px;
   animation: rise 0.35s ease both;
+}
+
+.dlg-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dlg-actions {
+  flex: none;
 }
 
 .dialog.wide {
@@ -1400,6 +1415,16 @@ table.standings td.pts {
   font-weight: 800;
   font-size: 54px;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.result2 .final-score {
+  gap: 8px;
+}
+
+.result2 .final-score .tn {
+  min-width: 0;
+  font-size: 13px;
 }
 
 .final-score .pk {

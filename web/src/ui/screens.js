@@ -124,6 +124,7 @@ export function teamSelect({ title = 'チーム選択', en = 'SELECT YOUR TEAM',
 
 export function venueSelect({ onPick, onBack }) {
   let sel = 0;
+  let weather = 'clear';
   const list = h('div.team-row');
   const presetName = { day: 'デイゲーム', sunset: 'サンセット', night: 'ナイトゲーム' };
   const render = () => {
@@ -145,7 +146,30 @@ export function venueSelect({ onPick, onBack }) {
     });
   };
   render();
-  return h('div.screen.select-screen', {}, h('div.shade-full'), topbar('スタジアム選択', 'VENUE', onBack), list, h('div.bottombar', {}, btn('キックオフ', 'primary', () => onPick(sel))));
+  const seg = h('div.seg', { style: { marginLeft: '0', marginRight: 'auto' } });
+  const renderSeg = () => {
+    seg.innerHTML = '';
+    for (const [v, t] of [
+      ['clear', '晴れ'],
+      ['rain', '雨'],
+    ]) {
+      const b = h(`button${weather === v ? '.on' : ''}`, {}, h('span', { style: { display: 'inline-block', transform: 'skewX(12deg)' } }, t));
+      tap(b, () => {
+        weather = v;
+        renderSeg();
+      });
+      seg.append(b);
+    }
+  };
+  renderSeg();
+  return h(
+    'div.screen.select-screen',
+    {},
+    h('div.shade-full'),
+    topbar('スタジアム選択', 'VENUE', onBack),
+    list,
+    h('div.bottombar', {}, h('span', { style: { fontSize: '12px', color: '#9fb0d8', fontWeight: 800 } }, '天候'), seg, btn('キックオフ', 'primary', () => onPick(sel, weather))),
+  );
 }
 
 function standingsTable(tour) {
@@ -219,7 +243,7 @@ export function hub({ tour, onPlay, onBack, onAbandon }) {
   return h('div.screen', {}, h('div.shade-full'), topbar('ワールドカップ', 'WORLD CUP 2026', onBack), h('div.hub', {}, left, fx), bottom);
 }
 
-export function lineup({ team, opp, fixtureLabel, venue, kit, onKickoff, onBack }) {
+export function lineup({ team, opp, fixtureLabel, venue, kit, weather, onKickoff, onBack }) {
   const form = FORMATIONS[team.formation];
   const pitch = h('div.mini-pitch.panel');
   team.players.forEach((p, i) => {
@@ -250,7 +274,7 @@ export function lineup({ team, opp, fixtureLabel, venue, kit, onKickoff, onBack 
     h('div.shade-full'),
     topbar(`${team.name} vs ${opp.name}`, fixtureLabel, onBack),
     h('div.lineup', {}, pitch, right),
-    h('div.bottombar', {}, h('div.hint', { html: `<b style="color:#fff">${venue.name}</b> ${venue.city}` }), btn('キックオフ', 'primary', onKickoff)),
+    h('div.bottombar', {}, h('div.hint', { html: `<b style="color:#fff">${venue.name}</b> ${venue.city}${weather === 'rain' ? '　<b style="color:#7fc4ff">雨</b>' : ''}` }), btn('キックオフ', 'primary', onKickoff)),
   );
 }
 
@@ -327,7 +351,11 @@ export function howToContent() {
 }
 
 export function dialog(title, en, content, actions, wide = false) {
-  return h('div.overlay', {}, h(`div.dialog.panel${wide ? '.wide' : ''}`, {}, h('h2', {}, title, en ? h('small', {}, en) : null), content, h('div.dlg-actions', {}, actions)));
+  return h(
+    'div.overlay',
+    {},
+    h(`div.dialog.panel${wide ? '.wide' : ''}`, {}, h('h2', {}, title, en ? h('small', {}, en) : null), h('div.dlg-body', {}, content), h('div.dlg-actions', {}, actions)),
+  );
 }
 
 /** スコア（左）とスタッツ（右）の2カラム */

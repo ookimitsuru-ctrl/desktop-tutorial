@@ -634,14 +634,68 @@ export class Stadium {
       return mesh;
     };
     const tz = PITCH.HW + 4.6;
-    addBoard(54, -28, -tz, 0, [0, 1, 2, 3, 4, 5, 6, 7, 8]);
-    addBoard(54, 28, -tz, 0, [4, 5, 6, 7, 8, 0, 1, 2, 3]);
+    // 奥側は中央にベンチがあるので看板を左右に分ける
+    addBoard(37, -36.5, -tz, 0, [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    addBoard(37, 36.5, -tz, 0, [4, 5, 6, 7, 8, 0, 1, 2, 3]);
+    addBoard(10, 0, -tz - 1.6, 0, [8, 8, 8, 8, 8, 8, 8, 8, 8]);
     const gx = PITCH.HL + 5.2;
     addBoard(26, gx, -16, -Math.PI / 2, [8, 0, 3, 5, 1, 2, 4, 6, 7]);
     addBoard(26, gx, 16, -Math.PI / 2, [1, 8, 2, 7, 3, 6, 4, 5, 0]);
     addBoard(26, -gx, -16, Math.PI / 2, [3, 5, 8, 0, 2, 4, 6, 1, 7]);
     addBoard(26, -gx, 16, Math.PI / 2, [7, 6, 5, 4, 8, 3, 2, 1, 0]);
     this.boards = boards;
+    this.buildDugouts();
+  }
+
+  /** ベンチ（ダッグアウト） */
+  buildDugouts() {
+    const glass = new THREE.MeshStandardMaterial({ color: 0x9fb4c8, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.35, depthWrite: false });
+    const frame = this.std({ color: 0x2a2f38, roughness: 0.6, metalness: 0.4 });
+    const floor = this.std({ color: 0x3b4048, roughness: 0.9 });
+    this.dugoutSeats = [];
+    for (const side of [-1, 1]) {
+      const g = new THREE.Group();
+      const cx = side * 11;
+      const z0 = -(PITCH.HW + 5.4);
+      const L = 9;
+      const box = (w, hh, d, x, y, z, mat) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat);
+        m.position.set(x, y, z);
+        m.castShadow = mat !== glass;
+        g.add(m);
+        return m;
+      };
+      box(L, 0.08, 2.0, cx, 0.04, z0, floor);
+      box(L, 2.1, 0.08, cx, 1.05, z0 - 1.0, frame);
+      const roof = box(L, 0.06, 2.3, cx, 2.0, z0 + 0.1, glass);
+      roof.rotation.x = 0.12;
+      box(0.06, 2.0, 2.1, cx - L / 2, 1.0, z0, glass);
+      box(0.06, 2.0, 2.1, cx + L / 2, 1.0, z0, glass);
+      for (const x of [-L / 2, L / 2]) box(0.08, 2.1, 0.08, cx + x, 1.05, z0 + 1.0, frame);
+      // 座席
+      const seatGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      const seatMat = this.std({ color: 0xffffff, roughness: 0.5 });
+      const seats = new THREE.InstancedMesh(seatGeo, seatMat, 8);
+      const m4 = new THREE.Matrix4();
+      for (let i = 0; i < 8; i++) {
+        m4.makeTranslation(cx - L / 2 + 0.75 + i * 1.07, 0.3, z0 - 0.55);
+        seats.setMatrixAt(i, m4);
+        seats.setColorAt(i, new THREE.Color(0x1b3f9e));
+      }
+      seats.castShadow = true;
+      g.add(seats);
+      this.dugoutSeats.push(seats);
+      this.group.add(g);
+    }
+  }
+
+  setBenchColors(home, away) {
+    [home, away].forEach((c, i) => {
+      const seats = this.dugoutSeats[i];
+      const col = new THREE.Color(c);
+      for (let k = 0; k < 8; k++) seats.setColorAt(k, col);
+      seats.instanceColor.needsUpdate = true;
+    });
   }
 
   buildCornerFlags() {

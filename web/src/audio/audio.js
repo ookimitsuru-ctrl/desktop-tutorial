@@ -90,6 +90,7 @@ export class AudioEngine {
     this.pink = noiseBuffer(ctx, 6, 'pink');
     this.white = noiseBuffer(ctx, 2, 'white');
     this.buildCrowd();
+    if (this.pendingRain) this.setRain(true);
   }
 
   setVolumes(sfx, music) {
@@ -106,6 +107,37 @@ export class AudioEngine {
 
   resume() {
     this.ctx?.resume();
+  }
+
+  /** 雨音 */
+  setRain(on) {
+    if (!this.ctx) {
+      this.pendingRain = on;
+      return;
+    }
+    const ctx = this.ctx;
+    if (on && !this.rainNode) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.white;
+      src.loop = true;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1400;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 7000;
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      g.gain.setTargetAtTime(0.09, ctx.currentTime, 1.5);
+      src.connect(hp).connect(lp).connect(g).connect(this.sfx);
+      src.start();
+      this.rainNode = { src, g };
+    } else if (!on && this.rainNode) {
+      const r = this.rainNode;
+      this.rainNode = null;
+      r.g.gain.setTargetAtTime(0, ctx.currentTime, 0.5);
+      setTimeout(() => r.src.stop(), 3000);
+    }
   }
 
   // ------------------------------------------------------------ 観客

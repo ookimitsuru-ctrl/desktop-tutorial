@@ -11,7 +11,7 @@ import { clamp, lerp, wrapAngle, smoothstep } from '../util/math.js';
 
 const REF_LOOK = { shirt: '#111318', shirt2: '#2be38b', shorts: '#111318', socks: '#111318', boots: '#111111', pattern: 0 };
 const AR_LOOK = { shirt: '#f5e400', shirt2: '#111318', shorts: '#111318', socks: '#111318', boots: '#111111', pattern: 0 };
-const NUM_HUMANS = 25;
+const NUM_HUMANS = 33; // 選手22 + 審判3 + ベンチ8
 
 function lookFrom(kit, pd, gkKit) {
   const look = defaultLook();
@@ -201,8 +201,43 @@ export class MatchView {
       w.humans.looks[i].hairStyle = 1;
       w.humans.looks[i].height = 0.98;
     }
+    // ベンチ: 控え選手3人（トレーニングウェア）と監督
+    m.teams.forEach((t, ti) => {
+      const kit = ti === 0 ? hk : ak;
+      for (let k = 0; k < 4; k++) {
+        const idx = 25 + ti * 4 + k;
+        const look = defaultLook();
+        if (k < 3) {
+          look.shirt.set(kit.shirt).multiplyScalar(0.55);
+          look.shirt2.set(kit.shirt2);
+          look.sleeve.copy(look.shirt);
+          look.shorts.set(kit.shorts).multiplyScalar(0.6);
+          look.socks.set(kit.socks);
+          look.longSleeve = true;
+          look.pattern = 0;
+          const pd = t.data.players[(k * 3 + 2) % 11];
+          look.skin.set(pd.look.skin);
+          look.hair.set(pd.look.hair);
+        } else {
+          look.shirt.set('#1d2230');
+          look.shirt2.set('#ffffff');
+          look.sleeve.set('#1d2230');
+          look.shorts.set('#1d2230');
+          look.socks.set('#1d2230');
+          look.trousers = new THREE.Color('#1d2230');
+          look.boots.set('#0e0e0e');
+          look.longSleeve = true;
+          look.skin.set(t.data.skin[0]);
+          look.hair.set(ti === 0 ? '#3a3a3a' : '#5a4a3a');
+          look.height = 0.98;
+        }
+        w.humans.applyLook(idx, look);
+      }
+    });
+    w.stadium.setBenchColors(hk.shirt, ak.shirt);
     w.humans.setCount(NUM_HUMANS);
     w.setCrowdTeams(this.cfg.home.crowdColors, this.cfg.away.crowdColors);
+    w.weather = this.cfg.weather || 'clear';
     w.setPreset(this.cfg.preset || 'day');
     w.setPitchStyle(this.cfg.pitchStyle || 0);
     w.setBroadcastCamera();
@@ -322,6 +357,40 @@ export class MatchView {
       this.blendPose(idx, target, dt);
     });
     this.refPoseT = Math.max(0, this.refPoseT - dt);
+    // ベンチ
+    for (let ti = 0; ti < 2; ti++) {
+      const t = m.teams[ti];
+      const cx = (ti === 0 ? -1 : 1) * 11;
+      for (let k = 0; k < 4; k++) {
+        const idx = 25 + ti * 4 + k;
+        const tr = H.transforms[idx];
+        tr.visible = true;
+        tr.y = 0;
+        const target = this.renderPose;
+        if (k < 3) {
+          tr.x = cx - 2.4 + k * 1.07 * 1.5;
+          tr.z = -(PITCH.HW + 5.4) - 0.45;
+          tr.yaw = 0;
+          A.seated(target, w.time, idx);
+          if (m.phase === 'goal' && m.goalInfo?.team === ti) {
+            A.celebrate(target, 3, 0.5, 0, 0, w.time + idx);
+            tr.z += 1.2;
+          }
+        } else {
+          // 監督はテクニカルエリアでボールの方を見る
+          const b = m.ball;
+          tr.x = cx + Math.sin(w.time * 0.2 + ti) * 1.5;
+          tr.z = -(PITCH.HW + 2.2);
+          const f = Math.atan2(b.z - tr.z, b.x - tr.x);
+          tr.yaw = Math.PI / 2 - f;
+          const near = Math.abs(b.x - tr.x) < 25 && m.phase === 'play';
+          A.coach(target, w.time, idx, near && Math.sin(w.time * 0.7 + ti * 2) > 0.3 ? 1 : 0);
+          if (m.phase === 'goal' && m.goalInfo?.team === ti) A.celebrate(target, 2, 0.5, 0, 0, w.time);
+        }
+        this.blendPose(idx, target, dt);
+      }
+      void t;
+    }
     H.update();
 
     // ボール

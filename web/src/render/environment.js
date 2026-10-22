@@ -235,8 +235,31 @@ export class Environment {
     }
   }
 
-  apply(name, post) {
-    const p = PRESETS[name] || PRESETS.day;
+  apply(name, post, weather = 'clear') {
+    let p = PRESETS[name] || PRESETS.day;
+    if (weather === 'rain') {
+      // 曇天・雨: 直射光を弱め、霧を濃く、雲を厚く
+      const night = name === 'night';
+      p = {
+        ...p,
+        sunIntensity: p.sunIntensity * (night ? 0.85 : 0.45),
+        hemiIntensity: p.hemiIntensity * (night ? 1.0 : 1.05),
+        hemiSky: night ? p.hemiSky : '#b8c2cf',
+        clouds: 1.4,
+        cloudColor: night ? '#202838' : '#8a929c',
+        zenith: night ? p.zenith : '#5d6672',
+        horizon: night ? p.horizon : '#9aa3ad',
+        stars: 0,
+        sunDisk: 0,
+        roofShadow: p.roofShadow * 0.35,
+        fog: night ? '#1a2230' : '#9aa4ae',
+        fogDensity: p.fogDensity * 2.6,
+        saturation: p.saturation * 0.9,
+        contrast: p.contrast * 0.97,
+        bloom: p.bloom * 1.2,
+      };
+    }
+    this.sun.shadow.intensity = weather === 'rain' ? (name === 'night' ? 0.8 : 0.45) : 1;
     this.preset = p;
     this.presetName = name;
     const el = THREE.MathUtils.degToRad(p.sunEl);
