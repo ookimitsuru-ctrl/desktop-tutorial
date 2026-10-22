@@ -170,6 +170,7 @@ export class MatchView {
     this.hold = false; // 試合前の演出中はシミュレーションを止める
     this.externalCamera = false;
     this.introT = null;
+    this.pkCamUntil = 0;
     this.setupWorld();
   }
 
@@ -337,6 +338,21 @@ export class MatchView {
       this.poseFor(p, idx, dt, time);
       void i;
     });
+    // 入場の整列（試合前の演出）
+    const lineup = this.introT !== null && this.introT !== undefined && this.introT < 3.8;
+    if (lineup) {
+      m.players.forEach((p) => {
+        const idx = p.team.index * 11 + p.index;
+        const tr = H.transforms[idx];
+        const side = p.team.index === 0 ? -1 : 1;
+        tr.x = side * (2.2 + p.index * 1.05);
+        tr.z = 0;
+        tr.y = 0;
+        tr.yaw = 0; // 手前（メインスタンド側）を向く
+        A.lineupStand(this.renderPose, time, idx);
+        this.blendPose(idx, this.renderPose, 1);
+      });
+    }
     // 審判
     m.officials.forEach((o, k) => {
       const idx = 22 + k;
@@ -350,6 +366,14 @@ export class MatchView {
       tr.visible = true;
       const sp = Math.hypot(o.vx, o.vz);
       const target = this.renderPose;
+      if (lineup) {
+        tr.x = (k - 1) * 0.75;
+        tr.z = 0;
+        tr.yaw = 0;
+        A.lineupStand(target, time, idx);
+        this.blendPose(idx, target, 1);
+        return;
+      }
       if (o.kind === 'ar' && o.pose === 'flag') A.flagUp(target, o.side > 0 ? -1 : 1);
       else if (o.kind === 'ref' && this.refPoseT > 0) A.pointArm(target, 1, 0.3);
       else {
@@ -426,7 +450,7 @@ export class MatchView {
 
     // マーカー
     const u = m.user;
-    const showUser = u.controlled && (m.phase === 'play' || m.phase === 'setpiece' || m.phase === 'kickoff' || m.phase === 'stoppage');
+    const showUser = u.controlled && !this.hold && (m.phase === 'play' || m.phase === 'setpiece' || m.phase === 'kickoff' || m.phase === 'stoppage');
     let user = null;
     if (showUser) {
       const idx = u.controlled.team.index * 11 + u.controlled.index;
@@ -631,10 +655,24 @@ export class MatchView {
     const w = this.world;
     const cam = w.camera;
     const m = this.match;
+    if (this.introT !== null && this.introT !== undefined && this.introT < 3.8) {
+      // 入場の整列: 選手の列に沿って低い位置から横移動
+      const t = this.introT / 3.8;
+      const x = lerp(-13, 13, smoothstep(0, 1, t));
+      cam.position.set(x * 0.9, 1.7 + t * 0.6, 7.5 - Math.sin(t * Math.PI) * 1.2);
+      cam.lookAt(x, 1.35, 0);
+      cam.fov = 38;
+      cam.updateProjectionMatrix();
+      w.stadium.setBroadcastView(false);
+      // 最後に暗転
+      w.gfx.post.uniforms.uFade.value = smoothstep(3.45, 3.8, this.introT);
+      return;
+    }
     if (this.introT !== null && this.introT !== undefined) {
       // 試合前: スタジアム上空から中継カメラ位置へ降りてくる
       const f = w.broadcast;
-      const k = smoothstep(0, 4.0, this.introT);
+      w.gfx.post.uniforms.uFade.value = 1 - smoothstep(3.8, 4.2, this.introT);
+      const k = smoothstep(3.8, 6.4, this.introT);
       const a = (1 - k) * 1.2;
       const start = new THREE.Vector3(Math.sin(a) * 70, 70 - k * 0, Math.cos(a) * 110);
       cam.position.lerpVectors(start, f.position, k);
@@ -667,6 +705,23 @@ export class MatchView {
         w.stadium.setBroadcastView(false);
         return;
       }
+    }
+    // PK: キッカーの後ろから
+    const pkLive = m.phase === 'setpiece' && m.sp?.type === 'penalty' && m.sp.t > 1.0;
+    const pkShot = m.phase === 'play' && m.ball.lastKick?.kind === 'shot' && this.pkCamUntil > m.time;
+    if (pkLive || pkShot) {
+      if (pkLive) {
+        this.pkSide = Math.sign(m.sp.x) || 1;
+        this.pkCamUntil = m.time + 2.6;
+      }
+      const s = this.pkSide;
+      const spot = s * (PITCH.HL - PITCH.spot);
+      cam.position.set(spot - s * 6.0, 2.3, 0.5 * s);
+      cam.lookAt(s * PITCH.HL, 1.0, 0);
+      cam.fov = 36;
+      cam.updateProjectionMatrix();
+      w.stadium.setBroadcastView(false);
+      return;
     }
     if (this.camMode !== 'broadcast' && m.phase !== 'goal') this.camMode = 'broadcast';
     if (this.zoomCamera) {

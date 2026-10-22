@@ -360,8 +360,23 @@ export function dialog(title, en, content, actions, wide = false) {
 }
 
 /** スコア（左）とスタッツ（右）の2カラム */
-export function resultContent(match, pk = null) {
-  return h('div.result2', {}, scoreHeader(match, pk), statsBlock(match));
+export function resultContent(match, pk = null, motm = false) {
+  const left = h('div', {}, scoreHeader(match, pk));
+  if (motm) {
+    const { player, rating } = match.manOfTheMatch();
+    if (player) {
+      left.append(
+        h(
+          'div',
+          { style: { marginTop: '10px', padding: '6px 10px', background: 'rgba(255,216,74,0.1)', borderLeft: '3px solid #ffd84a', fontSize: '12px' } },
+          h('div', { style: { color: '#ffd84a', fontWeight: 800, letterSpacing: '0.15em', fontSize: '10px' } }, 'MAN OF THE MATCH'),
+          h('div', { style: { fontWeight: 800, fontSize: '14px' } }, `${player.data.name}`, h('span', { style: { color: '#9fb0d8', fontWeight: 500, fontSize: '11px', marginLeft: '6px' } }, `${player.team.data.name} #${player.num}`)),
+          h('div', { style: { color: '#cfdaf7' } }, `評価 ${rating.toFixed(1)}`, player.stats.goals ? `・${player.stats.goals}ゴール` : '', player.stats.assists ? `・${player.stats.assists}アシスト` : '', player.stats.saves ? `・${player.stats.saves}セーブ` : ''),
+        ),
+      );
+    }
+  }
+  return h('div.result2', {}, left, statsBlock(match));
 }
 
 export function statsBlock(match) {

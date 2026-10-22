@@ -191,7 +191,7 @@ export function dive(p, t, dir, height) {
   // 体ごと横に倒れる
   p.bodyRoll = dir * lerp(0, 1.45 - height * 0.25, air);
   p.bodySide = dir * (air * 1.2 + land * 0.3);
-  p.rootY = lerp(0, 0.35 + height * 1.0, air) * (1 - land) + land * -0.72;
+  p.rootY = lerp(0, 0.1 + height * 0.5, air) * (1 - land) + land * -0.72;
   p.bodyPitch = 0.1;
   // 両腕を伸ばす
   const reach = smoothstep(0.05, 0.3, t);
@@ -448,5 +448,19 @@ export function coach(p, time, seed = 0, shout = 0) {
   }
   p.neckYaw = k * 0.3;
   p.bodyPitch = 0.04;
+  return p;
+}
+
+/** 整列（入場時）: 手を後ろで組む */
+export function lineupStand(p, time, seed = 0) {
+  base(p);
+  p.lShSwing = -0.25;
+  p.rShSwing = -0.25;
+  p.lShAbd = 0.08;
+  p.rShAbd = 0.08;
+  p.lElbow = 0.5;
+  p.rElbow = 0.5;
+  p.spinePitch = Math.sin(time * 1.3 + seed) * 0.01;
+  p.neckYaw = Math.sin(time * 0.3 + seed * 3) * 0.12;
   return p;
 }

@@ -124,6 +124,15 @@ if (scenario === 'pk') {
   await wait(1500);
   await log('after pk'); await T.shot('k4-result');
 }
+if (scenario === 'pen') {
+  await page.evaluate(() => { const m = window.__app.mv.match; const t = m.teams[0]; m.phase = 'play'; m.startSetPiece('penalty', t, t.dir * (52.5 - 11), 0); });
+  for (let k = 0; k < 10; k++) { await T.step(30); const r = await page.evaluate(() => window.__app.mv.match.sp?.ready); if (r) break; }
+  await T.input(1, 0.2, 1); await T.step(25); await T.input(0, 0, 0);
+  await T.shot('pen1');
+  await T.btn('shoot', true); await T.step(20); await T.btn('shoot', false, 0.4);
+  await T.step(25); await T.shot('pen2');
+  await T.step(60); await log('after pen'); await T.shot('pen3');
+}
 if (scenario === 'ceremony') {
   await page.evaluate(() => { const a = window.__app; a.startCeremony(a.mv.match.teams[0].data); });
   await T.step(120); await T.shot('c1');

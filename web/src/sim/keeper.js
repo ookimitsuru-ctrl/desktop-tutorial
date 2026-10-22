@@ -182,7 +182,7 @@ export class KeeperAI {
       const v = Math.max(0, reachUse) / Math.max(0.25, airTime);
       gk.vx = (ddx / dd) * v * (save ? 1 : 0.85);
       gk.vz = (ddz / dd) * v * (save ? 1 : 0.85);
-      gk.vy = height > 0.8 ? Math.sqrt(2 * 9.81 * Math.min(0.6, height * 0.35)) : 0;
+      gk.vy = height > 1.0 ? Math.sqrt(2 * 9.81 * Math.min(0.35, (height - 1.0) * 0.3)) : 0;
     } else {
       gk.setState('catch', 0.7, { plan: this.plan, height });
       gk.moveTo(pt.x, pt.z, 3);

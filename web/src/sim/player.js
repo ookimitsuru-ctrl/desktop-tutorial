@@ -58,6 +58,7 @@ export class Player {
     this.anim = { gait: 0, turn: 0, lastFacing: 0 };
     this.yellow = 0;
     this.offsideFlag = false;
+    this.stats = { goals: 0, assists: 0, shots: 0, tackles: 0, saves: 0, passes: 0 };
   }
 
   get isGK() {

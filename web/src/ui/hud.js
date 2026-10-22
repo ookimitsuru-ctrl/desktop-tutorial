@@ -17,7 +17,8 @@ const SP_HINTS = {
   goalkick: '<b>ロブ</b>でロングキック / <b>パス</b>で近くへ',
   freekick: '<b>シュート</b>長押しで直接狙う / <b>パス</b>・<b>クロス</b>',
   freekickFar: '<b>パス</b> / <b>スルー</b> / <b>クロス</b>で再開',
-  penalty: 'スティックで狙い → <b>シュート</b>長押しで強さ',
+  penalty: 'スティックで狙い → <b>シュート</b>長押しで強さ、離して蹴る',
+  penaltyKeep: 'スティックでGKが飛ぶ方向を選ぶ',
   kickoff: '<b>パス</b>または<b>シュート</b>でキックオフ',
 };
 
@@ -178,6 +179,8 @@ export class HUD {
         if (d > 32 || m.sp.opts.indirect) k = 'freekickFar';
       }
       hint = SP_HINTS[k] || '';
+    } else if (m.phase === 'setpiece' && m.sp && m.sp.ready && m.sp.type === 'penalty' && !m.sp.team.isUser && m.user.team !== null && m.user.team !== undefined) {
+      hint = SP_HINTS.penaltyKeep;
     } else if (m.phase === 'kickoff' && m.sp && m.sp.team.isUser && m.sp.whistled) hint = SP_HINTS.kickoff;
     if (hint !== this.hintText) {
       this.hintText = hint;

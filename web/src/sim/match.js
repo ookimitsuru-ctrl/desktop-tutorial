@@ -78,6 +78,32 @@ export class Match {
   emit(e) {
     e.t = this.time;
     this.events.push(e);
+    if (e.type === 'tackle' && e.success && e.player) e.player.stats.tackles++;
+    if (e.type === 'save' && e.player && this.ball.lastKick?.kind === 'shot') e.player.stats.saves++;
+  }
+
+  /** 選手の評価点（マン・オブ・ザ・マッチ用） */
+  playerRating(p) {
+    const s = p.stats;
+    const t = p.team;
+    const o = this.teams[1 - t.index];
+    let r = 6.0 + s.goals * 1.25 + s.assists * 0.8 + s.shots * 0.1 + s.tackles * 0.15 + s.saves * 0.45 + s.passes * 0.025;
+    if (t.score > o.score) r += 0.4;
+    if (p.isGK && o.score === 0) r += 0.6;
+    return Math.min(10, r);
+  }
+
+  manOfTheMatch() {
+    let best = null;
+    let br = -1;
+    for (const p of this.players) {
+      const r = this.playerRating(p);
+      if (r > br) {
+        br = r;
+        best = p;
+      }
+    }
+    return { player: best, rating: br };
   }
 
   drainEvents() {
@@ -365,7 +391,10 @@ export class Match {
     // パス成功の集計
     if (b.lastKick && b.lastKick.counted === false && (b.lastKick.kind === 'pass' || b.lastKick.kind === 'through' || b.lastKick.kind === 'lob' || b.lastKick.kind === 'cross')) {
       b.lastKick.counted = true;
-      if (b.lastKick.player.team === p.team && b.lastKick.player !== p) p.team.stats.passesOk++;
+      if (b.lastKick.player.team === p.team && b.lastKick.player !== p) {
+        p.team.stats.passesOk++;
+        b.lastKick.player.stats.passes++;
+      }
     }
     b.owner = p;
     b.passTarget = null;
@@ -853,6 +882,7 @@ export class Match {
       b.spinTop = power > 0.8 ? 1.5 : 0;
       const onTarget = Math.abs(tz) < PITCH.goalHalfW && ty < PITCH.goalH;
       p.team.stats.shots++;
+      p.stats.shots++;
       if (onTarget) p.team.stats.onTarget++;
       this.afterKick(p, 'shot', null, power);
       this.emit({ type: 'shot', player: p, onTarget, power });
@@ -1018,7 +1048,7 @@ export class Match {
     gk.setState('dive', 1.6, { side, height: clamp((tgt.y - 0.3) / 1.8, 0, 1), airTime: 0.4, plan });
     gk.vz = guess * 6.2;
     gk.vx = 0;
-    gk.vy = tgt.y > 1.0 ? 2.5 : 0.5;
+    gk.vy = tgt.y > 1.2 ? 1.6 : 0.3;
   }
 
   // ------------------------------------------------------------ ルール
@@ -1158,6 +1188,8 @@ export class Match {
     const pk = this.prevKick;
     if (!ownGoal && pk && pk.player.team === team && pk.player !== lt && this.time - pk.time < 10 && pk.kind !== 'shot') assist = pk.player;
     const g = { team: team.index, scorer, assist, ownGoal, minute: this.minute, half: this.half, display: this.displayClock };
+    if (scorer && !ownGoal) scorer.stats.goals++;
+    if (assist) assist.stats.assists++;
     this.goalsLog.push(g);
     this.phase = 'goal';
     this.phaseT = 0;
@@ -1486,8 +1518,7 @@ export class Match {
         let ty;
         let power;
         if (user && user.kind === 'shot') {
-          tz = clamp((user.dz || 0) * dir * 3.4, -3.3, 3.3) * dir;
-          tz = clamp(user.aimZ ?? tz, -3.4, 3.4);
+          tz = clamp(user.aimZ ?? 0, -3.4, 3.4);
           ty = user.aimY ?? 0.5 + (user.power || 0.6) * 1.2;
           power = user.power ?? 0.7;
         } else {
@@ -1542,6 +1573,7 @@ export class Match {
     // GKは読みで飛ぶ（AIまたはユーザー指定）
     const userGK = opp.isUser;
     const guess = userGK && this.penaltyUserDive !== undefined ? this.penaltyUserDive : this.rng() < 0.5 ? -1 : 1;
+    this.penaltyUserDive = undefined;
     this.pendingPenaltyDive = { gk, guess, t: this.time + 0.12, tgt };
   }
 
@@ -1641,14 +1673,12 @@ export class Match {
     if (this.phase === 'setpiece' && this.sp && this.sp.team === team && this.sp.ready) {
       const kind = action === 'shoot' ? 'shot' : action;
       const power = opts.power ?? 0.7;
-      let aimZ;
-      if (kind === 'shot') {
-        const dir = team.dir;
+      let aimZ = opts.aimZ;
+      if (kind === 'shot' && aimZ === undefined) {
         // 画面上の左右入力 → ゴールのどちら側か
         aimZ = clamp(dz * 3.3 + (Math.abs(dz) < 0.2 ? (this.rng() - 0.5) * 4 : 0), -3.3, 3.3);
-        void dir;
       }
-      this.sp.userGo = { kind, dx, dz, power, aimZ, aimY: 0.4 + power * 1.4 };
+      this.sp.userGo = { kind, dx, dz, power, aimZ, aimY: opts.aimY ?? 0.4 + power * 1.4 };
       return;
     }
     if (this.phase !== 'play' || !c) return;

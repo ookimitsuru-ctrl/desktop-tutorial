@@ -468,6 +468,7 @@ export class App {
     if (!this.mv.hold) return;
     this.mv.hold = false;
     this.mv.introT = null;
+    this.gfx.post.uniforms.uFade.value = 0;
     this.introEl?.remove();
     this.introEl = null;
     this.controls.setVisible(true);
@@ -536,6 +537,7 @@ export class App {
 
   leaveMatch() {
     if (this.powerEl) this.powerEl.style.display = 'none';
+    if (this.reticleEl) this.reticleEl.style.display = 'none';
     this.audio.setRain(false);
     this.world.weather = 'clear';
     this.hud?.destroy();
@@ -591,6 +593,11 @@ export class App {
     if (name === 'shoot' && chargeable) {
       if (down) return; // 離したときに打つ
       const power = Math.min(1, 0.25 + hold / 0.85);
+      if (mode === 'penalty' && this.penAim) {
+        const s = m.sp.team.dir;
+        this.act('shoot', { power, aimZ: this.penAim.x * 3.4 * s, aimY: 0.15 + this.penAim.y * 2.2 });
+        return;
+      }
       this.act('shoot', { power });
       return;
     }
@@ -694,7 +701,7 @@ export class App {
       this.overlayClose = null;
       this.finishMatch(result, won);
     };
-    const dlg = S.dialog(head, 'FULL TIME', S.resultContent(m, pk), [S_btn('次へ', 'primary', next)], true);
+    const dlg = S.dialog(head, 'FULL TIME', S.resultContent(m, pk, true), [S_btn('次へ', 'primary', next)], true);
     this.overlayClose = () => {};
     this.ui.append(dlg);
     haptic(won ? 200 : 30);
@@ -861,6 +868,37 @@ export class App {
     this.powerEl.firstChild.style.width = `${Math.round(pw * 100)}%`;
   }
 
+  /** 試合中のPK: ユーザーが蹴るときは照準、守るときはダイブ方向 */
+  updatePenaltyAim(dt) {
+    const m = this.mv.match;
+    const c = this.controls;
+    const pk = m.phase === 'setpiece' && m.sp?.type === 'penalty' && m.sp.ready;
+    if (!this.reticleEl) {
+      this.reticleEl = h('div', { style: { position: 'absolute', width: '34px', height: '34px', margin: '-17px 0 0 -17px', borderRadius: '50%', border: '3px solid #ffd84a', boxShadow: '0 0 12px rgba(255,216,74,0.8)', pointerEvents: 'none', display: 'none' } });
+      this.ui.append(this.reticleEl);
+    }
+    if (!pk || !c) {
+      this.reticleEl.style.display = 'none';
+      this.penAim = null;
+      return;
+    }
+    const st = c.state;
+    const s = m.sp.team.dir; // 攻めるゴールの方向
+    if (m.sp.team.isUser) {
+      if (!this.penAim) this.penAim = { x: 0, y: 0.4 };
+      this.penAim.x = Math.max(-1.05, Math.min(1.05, this.penAim.x + st.x * st.mag * dt * 1.6));
+      this.penAim.y = Math.max(0, Math.min(1.05, this.penAim.y + st.y * st.mag * dt * 1.2));
+      const v = new THREE.Vector3(s * PITCH.HL, 0.15 + this.penAim.y * 2.2, this.penAim.x * 3.4 * s).project(this.world.camera);
+      this.reticleEl.style.display = '';
+      this.reticleEl.style.left = `${((v.x + 1) / 2) * innerWidth}px`;
+      this.reticleEl.style.top = `${((1 - v.y) / 2) * innerHeight}px`;
+    } else {
+      this.reticleEl.style.display = 'none';
+      // カメラはキッカーの背後: 画面の右 = ゴールに向かって右
+      m.penaltyUserDive = st.mag > 0.3 && Math.abs(st.x) > 0.3 ? Math.sign(st.x) * s : st.mag > 0.3 ? 0 : undefined;
+    }
+  }
+
   updateMatch(dt) {
     const mv = this.mv;
     const m = mv.match;
@@ -882,13 +920,14 @@ export class App {
     }
     if (mv.hold) {
       mv.introT = (mv.introT || 0) + dt;
-      if (mv.introT > 4.2) this.endIntro();
+      if (mv.introT > 6.4) this.endIntro();
     }
     if (this.shootout) this.shootout.update(dt);
     else if (this.ceremony) this.ceremony.update(dt);
     else mv.update(dt);
     this.hud?.update(dt);
     this.updatePowerGauge();
+    this.updatePenaltyAim(dt);
     // 観客の音
     const b = m.ball;
     const nearGoal = Math.max(0, 1 - Math.min(Math.abs(Math.abs(b.x) - PITCH.HL), 40) / 40);
