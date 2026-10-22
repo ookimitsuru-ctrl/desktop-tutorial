@@ -71,6 +71,27 @@ node tools/tournament.mjs out  # ブラウザで大会を最初から最後ま�
 ブラウザで `app/src/main/assets/game/index.html` を開いても遊べます（キーボード操作）。
 `?test=1` を付けるとテスト用のフック（`window.__test`）が有効になります。
 
+### 性能テスト（自動プレー）
+
+`?autoplay=1` を付けると、ボットがユーザーチームを実際のボタン操作と同じ経路で操作して試合を進め、
+フレーム時間・16msを超えた処理・試合中のシェーダ作成（一瞬止まる原因）・進行不能・エラー・メモリを
+`WSPERF {json}` の行でログに出します（`difficulty` / `quality` / `half` / `venue` / `weather` / `matches` で条件を指定、
+`fast=1` は描画だけ間引く早送り）。
+
+```sh
+# ブラウザ（GPUなしの環境向けに早送り）: 難易度×画質の9試合を走らせ、区間ごとにローカルLLMが説明を書く
+python3 web/tools/perf_hour.py 出力dir 3 ラベル
+python3 web/tools/perf_report.py 修正前dir 修正後dir 修正内容.md report.md [スマホ結果dir]
+
+# スマホ実機（USBデバッグを有効にしてケーブル接続）: 難易度×画質（高/中/低/自動）の12試合で実機のfps・カクつきを記録
+./tools/phone_test.sh WorldStrikers-v1.x.x-release.apk 2          # Mac / Linux
+powershell -ExecutionPolicy Bypass -File tools\phone_test.ps1 WorldStrikers-v1.x.x-release.apk 2   # Windows
+```
+
+実機では `adb shell am start -n com.worldstrikers.soccer/.MainActivity --es query 'autoplay=1&quality=high'` のように
+URLパラメータを渡せ、計測結果は logcat の `WSPERF` タグに出ます。
+ローカルLLMは llama.cpp（llama-cpp-python）と Qwen2.5-7B-Instruct（GGUF, Q4_K_M）を CPU で動かしています（`LLM_MODEL` でモデルのパスを指定）。
+
 ### ディレクトリ構成
 
 ```
