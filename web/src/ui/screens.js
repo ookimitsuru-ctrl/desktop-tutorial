@@ -284,6 +284,7 @@ export function settingsScreen({ settings, onChange, onBack }) {
     ['試合時間', '前後半それぞれの長さ', 'halfMinutes', [[2, '2分'], [3, '3分'], [5, '5分'], [8, '8分']]],
     ['難易度', 'CPUの強さ', 'difficulty', [['easy', 'やさしい'], ['normal', 'ふつう'], ['hard', 'むずかしい']]],
     ['画質', '重い時は下げてください', 'quality', [['auto', '自動'], ['high', '高'], ['medium', '中'], ['low', '低']]],
+    ['カメラ', 'ワイド＝ピッチ全体 / ズーム＝ボールを追う', 'camera', [['wide', 'ワイド'], ['zoom', 'ズーム']]],
     ['オフサイド', '', 'offside', [[true, 'あり'], [false, 'なし']]],
     ['操作選手の自動切替', 'ボールに近い選手へ自動で切替', 'autoSwitch', [[true, 'ON'], [false, 'OFF']]],
     ['ゴールリプレイ', '', 'replays', [[true, 'ON'], [false, 'OFF']]],

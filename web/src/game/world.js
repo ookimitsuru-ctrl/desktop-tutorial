@@ -11,6 +11,7 @@ import { Effects } from '../render/fx.js';
 import { shared } from '../render/shading.js';
 import { computeBroadcastFrame } from '../render/cameras.js';
 import { Rain } from '../render/rain.js';
+import { StandFlags } from '../render/standflags.js';
 
 // 3Dの世界（スタジアム一式）。タイトル画面から試合まで使い回す。
 
@@ -29,6 +30,7 @@ export class World {
     this.markers = new Markers(this.scene);
     this.fx = new Effects(this.scene);
     this.rain = new Rain(this.scene);
+    this.standFlags = new StandFlags(this.scene);
     this.weather = 'clear';
     this.camera = new THREE.PerspectiveCamera(30, gfx.aspect, 0.5, 4000);
     this.time = 0;

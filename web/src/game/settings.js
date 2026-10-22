@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS = {
   haptics: true,
   autoSwitch: true,
   replays: true,
+  camera: 'wide',
+  seenHint: false,
 };
 
 export function loadSettings() {

@@ -342,6 +342,7 @@ export class App {
           if (key === 'sound' || key === 'music') this.audio.setVolumes(this.settings.sound, this.settings.music);
           if (key === 'haptics') setHaptics(this.settings.haptics);
           if (key === 'autoSwitch' && this.mv) this.mv.match.user.autoSwitch = this.settings.autoSwitch;
+          if (key === 'camera' && this.mv) this.mv.zoomCamera = this.settings.camera === 'zoom';
           this.audio.ui('tap');
         },
       }),
@@ -431,6 +432,7 @@ export class App {
     });
     this.audio.setRain(cfg.weather === 'rain');
     const m = this.mv.match;
+    this.mv.zoomCamera = s.camera === 'zoom';
     m.user.autoSwitch = s.autoSwitch;
     this.mv.start();
     this.mv.hold = true;
@@ -470,6 +472,29 @@ export class App {
     this.introEl = null;
     this.controls.setVisible(true);
     this.hud.setVisible(true);
+    if (!this.settings.seenHint && !this.testMode) {
+      this.settings.seenHint = true;
+      saveSettings(this.settings);
+      const card = h(
+        'div.overlay',
+        { style: { background: 'rgba(2,6,20,0.35)', pointerEvents: 'none' } },
+        h(
+          'div.dialog.panel',
+          { style: { minWidth: '0', maxWidth: '520px', textAlign: 'center' } },
+          h('h2', {}, '操作のしかた', h('small', {}, 'CONTROLS')),
+          h(
+            'div',
+            { style: { fontSize: '14px', lineHeight: '1.9' } },
+            h('div', {}, '画面の左側をドラッグ → 選手を動かす'),
+            h('div', {}, '右のボタン → パス・スルー・ロブ・シュート'),
+            h('div', {}, 'シュートは長押しで強く。スティックで左右を狙う'),
+            h('div', { style: { color: '#9fb0d8', fontSize: '12px' } }, '黄色いリングが操作中の選手です'),
+          ),
+        ),
+      );
+      this.ui.append(card);
+      setTimeout(() => card.remove(), 6500);
+    }
   }
 
   togglePause(force) {
@@ -510,6 +535,7 @@ export class App {
   }
 
   leaveMatch() {
+    if (this.powerEl) this.powerEl.style.display = 'none';
     this.audio.setRain(false);
     this.world.weather = 'clear';
     this.hud?.destroy();
@@ -811,6 +837,30 @@ export class App {
     this.gfx.trackFrame(dt);
   }
 
+  /** シュートのパワーを操作中の選手の頭上に表示 */
+  updatePowerGauge() {
+    const c = this.controls;
+    const m = this.mv?.match;
+    if (!this.powerEl) {
+      this.powerEl = h('div', { style: { position: 'absolute', width: '54px', height: '7px', marginLeft: '-27px', borderRadius: '4px', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.6)', overflow: 'hidden', pointerEvents: 'none', display: 'none' } }, h('i', { style: { display: 'block', height: '100%', width: '0%', background: 'linear-gradient(90deg,#ffd84a,#ff5a3a)' } }));
+      this.ui.append(this.powerEl);
+    }
+    const p = m?.user.controlled;
+    const charging = c && c.held.shoot && p && (this.controlsMode() === 'attack' || this.controlsMode() === 'setpiece') && !this.shootout;
+    if (!charging) {
+      this.powerEl.style.display = 'none';
+      return;
+    }
+    const idx = p.team.index * 11 + p.index;
+    const hp = this.world.humans.headPos[idx];
+    const v = new THREE.Vector3(hp.x, hp.y + 0.9, hp.z).project(this.world.camera);
+    this.powerEl.style.display = '';
+    this.powerEl.style.left = `${((v.x + 1) / 2) * innerWidth}px`;
+    this.powerEl.style.top = `${((1 - v.y) / 2) * innerHeight - 18}px`;
+    const pw = Math.min(1, 0.25 + ((performance.now() - c.held.shoot) / 1000) / 0.85);
+    this.powerEl.firstChild.style.width = `${Math.round(pw * 100)}%`;
+  }
+
   updateMatch(dt) {
     const mv = this.mv;
     const m = mv.match;
@@ -838,6 +888,7 @@ export class App {
     else if (this.ceremony) this.ceremony.update(dt);
     else mv.update(dt);
     this.hud?.update(dt);
+    this.updatePowerGauge();
     // 観客の音
     const b = m.ball;
     const nearGoal = Math.max(0, 1 - Math.min(Math.abs(Math.abs(b.x) - PITCH.HL), 40) / 40);

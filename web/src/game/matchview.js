@@ -5,6 +5,7 @@ import { defaultLook } from '../render/humans.js';
 import * as A from '../render/anim.js';
 import { POSE_KEYS, makePose } from '../render/anim.js';
 import { clamp, lerp, wrapAngle, smoothstep } from '../util/math.js';
+import { flagCanvas } from '../ui/flags.js';
 
 // 試合の見た目: シミュレーションを固定ステップで進め、補間して人物・ボール・カメラに反映する。
 // ゴール後のセレブレーション/リプレイのカメラワークもここで行う。
@@ -237,6 +238,7 @@ export class MatchView {
     w.stadium.setBenchColors(hk.shirt, ak.shirt);
     w.humans.setCount(NUM_HUMANS);
     w.setCrowdTeams(this.cfg.home.crowdColors, this.cfg.away.crowdColors);
+    w.standFlags.setTeams(flagCanvas(this.cfg.home.flag), flagCanvas(this.cfg.away.flag));
     w.weather = this.cfg.weather || 'clear';
     w.setPreset(this.cfg.preset || 'day');
     w.setPitchStyle(this.cfg.pitchStyle || 0);
@@ -667,6 +669,24 @@ export class MatchView {
       }
     }
     if (this.camMode !== 'broadcast' && m.phase !== 'goal') this.camMode = 'broadcast';
+    if (this.zoomCamera) {
+      // ズームカメラ: 中継カメラと同じ角度で、ボールを追いながら寄る
+      const f = w.broadcast;
+      const b = m.ball;
+      const bx = clamp(b.owner ? b.owner.x : b.x, -34, 34);
+      const bz = clamp(b.owner ? b.owner.z : b.z, -20, 20);
+      if (!this.zoomState) this.zoomState = { x: bx, z: bz };
+      this.zoomState.x = lerp(this.zoomState.x, bx, 1 - Math.exp(-dt * 2.2));
+      this.zoomState.z = lerp(this.zoomState.z, bz, 1 - Math.exp(-dt * 1.6));
+      const dir = new THREE.Vector3().subVectors(f.target, f.position);
+      const target = new THREE.Vector3(this.zoomState.x, 0, f.target.z + this.zoomState.z * 0.55);
+      cam.position.copy(target).addScaledVector(dir, -0.55);
+      cam.lookAt(target);
+      cam.fov = f.fov;
+      cam.updateProjectionMatrix();
+      w.stadium.setBroadcastView(true);
+      return;
+    }
     w.setBroadcastCamera();
   }
 
