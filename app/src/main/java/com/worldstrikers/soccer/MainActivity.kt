@@ -8,8 +8,10 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import android.view.View
 import android.view.WindowManager
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -75,13 +77,26 @@ class MainActivity : Activity() {
                 request: WebResourceRequest
             ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
         }
-        webView.webChromeClient = WebChromeClient()
+        webView.webChromeClient = object : WebChromeClient() {
+            // 自動テストの計測結果（WSPERF で始まる行）を logcat の WSPERF タグに出す
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                val text = message.message()
+                if (text.startsWith("WSPERF ")) {
+                    Log.i("WSPERF", text.substring(7))
+                    return true
+                }
+                return super.onConsoleMessage(message)
+            }
+        }
         webView.addJavascriptInterface(Bridge(), "AndroidHost")
 
         setContentView(webView)
         hideSystemBars()
 
-        webView.loadUrl("https://appassets.androidplatform.net/assets/game/index.html")
+        // 自動テスト用: adb shell am start ... --es query "autoplay=1&quality=high" でURLパラメータを渡せる
+        val query = intent.getStringExtra("query")?.filter { it.isLetterOrDigit() || it in "=&_.,-" }.orEmpty()
+        val url = "https://appassets.androidplatform.net/assets/game/index.html"
+        webView.loadUrl(if (query.isEmpty()) url else "$url?$query")
     }
 
     private fun hideSystemBars() {

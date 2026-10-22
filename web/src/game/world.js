@@ -135,4 +135,18 @@ export class World {
   render() {
     this.gfx.render(this.scene, this.camera, this.time);
   }
+
+  /**
+   * 普段は隠れている描画物（足元のリング・頭上の矢印・粒子・雨・ボールの軌跡など）も含め、
+   * 全ての材質のシェーダを先に作っておく。試合中に初めて表示された瞬間に作られて一瞬止まるのを防ぐ。
+   */
+  precompile() {
+    const r = this.gfx.renderer;
+    if (!this.gfx.post.sceneRT) this.gfx.resize();
+    const prev = r.getRenderTarget();
+    // 実際の描画と同じ描画先（HDR）を指定して、同じ種類のシェーダを作らせる
+    r.setRenderTarget(this.gfx.post.sceneRT);
+    r.compile(this.scene, this.camera);
+    r.setRenderTarget(prev);
+  }
 }

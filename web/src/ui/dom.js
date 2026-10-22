@@ -20,6 +20,24 @@ export function h(tag, attrs = {}, ...children) {
 }
 
 /** タップ（ポインタ）で反応するボタン。clickより反応が速く、スクロールの誤判定もない */
+/** 値が変わったときだけ文字を書き換える（毎フレーム呼んでも再レイアウトを起こさない） */
+export function setText(el, text) {
+  const v = String(text);
+  if (el._text !== v) {
+    el._text = v;
+    el.textContent = v;
+  }
+}
+
+/** 値が変わったときだけスタイルを書き換える */
+export function setStyle(el, prop, value) {
+  const k = `_s_${prop}`;
+  if (el[k] !== value) {
+    el[k] = value;
+    el.style[prop] = value;
+  }
+}
+
 export function tap(el, fn) {
   let id = null;
   el.addEventListener('pointerdown', (e) => {

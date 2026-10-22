@@ -9,13 +9,14 @@ import { loadSettings, saveSettings, VENUES } from './settings.js';
 import { AudioEngine } from '../audio/audio.js';
 import { Controls } from '../ui/controls.js';
 import { HUD } from '../ui/hud.js';
-import { h } from '../ui/dom.js';
+import { h, setStyle } from '../ui/dom.js';
 import * as S from '../ui/screens.js';
 import { setHaptics, haptic } from '../platform.js';
 import { PITCH } from '../config.js';
 import { smoothstep } from '../util/math.js';
 import { Shootout } from './shootout.js';
 import { Ceremony } from './ceremony.js';
+import { AutoTest } from './autotest.js';
 
 // アプリ全体の流れ: タイトル → メニュー → 大会/フレンドリー → 試合 → 結果
 
@@ -48,8 +49,11 @@ export class App {
     if (qp.get('half')) this.settings.halfMinutes = +qp.get('half');
     if (qp.get('replays')) this.settings.replays = qp.get('replays') === '1';
     if (qp.get('cam')) this.settings.camera = qp.get('cam');
+    if (qp.get('difficulty')) this.settings.difficulty = qp.get('difficulty');
     this.testMode = qp.get('test') === '1';
     if (this.testMode) this.installTestHooks();
+    // 自動プレーで性能を測るモード（実機テストでは Android のインテントからパラメータを渡す）
+    if (qp.get('autoplay') === '1') this.autotest = new AutoTest(this, qp);
     this.gfx = new Graphics(this.root);
     this.applyQuality();
     this.ui = h('div', { id: 'ui' });
@@ -105,6 +109,7 @@ export class App {
     if (this.world) {
       this.world.setShadowQuality(this.gfx.quality.shadow);
       this.world.crowd.build(this.gfx.quality.crowd);
+      this.world.precompile();
     }
   }
 
@@ -121,7 +126,8 @@ export class App {
     this.world.setShadowQuality(this.gfx.quality.shadow);
     if (this.gfx.quality.crowd < 1) this.world.crowd.build(this.gfx.quality.crowd);
     this.startDemo();
-    // 最初の数フレームでシェーダをコンパイル
+    // 読み込み画面の間に全てのシェーダを作る（隠れている描画物の分も）
+    this.world.precompile();
     for (let i = 0; i < 3; i++) {
       this.demo.update(1 / 60);
       this.world.render();
@@ -130,6 +136,7 @@ export class App {
     this.loading.style.opacity = '0';
     setTimeout(() => this.loading.remove(), 700);
     this.showTitle();
+    this.autotest?.begin();
   }
 
   // ------------------------------------------------------------ 背景のデモ試合
@@ -494,7 +501,7 @@ export class App {
     this.introEl = null;
     this.controls.setVisible(true);
     this.hud.setVisible(true);
-    if (!this.settings.seenHint && !this.testMode) {
+    if (!this.settings.seenHint && !this.testMode && !this.autotest) {
       this.settings.seenHint = true;
       saveSettings(this.settings);
       const card = h(
@@ -557,8 +564,8 @@ export class App {
   }
 
   leaveMatch() {
-    if (this.powerEl) this.powerEl.style.display = 'none';
-    if (this.reticleEl) this.reticleEl.style.display = 'none';
+    if (this.powerEl) setStyle(this.powerEl, 'display', 'none');
+    if (this.reticleEl) setStyle(this.reticleEl, 'display', 'none');
     this.audio.setRain(false);
     this.world.weather = 'clear';
     this.hud?.destroy();
@@ -640,6 +647,7 @@ export class App {
 
   onMatchEvent(e) {
     this.hud?.onEvent(e);
+    this.autotest?.onEvent(e);
     this.audio.onMatchEvent(e);
     switch (e.type) {
       case 'goal': {
@@ -681,6 +689,7 @@ export class App {
     const dlg = S.dialog('ハーフタイム', 'HALF TIME', S.resultContent(m), [S_btn('後半開始', 'primary', go)], true);
     this.overlayClose = () => {};
     this.ui.append(dlg);
+    if (this.autotest) setTimeout(go, 2000);
   }
 
   onFulltime() {
@@ -724,7 +733,9 @@ export class App {
     };
     const dlg = S.dialog(head, 'FULL TIME', S.resultContent(m, pk, true), [S_btn('次へ', 'primary', next)], true);
     this.overlayClose = () => {};
+    this.overlayNext = next;
     this.ui.append(dlg);
+    this.autotest?.onFulltime();
     haptic(won ? 200 : 30);
   }
 
@@ -854,12 +865,26 @@ export class App {
       return;
     }
     let dt = (now - this.lastNow) / 1000;
+    const interval = dt;
     this.lastNow = now;
     if (dt > 0.1) dt = 0.1;
     if (dt <= 0) dt = 1 / 60;
     const w = this.world;
+    const at = this.autotest;
     if (this.mode === 'match' && this.mv) {
-      this.updateMatch(dt);
+      if (at?.fast) {
+        // 早送りテスト: 経過した実時間分を1/60秒刻みで全て処理し、描画は1回だけ
+        const n = Math.min(120, Math.max(1, Math.round(interval * 60)));
+        for (let i = 0; i < n && this.mode === 'match' && this.mv; i++) {
+          const u0 = performance.now();
+          this.updateMatch(1 / 60);
+          at.onUpdate((performance.now() - u0) / 1000);
+        }
+      } else {
+        const u0 = performance.now();
+        this.updateMatch(dt);
+        at?.onUpdate((performance.now() - u0) / 1000);
+      }
     } else if (this.demo) {
       this.demo.update(dt);
       if (this.demo.match.phase === 'halftime') this.demo.match.startSecondHalf();
@@ -867,8 +892,21 @@ export class App {
       this.updateDemoCamera(dt);
       this.audio.updateCrowd(dt, 0);
     }
+    const r0 = performance.now();
     w.render();
-    this.gfx.trackFrame(dt);
+    if (!at?.fast) this.gfx.trackFrame(dt);
+    if (at && interval > 0 && interval < 5) at.afterRender((performance.now() - r0) / 1000, interval);
+  }
+
+  /** スティックの「上」が向くワールドの方向（追従カメラはゴール前で少し振れるため、カメラの向きから求める） */
+  stickBasis() {
+    const mv = this.mv;
+    if (mv && mv.isFollow && !mv.externalCamera) {
+      const d = this.world.camera.getWorldDirection(_camDir);
+      const l = Math.hypot(d.x, d.z);
+      if (l > 0.2) return [d.x / l, d.z / l];
+    }
+    return [0, -1];
   }
 
   /** シュートのパワーを操作中の選手の頭上に表示 */
@@ -882,13 +920,13 @@ export class App {
     const p = m?.user.controlled;
     const charging = c && c.held.shoot && p && (this.controlsMode() === 'attack' || this.controlsMode() === 'setpiece') && !this.shootout;
     if (!charging) {
-      this.powerEl.style.display = 'none';
+      setStyle(this.powerEl, 'display', 'none');
       return;
     }
     const idx = p.team.index * 11 + p.index;
     const hp = this.world.humans.headPos[idx];
     const v = new THREE.Vector3(hp.x, hp.y + 0.9, hp.z).project(this.world.camera);
-    this.powerEl.style.display = '';
+    setStyle(this.powerEl, 'display', '');
     this.powerEl.style.left = `${((v.x + 1) / 2) * innerWidth}px`;
     this.powerEl.style.top = `${((1 - v.y) / 2) * innerHeight - 18}px`;
     const pw = Math.min(1, 0.25 + ((performance.now() - c.held.shoot) / 1000) / 0.85);
@@ -905,7 +943,7 @@ export class App {
       this.ui.append(this.reticleEl);
     }
     if (!pk || !c) {
-      this.reticleEl.style.display = 'none';
+      setStyle(this.reticleEl, 'display', 'none');
       this.penAim = null;
       return;
     }
@@ -916,11 +954,11 @@ export class App {
       this.penAim.x = Math.max(-1.05, Math.min(1.05, this.penAim.x + st.x * st.mag * dt * 1.6));
       this.penAim.y = Math.max(0, Math.min(1.05, this.penAim.y + st.y * st.mag * dt * 1.2));
       const v = new THREE.Vector3(s * PITCH.HL, 0.15 + this.penAim.y * 2.2, this.penAim.x * 3.4 * s).project(this.world.camera);
-      this.reticleEl.style.display = '';
+      setStyle(this.reticleEl, 'display', '');
       this.reticleEl.style.left = `${((v.x + 1) / 2) * innerWidth}px`;
       this.reticleEl.style.top = `${((1 - v.y) / 2) * innerHeight}px`;
     } else {
-      this.reticleEl.style.display = 'none';
+      setStyle(this.reticleEl, 'display', 'none');
       // カメラはキッカーの背後: 画面の右 = ゴールに向かって右
       m.penaltyUserDive = st.mag > 0.3 && Math.abs(st.x) > 0.3 ? Math.sign(st.x) * s : st.mag > 0.3 ? 0 : undefined;
     }
@@ -931,19 +969,11 @@ export class App {
     const m = mv.match;
     const c = this.controls;
     if (c) {
+      this.autotest?.drive(dt);
       c.poll();
       const st = c.state;
-      // スティックの上下左右は画面上の向き（追従カメラはゴール前で少し振れるため、カメラの向きで回す）
-      let fx = 0;
-      let fz = -1;
-      if (mv.isFollow && !mv.externalCamera) {
-        const d = this.world.camera.getWorldDirection(_camDir);
-        const l = Math.hypot(d.x, d.z);
-        if (l > 0.2) {
-          fx = d.x / l;
-          fz = d.z / l;
-        }
-      }
+      // スティックの上下左右は画面上の向き
+      const [fx, fz] = this.stickBasis();
       m.setUserInput(-fz * st.x + fx * st.y, fx * st.x + fz * st.y, st.mag, st.sprint);
       if (this.shootout) c.setMode(this.shootout.userKick ? 'penalty' : this.shootout.userKeep ? 'keeper' : 'defend');
       else c.setMode(this.controlsMode());

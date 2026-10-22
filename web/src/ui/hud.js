@@ -1,4 +1,4 @@
-import { h, icon, tap } from './dom.js';
+import { h, icon, tap, setText, setStyle } from './dom.js';
 import { flagImg } from './flags.js';
 import { PITCH } from '../config.js';
 
@@ -266,12 +266,13 @@ export class HUD {
   update(dt, controlsMode) {
     const m = this.match;
     const c = m.displayClock;
-    this.clock.textContent = c.text;
+    // 毎フレーム呼ばれるので、値が変わったときだけDOMを書き換える
+    setText(this.clock, c.text);
     if (c.added) {
-      this.added.style.display = '';
-      this.added.textContent = `+${c.addedTotal || c.added}`;
-    } else this.added.style.display = 'none';
-    this.halfTag.textContent = m.half === 1 ? '前半' : '後半';
+      setStyle(this.added, 'display', '');
+      setText(this.added, `+${c.addedTotal || c.added}`);
+    } else setStyle(this.added, 'display', 'none');
+    setText(this.halfTag, m.half === 1 ? '前半' : '後半');
     const [a, b] = m.teams;
     if (a.score !== this.lastScores[0]) {
       this.scoreA.textContent = a.score;
@@ -302,11 +303,11 @@ export class HUD {
     // 操作中の選手
     const p = m.user.controlled;
     if (p && (m.phase === 'play' || m.phase === 'setpiece' || m.phase === 'kickoff')) {
-      this.ptag.style.display = '';
-      this.ptag.children[0].textContent = p.num;
-      this.ptag.children[1].textContent = p.name;
-      this.ptag.children[2].firstChild.style.width = `${Math.round(p.stamina * 100)}%`;
-    } else this.ptag.style.display = 'none';
+      setStyle(this.ptag, 'display', '');
+      setText(this.ptag.children[0], p.num);
+      setText(this.ptag.children[1], p.name);
+      setStyle(this.ptag.children[2].firstChild, 'width', `${Math.round(p.stamina * 100)}%`);
+    } else setStyle(this.ptag, 'display', 'none');
     // レーダー
     // 追従カメラのときだけ（PKや喜びの寄りのカメラ、ピッチ全体が映るワイドでは不要）
     const live = !!this.radar.footprint && m.phase !== 'replay' && m.phase !== 'halftime' && m.phase !== 'fulltime';
@@ -346,7 +347,7 @@ export class HUD {
     const H = innerHeight;
     const pad = 40;
     if (!s || (!s.behind && s.x > 0 && s.x < W && s.y > 0 && s.y < H)) {
-      if (a.style.display !== 'none') a.style.display = 'none';
+      setStyle(a, 'display', 'none');
       return;
     }
     let dx = s.x - W / 2;
@@ -358,10 +359,10 @@ export class HUD {
     const k = Math.min((W / 2 - pad) / Math.max(1e-3, Math.abs(dx)), (H / 2 - pad) / Math.max(1e-3, Math.abs(dy)));
     const x = W / 2 + dx * k;
     const y = H / 2 + dy * k;
-    a.style.display = '';
+    setStyle(a, 'display', '');
     a.style.transform = `translate(${x}px, ${y}px)`;
     a.firstChild.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
-    a.lastChild.textContent = p.num;
+    setText(a.lastChild, p.num);
   }
 
   setVisible(v) {

@@ -3,10 +3,11 @@ import { PostFX } from './post.js';
 
 // レンダラーと画質設定・動的解像度スケーリング
 
+// どの画質でも同じ描画経路（HDRの描画先→仕上げ）を通す。画質を切り替えてもシェーダの作り直しが起きない
 export const QUALITY = {
-  high: { scale: 1.0, maxDpr: 2.0, msaa: 4, post: true, shadow: 2048, crowd: 1.0 },
-  medium: { scale: 0.85, maxDpr: 1.75, msaa: 4, post: true, shadow: 2048, crowd: 0.7 },
-  low: { scale: 0.7, maxDpr: 1.5, msaa: 0, post: false, shadow: 1024, crowd: 0.4 },
+  high: { scale: 1.0, maxDpr: 2.0, msaa: 4, bloom: true, shadow: 2048, crowd: 1.0 },
+  medium: { scale: 0.85, maxDpr: 1.75, msaa: 4, bloom: true, shadow: 2048, crowd: 0.7 },
+  low: { scale: 0.7, maxDpr: 1.5, msaa: 0, bloom: false, shadow: 1024, crowd: 0.4 },
 };
 
 export class Graphics {
@@ -60,14 +61,10 @@ export class Graphics {
     this.qualityName = name;
     this.quality = QUALITY[name] || QUALITY.high;
     this.post.msaa = this.quality.msaa;
-    this.post.sceneRT?.dispose();
+    this.post.bloom = this.quality.bloom;
+    this.post.disposeTargets();
     this.post.sceneRT = null;
     this.post.width = 0;
-    if (!this.quality.post) {
-      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    } else {
-      this.renderer.toneMapping = THREE.NoToneMapping;
-    }
     this.resize();
   }
 
@@ -91,14 +88,8 @@ export class Graphics {
     return this.width / this.height;
   }
 
-  render(scene, camera, time, toneExposure = 1) {
-    if (this.quality.post) {
-      this.post.render(scene, camera, time);
-    } else {
-      this.renderer.toneMappingExposure = this.post.uniforms.uExposure.value * toneExposure;
-      this.renderer.setRenderTarget(null);
-      this.renderer.render(scene, camera);
-    }
+  render(scene, camera, time) {
+    this.post.render(scene, camera, time);
   }
 
   /** フレーム時間を監視して、重い端末では描画解像度を自動で下げる */

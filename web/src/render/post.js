@@ -158,7 +158,11 @@ export class PostFX {
     this.renderer = renderer;
     this.enabled = true;
     this.msaa = 4;
+    this.bloom = true;
     this.bloomLevels = 5;
+    // ブルームなし（低画質）のときに仕上げへ渡す黒
+    this.noBloom = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    this.noBloom.needsUpdate = true;
     this.width = 1;
     this.height = 1;
 
@@ -243,7 +247,7 @@ export class PostFX {
     });
     let bw = Math.max(1, w >> 1);
     let bh = Math.max(1, h >> 1);
-    for (let i = 0; i < this.bloomLevels; i++) {
+    for (let i = 0; i < (this.bloom ? this.bloomLevels : 0); i++) {
       const opts = { type: this.hdrType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
       this.downRTs.push(new THREE.WebGLRenderTarget(bw, bh, opts));
       this.upRTs.push(new THREE.WebGLRenderTarget(bw, bh, opts));
@@ -272,8 +276,17 @@ export class PostFX {
     r.setRenderTarget(this.sceneRT);
     r.render(scene, camera);
 
-    // ブルーム
+    const cu = this.compositeMat.uniforms;
+    cu.tScene.value = this.sceneRT.texture;
+    cu.uTime.value = time;
     const n = this.downRTs.length;
+    if (!n) {
+      // 低画質: ブルームを省いて仕上げだけ
+      cu.tBloom.value = this.noBloom;
+      this.pass(this.compositeMat, null);
+      return;
+    }
+    // ブルーム
     this.prefilterMat.uniforms.tSrc.value = this.sceneRT.texture;
     this.prefilterMat.uniforms.uTexel.value.set(0.5 / this.width, 0.5 / this.height);
     this.pass(this.prefilterMat, this.downRTs[0]);
@@ -293,10 +306,7 @@ export class PostFX {
       prev = this.upRTs[i];
     }
 
-    const cu = this.compositeMat.uniforms;
-    cu.tScene.value = this.sceneRT.texture;
     cu.tBloom.value = prev.texture;
-    cu.uTime.value = time;
     this.pass(this.compositeMat, null);
   }
 }
