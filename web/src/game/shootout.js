@@ -134,7 +134,6 @@ export class Shootout {
 
   update(dt) {
     this.t += dt;
-    const m = this.m;
     const ctrl = this.app.controls;
     if (ctrl && this.userKick && this.state === 'aim') {
       const st = ctrl.state;

@@ -597,7 +597,6 @@ export class TeamAI {
   }
 
   evalShot(p, urge = 0.25) {
-    const m = this.match;
     const dir = this.dir;
     const gx = PITCH.HL * dir;
     const d = Math.hypot(gx - p.x, p.z);
