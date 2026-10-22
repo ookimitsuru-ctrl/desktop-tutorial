@@ -46,7 +46,7 @@
 
 ```sh
 ./gradlew assembleRelease
-# → app/build/outputs/apk/release/WorldStrikers-v1.1.1-release.apk
+# → app/build/outputs/apk/release/WorldStrikers-v1.2.0-release.apk
 ```
 
 Gradle のビルド中に `web/` のゲーム本体（JavaScript）が `npm ci` → `npm run build` で自動的にバンドルされ、

@@ -1,5 +1,5 @@
 # 性能テストの最終レポートを作る。数値の表はこのスクリプトが計測データから正確に作り、
-# まとめの文章はローカルLLM（Qwen2.5-3B-Instruct）が書く。
+# まとめの文章はローカルLLM（Qwen2.5-7B-Instruct）が書く。
 # 使い方: python3 tools/perf_report.py 修正前のdir 修正後のdir 修正内容.md 出力.md [スマホ結果dir]
 import json, os, sys, glob, time
 
@@ -86,7 +86,7 @@ else:
     user += '\nスマホ実機テスト: まだ実施していない（ユーザーのPCで tools/phone_test.sh または phone_test.ps1 を実行する必要がある）。\n'
 
 from llama_cpp import Llama
-llm = Llama(model_path='/home/user/llm/qwen2.5-3b-instruct-q4_k_m.gguf', n_ctx=8192, n_threads=4, verbose=False, seed=7)
+llm = Llama(model_path=os.environ.get('LLM_MODEL', '/home/user/llm/qwen2.5-7b-instruct-q4_k_m.gguf'), n_ctx=8192, n_threads=4, verbose=False, seed=7)
 t0 = time.time()
 res = llm.create_chat_completion(messages=[{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': user}], temperature=0.2, max_tokens=900)
 summary = res['choices'][0]['message']['content'].strip()
@@ -97,7 +97,7 @@ seg_after = open(os.path.join(AFTER, 'llm_segments.md'), encoding='utf-8').read(
 
 md = f"""# ワールドストライカーズ 性能テスト レポート
 
-作成: {time.strftime('%Y-%m-%d %H:%M')}　／　まとめの文章と区間ごとの判定: ローカルLLM（Qwen2.5-3B-Instruct, llama.cpp, CPU実行）　／　表: 計測データから自動作成
+作成: {time.strftime('%Y-%m-%d %H:%M')}　／　まとめの文章と区間ごとの説明: ローカルLLM（Qwen2.5-7B-Instruct, llama.cpp, CPU実行）　／　表と判定: 計測データから基準どおりに自動作成
 
 ## まとめ（ローカルLLM）
 
@@ -127,7 +127,9 @@ md = f"""# ワールドストライカーズ 性能テスト レポート
 
 {('端末: ' + phone['device'].replace(chr(10), ' / ') + chr(10) + chr(10) + json.dumps(phone['rows'], ensure_ascii=False, indent=1)) if phone else 'まだ実施していません。スマホをつないだPCで `tools/phone_test.sh`（Mac/Linux）または `tools/phone_test.ps1`（Windows）を実行すると、難易度×画質（高/中/低/自動）の12試合を自動でプレーし、実機のfps・カクつきを記録します。'}
 
-## 付録: 区間ごとの判定（ローカルLLM）
+## 付録: 区間ごとの判定（判定は基準どおりスクリプトで決定、説明文はローカルLLM）
+
+最初は Qwen2.5-3B に判定もさせたが、判定基準を守れず誤判定した（例: 試合中のシェーダ作成が3回あるのに「1回しかなく問題なし」）。そのため、判定は基準どおりにスクリプトで決め、説明文だけを Qwen2.5-7B に書かせている。説明文には言い回しの不正確な箇所が残ることがある。
 
 ### 修正前
 {seg_before.split(chr(10), 2)[-1] if seg_before else ''}
