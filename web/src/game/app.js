@@ -13,12 +13,22 @@ import { h } from '../ui/dom.js';
 import * as S from '../ui/screens.js';
 import { setHaptics, haptic } from '../platform.js';
 import { PITCH } from '../config.js';
+import { smoothstep } from '../util/math.js';
 import { Shootout } from './shootout.js';
 import { Ceremony } from './ceremony.js';
 
 // アプリ全体の流れ: タイトル → メニュー → 大会/フレンドリー → 試合 → 結果
 
 const _camDir = new THREE.Vector3();
+
+/** 観客の歓声の大きさ: ボールがゴール前にあるときだけ（ゴール直後も） */
+function crowdLevel(m) {
+  if (m.phase === 'goal' || m.phase === 'replay') return 1;
+  if (m.phase !== 'play' && m.phase !== 'setpiece') return 0;
+  const b = m.ball;
+  const d = Math.hypot(Math.sign(b.x) * PITCH.HL - b.x, b.z * 1.15);
+  return smoothstep(21, 10, d) * (m.phase === 'setpiece' ? 0.4 : 1);
+}
 
 export class App {
   constructor() {
@@ -747,7 +757,6 @@ export class App {
         this.showTournamentEnd(this.tour);
       }),
     );
-    this.audio.roar(1.4, 9);
     this.audio.startMusic();
   }
 
@@ -856,7 +865,7 @@ export class App {
       if (this.demo.match.phase === 'halftime') this.demo.match.startSecondHalf();
       if (this.demo.match.phase === 'fulltime') this.startDemo();
       this.updateDemoCamera(dt);
-      this.audio.updateCrowd(dt, 0.15, true);
+      this.audio.updateCrowd(dt, 0);
     }
     w.render();
     this.gfx.trackFrame(dt);
@@ -961,10 +970,7 @@ export class App {
     this.updatePowerGauge();
     this.updatePenaltyAim(dt);
     // 観客の音
-    const b = m.ball;
-    const nearGoal = Math.max(0, 1 - Math.min(Math.abs(Math.abs(b.x) - PITCH.HL), 40) / 40);
-    const ex = m.phase === 'goal' || m.phase === 'replay' ? 1 : 0.15 + nearGoal * 0.55;
-    this.audio.updateCrowd(dt, ex, true);
+    this.audio.updateCrowd(dt, this.shootout || this.ceremony ? 0 : crowdLevel(m));
   }
 }
 

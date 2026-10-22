@@ -1,5 +1,7 @@
-// 手続き生成サウンド（音声ファイルなし）: 観客の歓声、審判の笛、キック音、ポスト、ネット、
-// 応援の手拍子、メニューBGM。Web Audio API で合成する。
+import { PITCH } from '../config.js';
+
+// 手続き生成サウンド（音声ファイルなし）: 観客の歓声（ゴール前のみ）、審判の笛、キック音、ポスト、ネット、
+// メニューBGM。Web Audio API で合成する。
 
 function noiseBuffer(ctx, seconds, type = 'pink') {
   const len = Math.floor(ctx.sampleRate * seconds);
@@ -55,7 +57,6 @@ export class AudioEngine {
     this.ctx = null;
     this.sfxVol = 0.8;
     this.musicVol = 0.6;
-    this.excite = 0.2;
     this.musicOn = false;
     this.inMatch = false;
   }
@@ -162,27 +163,22 @@ export class AudioEngine {
     };
     this.crowdLayers = [mk('lowpass', 420, 0.5, 0.55), mk('bandpass', 900, 0.6, 0.35), mk('bandpass', 2300, 0.9, 0.12)];
     this.crowdLevel = 0;
-    this.nextChant = 6;
   }
 
-  /** 毎フレーム: 盛り上がり度合いで観客の音量を変える */
-  updateCrowd(dt, excite, active) {
+  /**
+   * 毎フレーム: 観客の声。ふだんは鳴らさず、ボールがゴール前にあるときだけ歓声が上がる
+   * @param {number} level 0〜1（ゴール前の度合い）
+   */
+  updateCrowd(dt, level) {
     if (!this.ctx) return;
-    this.excite += (excite - this.excite) * Math.min(1, dt * 1.5);
-    const target = active ? 0.35 + this.excite * 0.65 : 0.0;
-    this.crowdLevel += (target - this.crowdLevel) * Math.min(1, dt * 2);
+    // 上がるときは速く、引くときはゆっくり
+    const k = level > this.crowdLevel ? 2.5 : 1.0;
+    this.crowdLevel += (level - this.crowdLevel) * Math.min(1, dt * k);
     const t = this.ctx.currentTime;
     for (const [i, L] of this.crowdLayers.entries()) {
       const wobble = 1 + Math.sin(t * (0.3 + i * 0.17)) * 0.08;
-      L.g.gain.setTargetAtTime(L.base * this.crowdLevel * wobble * (i === 2 ? 0.5 + this.excite : 1), t, 0.1);
-      L.f.frequency.setTargetAtTime((i === 0 ? 380 : i === 1 ? 850 : 2100) * (1 + this.excite * 0.35), t, 0.2);
-    }
-    if (active) {
-      this.nextChant -= dt;
-      if (this.nextChant <= 0) {
-        this.nextChant = 9 + Math.random() * 14;
-        this.chant();
-      }
+      L.g.gain.setTargetAtTime(L.base * this.crowdLevel * wobble * (i === 2 ? 0.5 + this.crowdLevel : 1), t, 0.1);
+      L.f.frequency.setTargetAtTime((i === 0 ? 380 : i === 1 ? 850 : 2100) * (1 + this.crowdLevel * 0.35), t, 0.2);
     }
   }
 
@@ -233,65 +229,6 @@ export class AudioEngine {
     src.connect(f).connect(g).connect(this.sfx);
     src.start(t, Math.random() * 3);
     src.stop(t + 2);
-  }
-
-  clap(t, gain = 0.5) {
-    const ctx = this.ctx;
-    // 大勢の手拍子 = 少しずつずれた短いノイズの束
-    for (let i = 0; i < 4; i++) {
-      const src = ctx.createBufferSource();
-      src.buffer = this.white;
-      const f = ctx.createBiquadFilter();
-      f.type = 'bandpass';
-      f.frequency.value = 1400 + Math.random() * 900;
-      f.Q.value = 0.9;
-      const g = ctx.createGain();
-      const tt = t + Math.random() * 0.03;
-      g.gain.setValueAtTime(0, tt);
-      g.gain.linearRampToValueAtTime(gain * 0.4, tt + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.001, tt + 0.09);
-      src.connect(f).connect(g);
-      g.connect(this.sfx);
-      g.connect(this.reverb);
-      src.start(tt, Math.random() * 1.5);
-      src.stop(tt + 0.12);
-    }
-  }
-
-  drum(t, gain = 0.6) {
-    const ctx = this.ctx;
-    const o = ctx.createOscillator();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(110, t);
-    o.frequency.exponentialRampToValueAtTime(52, t + 0.18);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(gain, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    o.connect(g);
-    g.connect(this.sfx);
-    g.connect(this.reverb);
-    o.start(t);
-    o.stop(t + 0.4);
-  }
-
-  /** 応援の手拍子パターン（三三七拍子など） */
-  chant() {
-    if (!this.ctx) return;
-    const t0 = this.ctx.currentTime + 0.05;
-    const patterns = [
-      // 三三七拍子
-      [0, 0.25, 0.5, 1.0, 1.25, 1.5, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5],
-      // ドン・ドン・ドドドン
-      [0, 0.5, 1.0, 1.17, 1.33, 2, 2.5, 3.0, 3.17, 3.33],
-      // 一定のリズム
-      [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5],
-    ];
-    const pat = patterns[Math.floor(Math.random() * patterns.length)];
-    const sp = 0.95 + Math.random() * 0.15;
-    for (const b of pat) {
-      this.clap(t0 + b * sp, 0.35);
-      if (Math.random() < 0.6) this.drum(t0 + b * sp, 0.25);
-    }
   }
 
   // ------------------------------------------------------------ 効果音
@@ -667,7 +604,6 @@ export class AudioEngine {
         break;
       case 'goal':
         this.roar(1.3, 7);
-        setTimeout(() => this.chant(), 3500);
         break;
       case 'save':
         this.roar(0.45, 2.2);
@@ -675,9 +611,12 @@ export class AudioEngine {
       case 'nearmiss':
         this.groan();
         break;
-      case 'shot':
-        this.roar(0.25, 1.4);
+      case 'shot': {
+        // ゴール前からのシュートだけ沸く
+        const p = e.player;
+        if (p && Math.hypot(p.team.dir * PITCH.HL - p.x, p.z) < 22) this.roar(0.25, 1.4);
         break;
+      }
       default:
         break;
     }
