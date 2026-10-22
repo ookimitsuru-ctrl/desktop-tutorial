@@ -1,4 +1,5 @@
-# スマホ実機での自動テスト（Windows / PowerShell 版。内容は phone_test.sh と同じ）
+﻿# スマホ実機での自動テスト（Windows / PowerShell 版。内容は phone_test.sh と同じ）
+# ※ Windows PowerShell 5.1 で日本語が文字化けしないよう、このファイルは BOM 付き UTF-8 で保存している
 #
 #   powershell -ExecutionPolicy Bypass -File tools\phone_test.ps1 WorldStrikers-v1.x.x-release.apk [前後半の分数=2]
 #
@@ -24,7 +25,8 @@ $info = @(
   "screen: " + (adb shell wm size)
   "gles: " + ((adb shell dumpsys SurfaceFlinger) | Select-String -Pattern "GLES" | Select-Object -First 1)
 )
-$info | Tee-Object -FilePath "$Out\device.txt"
+$info | Set-Content -Encoding UTF8 "$Out\device.txt"
+$info | ForEach-Object { Write-Host $_ }
 
 if ($Apk -ne "") {
   Write-Host "APK をインストール: $Apk"

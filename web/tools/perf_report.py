@@ -48,15 +48,17 @@ def phone_summary(d):
         return None
     rows = []
     for p in sorted(glob.glob(os.path.join(d, '*.jsonl'))):
-        for l in open(p, encoding='utf-8', errors='ignore'):
-            l = l.strip()
+        if os.path.basename(p) == 'summary.jsonl':
+            continue
+        for l in open(p, encoding='utf-8-sig', errors='ignore'):
+            l = l.strip().lstrip('\ufeff')
             if '"t":"summary"' in l:
                 try:
                     rows.append(json.loads(l))
                 except Exception:
                     pass
                 break
-    dev = open(os.path.join(d, 'device.txt'), encoding='utf-8', errors='ignore').read() if os.path.exists(os.path.join(d, 'device.txt')) else ''
+    dev = open(os.path.join(d, 'device.txt'), encoding='utf-8-sig', errors='ignore').read() if os.path.exists(os.path.join(d, 'device.txt')) else ''
     return {'device': dev, 'rows': rows}
 
 
