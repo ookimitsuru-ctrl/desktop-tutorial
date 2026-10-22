@@ -265,6 +265,21 @@ export class AutoTest {
         if (pr && fresh.has(pr)) who.add(`${o.name || o.type}:${mt.type}${mt.name ? `/${mt.name}` : ''}`);
       }
     });
+    // シーンの描画物に属さないもの（影の描画用・仕上げ処理用など）はキーの先頭で示す
+    if (!who.size) {
+      // 既存の同種シェーダとキーを比べ、違う項目の位置と値を示す
+      const old = (r.info.programs || []).filter((p) => !fresh.has(p));
+      for (const p of fresh) {
+        const k = String(p.cacheKey).split(',');
+        const kind = k[0];
+        const diffs = old
+          .map((q) => String(q.cacheKey).split(','))
+          .filter((q) => q[0] === kind && q.length === k.length)
+          .map((q) => k.map((v, i) => (v !== q[i] ? `${i}:${q[i]}→${v}` : null)).filter(Boolean));
+        diffs.sort((a, b) => a.length - b.length);
+        who.add(`?${kind} diff ${JSON.stringify(diffs[0] || 'none')}`);
+      }
+    }
     return [...who];
   }
 

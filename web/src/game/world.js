@@ -140,7 +140,7 @@ export class World {
    * 普段は隠れている描画物（足元のリング・頭上の矢印・粒子・雨・ボールの軌跡など）も含め、
    * 全ての材質のシェーダを先に作っておく。試合中に初めて表示された瞬間に作られて一瞬止まるのを防ぐ。
    */
-  precompile() {
+  precompile({ warm = false } = {}) {
     const r = this.gfx.renderer;
     if (!this.gfx.post.sceneRT) this.gfx.resize();
     const prev = r.getRenderTarget();
@@ -148,5 +148,24 @@ export class World {
     r.setRenderTarget(this.gfx.post.sceneRT);
     r.compile(this.scene, this.camera);
     r.setRenderTarget(prev);
+    if (!warm) return;
+    // 影の描画用のシェーダは compile では作られないので、全てを表示し、影の範囲をピッチ全体にして
+    // 一度描く（読み込み画面の裏で行うので見えない）
+    const shown = [];
+    const culled = [];
+    this.scene.traverse((o) => {
+      if (!o.visible) {
+        o.visible = true;
+        shown.push(o);
+      }
+      if (o.frustumCulled) {
+        o.frustumCulled = false;
+        culled.push(o);
+      }
+    });
+    this.env.focusShadow(null);
+    this.render();
+    for (const o of shown) o.visible = false;
+    for (const o of culled) o.frustumCulled = true;
   }
 }

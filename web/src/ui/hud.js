@@ -23,6 +23,22 @@ const SP_HINTS = {
   kickoff: '<b>パス</b>または<b>シュート</b>でキックオフ',
 };
 
+/**
+ * 得点が変わったときに数字を弾ませる。CSSアニメーションをやり直すためにレイアウトを
+ * 強制計算させる（offsetWidth を読む）と、ゴールの瞬間に一瞬止まるので Web Animations で行う
+ */
+function bump(el, score) {
+  el.textContent = score;
+  el.animate?.(
+    [
+      { transform: 'scale(1)' },
+      { transform: 'scale(1.6)', color: '#d4a000', offset: 0.3 },
+      { transform: 'scale(1)' },
+    ],
+    { duration: 600, easing: 'ease' },
+  );
+}
+
 // レーダー: ピッチ全体の選手とボールの位置、カメラに映っている範囲
 const RM = 3; // ピッチ外の余白[m]
 
@@ -274,18 +290,8 @@ export class HUD {
     } else setStyle(this.added, 'display', 'none');
     setText(this.halfTag, m.half === 1 ? '前半' : '後半');
     const [a, b] = m.teams;
-    if (a.score !== this.lastScores[0]) {
-      this.scoreA.textContent = a.score;
-      this.scoreA.classList.remove('bump');
-      void this.scoreA.offsetWidth;
-      this.scoreA.classList.add('bump');
-    }
-    if (b.score !== this.lastScores[1]) {
-      this.scoreB.textContent = b.score;
-      this.scoreB.classList.remove('bump');
-      void this.scoreB.offsetWidth;
-      this.scoreB.classList.add('bump');
-    }
+    if (a.score !== this.lastScores[0]) bump(this.scoreA, a.score);
+    if (b.score !== this.lastScores[1]) bump(this.scoreB, b.score);
     this.lastScores = [a.score, b.score];
     // バナー
     if (this.bannerT > 0) {

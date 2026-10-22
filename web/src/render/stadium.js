@@ -720,6 +720,10 @@ export class Stadium {
         },
       },
     );
+    // 影の描画用の材質を専用にする。three.js は影の共有材質の「面の向き」が変わっても
+    // シェーダを切り替えないため、両面の旗が共有材質を使うと描く順番しだいで試合中に
+    // 新しいシェーダが作られて一瞬止まる
+    const flagDepth = new THREE.MeshDepthMaterial();
     for (const sx of [-1, 1]) {
       for (const sz of [-1, 1]) {
         const pole = new THREE.Mesh(poleGeo, poleMat);
@@ -727,6 +731,7 @@ export class Stadium {
         pole.castShadow = true;
         const flag = new THREE.Mesh(flagGeo, flagMat);
         flag.castShadow = true;
+        flag.customDepthMaterial = flagDepth;
         pole.add(flag);
         flag.rotation.y = sx > 0 ? Math.PI : 0;
         this.group.add(pole);

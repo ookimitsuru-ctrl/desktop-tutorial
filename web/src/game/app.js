@@ -126,8 +126,8 @@ export class App {
     this.world.setShadowQuality(this.gfx.quality.shadow);
     if (this.gfx.quality.crowd < 1) this.world.crowd.build(this.gfx.quality.crowd);
     this.startDemo();
-    // 読み込み画面の間に全てのシェーダを作る（隠れている描画物の分も）
-    this.world.precompile();
+    // 読み込み画面の間に全てのシェーダを作る（隠れている描画物・影の描画用の分も）
+    this.world.precompile({ warm: true });
     for (let i = 0; i < 3; i++) {
       this.demo.update(1 / 60);
       this.world.render();
@@ -800,6 +800,7 @@ export class App {
 
   /** 自動テスト用: 時間を手動で進め、入力を注入する */
   installTestHooks() {
+    window.__app = this;
     window.__test = {
       quick: (hid, aid, venue = 0, knockout = false, userTeam = 0, weather = 'clear') => {
         const home = teamById(hid);
