@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "id": "yuelan",
+  "name": [
+    "蘇 月嵐",
+    "Su Yuelan"
+  ],
+  "style": [
+    "形意拳",
+    "Xingyiquan"
+  ],
+  "difficulty": 4,
+  "weight_class": "light",
+  "body": {
+    "height": "1.60",
+    "shoulder": "0.88",
+    "hip": "1.02",
+    "arm": "0.96",
+    "leg": "1.0",
+    "torso": "0.96",
+    "hair_chain": true,
+    "hair_len": "0.32"
+  },
+  "physics": {
+    "push_radius": "0.26",
+    "float_factor": "0.94",
+    "hurt_mul": "0.95",
+    "throw_range": "0.85"
+  },
+  "movement": {
+    "walk_f": "1.45",
+    "walk_b": "1.20",
+    "dash_f": [
+      18,
+      "1.60"
+    ],
+    "dash_b": [
+      20,
+      "1.10"
+    ],
+    "run": "4.6",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.22",
+    "depth": "0.52",
+    "crouch": "0.12",
+    "turn": "40",
+    "guard": "open",
+    "lean": "10"
+  },
+  "model": {
+    "build": "slim",
+    "female": true,
+    "skin": "#EED3BC",
+    "hair": "braid",
+    "face": {
+      "jaw": "0.3",
+      "brow": "0.3",
+      "nose": "0.35"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#EED3BC",
+      "hair": "#121212",
+      "primary": "#1F5E63",
+      "secondary": "#F0EEE6",
+      "accent": "#D4AF37",
+      "gloves": "#1B1B1B",
+      "shoes": "#151515",
+      "tertiary": "#333333"
+    },
+    {
+      "skin": "#EED3BC",
+      "hair": "#121212",
+      "primary": "#161616",
+      "secondary": "#C9A548",
+      "accent": "#C9A548",
+      "gloves": "#1B1B1B",
+      "shoes": "#151515",
+      "tertiary": "#333333"
+    },
+    {
+      "skin": "#EED3BC",
+      "hair": "#121212",
+      "primary": "#F2F0EA",
+      "secondary": "#B3262B",
+      "accent": "#B3262B",
+      "gloves": "#1B1B1B",
+      "shoes": "#151515",
+      "tertiary": "#333333"
+    },
+    {
+      "skin": "#EED3BC",
+      "hair": "#121212",
+      "primary": "#8C7BB0",
+      "secondary": "#8A8A8A",
+      "accent": "#E0D8F0",
+      "gloves": "#1B1B1B",
+      "shoes": "#2A2A2A",
+      "tertiary": "#333333"
+    }
+  ],
+  "home_stage": "bamboo",
+  "rival": "mariel",
+  "voice": {
+    "pitch": "1.12",
+    "type": "female_young",
+    "rough": "0.0"
+  },
+  "side_throw": "yuelan_side_pg",
+  "back_throw": "yuelan_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "立ち襟",
+        "High Collar"
+      ],
+      "model": {
+        "outfit": [
+          "high_collar_jacket",
+          "pants_loose",
+          "cloth_shoes"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "練習着",
+        "Practice Wear"
+      ],
+      "model": {
+        "outfit": [
+          "shirt",
+          "pants",
+          "armbands",
+          "cloth_shoes"
+        ]
+      }
+    }
+  ]
+}

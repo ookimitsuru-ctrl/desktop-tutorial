@@ -133,6 +133,12 @@ const AIR_SPIN := 1
 const AIR_KNOCK := 2
 const AIR_TRIP := 3
 
+# 投げ終了時の被投げ側
+const TE_DOWN := 0
+const TE_STAGGER := 1
+const TE_STAND := 2
+const TE_BACKTURN := 3
+
 # 技フラグ（ビット）
 const F_GUARD_CRUSH := 1
 const F_WALL_SPLAT := 2

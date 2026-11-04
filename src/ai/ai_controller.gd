@@ -42,6 +42,14 @@ var low_throws: Array[MoveDef] = []
 var jab: MoveDef = null
 var down_attacks: Array[MoveDef] = []
 var plus_moves: Array[MoveDef] = []
+var stance_entries: Array[MoveDef] = []   # 構えに入る技
+var steps: Array[MoveDef] = []            # 移動技（進歩など）
+var parries: Array[MoveDef] = []          # 当て身・トラップ
+# 連携・連続投げの判断（技ごとに 1 回）
+var _chain_start := -1
+var _chain_k := -1
+var _chain_mf := 0
+var _throw_seen := -1
 # 適応学習（相手の傾向: 指数移動平均）
 var tend := {"crouch": 0.3, "attack_after_block": 0.4, "throw_n": 0.34, "throw_4": 0.33, "throw_6": 0.33, "evade": 0.1, "tech": 0.5}
 var _prev_opp_state := -1
@@ -91,6 +99,15 @@ func _classify() -> void:
 			down_attacks.append(m)
 			continue
 		if not stand:
+			continue
+		if m.level == SE.LV_NONE:
+			if m.end_stance >= 0:
+				stance_entries.append(m)
+			elif m.chain_to.size() > 0:
+				steps.append(m)
+			continue
+		if m.is_parry():
+			parries.append(m)
 			continue
 		if m.is_throw:
 			if m.level == SE.LV_LTHROW:
@@ -245,6 +262,13 @@ func _think(p: FighterState) -> void:
 	hold_btn = 0
 	# 被投げ: 抜け
 	if p.state == SE.ST_THROWN:
+		var o0 := w.f[1 - me]
+		if o0.throw_move >= 0 and od.moves[o0.throw_move].throw_mash > 0:
+			# レバガチャ（首相撲）
+			if _rand() < 0.25 + level * 0.07:
+				plan.append(InputBits.make([4, 6, 2, 8][int(_rand() * 4.0) % 4], InputBits.P, InputBits.P, 0))
+				plan.append(InputBits.make(N, 0, 0, InputBits.P))
+			return
 		if p.sf <= 2 and _rand() < escape_rate:
 			var r := _rand()
 			var dirv := N
@@ -253,6 +277,15 @@ func _think(p: FighterState) -> void:
 			elif r < (float(tend["throw_4"]) + float(tend["throw_6"])) * learn + (1.0 - learn) * 0.66:
 				dirv = 6
 			_press(dirv, InputBits.P | InputBits.G)
+		return
+	if p.state == SE.ST_THROWING:
+		_think_throw(p)
+		return
+	if p.state == SE.ST_MOVE:
+		_think_chain(p)
+		return
+	if p.state == SE.ST_STANCE:
+		_think_stance(p)
 		return
 	if p.state == SE.ST_STAGGER:
 		if _rand() < 0.2 + level * 0.08:
@@ -338,6 +371,12 @@ func _think(p: FighterState) -> void:
 
 func _defend(om: MoveDef) -> void:
 	var correct := _rand() < guard_acc
+	# 当て身・トラップ（読み切ったとき、上位レベルほど使う）
+	if correct and level >= 4 and _rand() < 0.08 * (level - 3) and w.f[me].state != SE.ST_BLOCKSTUN:
+		for pm: MoveDef in parries:
+			if (pm.parry_levels & (1 << om.level)) != 0 and (pm.parry_limbs & (1 << om.limb)) != 0:
+				_do_move(pm)
+				return
 	var crouch := om.level == SE.LV_LOW
 	if not correct:
 		crouch = _rand() < float(tend["crouch"]) if learn > 0 else _rand() < 0.4
@@ -391,6 +430,12 @@ func _neutral(p: FighterState, o: FighterState) -> void:
 	if d > 1.35:
 		# 中距離: 差し込み・様子見・間合い調整
 		var r2 := _rand()
+		if not steps.is_empty() and r2 < 0.12 * agg + 0.04:
+			_do_move(_pick(steps))
+			return
+		if not stance_entries.is_empty() and r2 > 0.92:
+			_do_move(_pick(stance_entries))
+			return
 		var reach_moves: Array[MoveDef] = []
 		for m: MoveDef in mids + lows + heavies:
 			if m.reach * 0.0000153 + 0.25 >= d:
@@ -411,6 +456,9 @@ func _neutral(p: FighterState, o: FighterState) -> void:
 	# 近距離: 二択・投げ・牽制・ガード
 	var crouchy := float(tend["crouch"])
 	var r3 := _rand()
+	if not stance_entries.is_empty() and r3 < 0.08:
+		_do_move(_pick(stance_entries))
+		return
 	var w_mid := 0.30 + (crouchy - 0.3) * learn
 	var w_low := 0.16 + (0.3 - crouchy) * learn * 0.5
 	var w_throw := 0.14 + (0.3 - crouchy) * learn * 0.5 + float(tend.get("guard_lot", 0.0))
@@ -442,3 +490,77 @@ func _neutral(p: FighterState, o: FighterState) -> void:
 			plan.append(InputBits.make(cr, InputBits.G, 0, 0))
 		if _rand() < 0.2 and level >= 4:
 			_walk(4, 6)
+
+
+## 連携（ストリング）の続き: 技ごとに 1 回だけ「出すか・どれか・いつか」を決める
+func _think_chain(p: FighterState) -> void:
+	var m := cd.moves[p.move]
+	if p.move_start_frame != _chain_start:
+		_chain_start = p.move_start_frame
+		_chain_k = -1
+		if m.chain_to.is_empty():
+			return
+		var want := 0.25 + level * 0.06
+		if _rand() < want:
+			_chain_k = int(_rand() * m.chain_to.size()) % m.chain_to.size()
+			var lo := m.chain_from[_chain_k]
+			var hi := mini(m.chain_to_f[_chain_k], m.chain_at[_chain_k] + 2)
+			_chain_mf = lo + int(_rand() * float(maxi(1, hi - lo)))
+			# ジャスト入力は上位レベルほど狙う
+			if m.chain_just[_chain_k] > 0 and _rand() < 0.1 * level:
+				_chain_mf = m.chain_just[_chain_k]
+	if _chain_k < 0 or p.chain_next >= 0:
+		return
+	# ガードされた連携は低レベルほど出し切る（上位は中止もする）
+	if p.move_contact == SE.MC_BLOCK and level >= 6 and _rand() < 0.02 * level:
+		_chain_k = -1
+		return
+	if p.mf >= _chain_mf:
+		var dirv := m.chain_dir[_chain_k]
+		_press(dirv if dirv != 0 else N, m.chain_btn[_chain_k])
+		_chain_k = -1
+
+
+## 連続投げ・首相撲・トラップの分岐
+func _think_throw(p: FighterState) -> void:
+	if p.throw_move < 0:
+		return
+	var tm := cd.moves[p.throw_move]
+	if tm.throw_next_to.is_empty():
+		return
+	if p.throw_frame < tm.throw_dmg_frame + 2 or p.throw_frame > tm.throw_dmg_frame + tm.throw_next_window - 2:
+		return
+	if _throw_seen == p.throw_move * 1000 + p.throw_frame:
+		return
+	_throw_seen = p.throw_move * 1000 + p.throw_frame
+	if _rand() > 0.12 + level * 0.04:
+		return
+	var k := int(_rand() * tm.throw_next_to.size()) % tm.throw_next_to.size()
+	var dirv := tm.throw_next_dir[k]
+	_press(dirv if dirv != 0 else N, tm.throw_next_btn[k])
+
+
+## 構え中: 技を出すか、移動・移行するか、解除するか
+func _think_stance(p: FighterState) -> void:
+	if think_cd > 0:
+		think_cd -= 1
+		return
+	think_cd = int(3 + _rand() * (12 - level))
+	var opts: Array[MoveDef] = []
+	var moves_out: Array[MoveDef] = []
+	var d := _dist()
+	for m: MoveDef in cd.moves:
+		if m.chain_only or (m.from_mask & SE.FROM_STANCE) == 0 or m.stance_from != p.stance:
+			continue
+		if m.is_strike():
+			if m.reach * 0.0000153 + 0.3 >= d:
+				opts.append(m)
+		else:
+			moves_out.append(m)
+	var r := _rand()
+	if not opts.is_empty() and r < 0.55:
+		_do_move(_pick(opts))
+	elif not moves_out.is_empty() and r < 0.8:
+		_do_move(_pick(moves_out))
+	elif r < 0.9:
+		_press(N, InputBits.G)

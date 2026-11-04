@@ -81,6 +81,9 @@ var throw_next_window: int = 18
 var throw_stage: bool = false   # 連続投げの2段目以降（成立判定なしで開始）
 var throw_vs_down: bool = false
 var throw_end_air: bool = false
+var throw_end_kind: int = SE.TE_DOWN   # 投げ終了時の被投げ側（ダウン / よろけ / 立ち硬直 / 背向け）
+var throw_end_stun: int = 30
+var throw_mash: int = 0       # >0: 被投げ側のレバガチャ累計がこの値に達すると脱出（首相撲など）
 
 # 当て身
 var parry_from: int = 0

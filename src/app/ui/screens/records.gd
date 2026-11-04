@@ -26,6 +26,20 @@ func build() -> void:
 			add.call(f.get_as_text(), 18)
 		if licenses:
 			add.call("\n— Godot Engine —\n" + Engine.get_license_text(), 14, UITheme.TEXT2)
+			# エンジンが含むサードパーティ部品の著作権表示とライセンス
+			var parts := ""
+			for info: Dictionary in Engine.get_copyright_info():
+				parts += "\n" + String(info.get("name", ""))
+				for pt: Dictionary in info.get("parts", []):
+					for c: Variant in pt.get("copyright", []):
+						parts += "\n  © " + String(c)
+					parts += "\n  License: " + String(pt.get("license", ""))
+			add.call("\n— Third-party components —" + parts, 12, UITheme.TEXT2)
+			var lic := ""
+			var li: Dictionary = Engine.get_license_info()
+			for k: String in li:
+				lic += "\n\n[" + k + "]\n" + String(li[k])
+			add.call("\n— Licenses —" + lic, 11, UITheme.TEXT2)
 		focus_first(content)
 		return
 	add.call("%s: %s  (%d pt)" % [DataDB.t("rank"), SaveData.rank_name(), int(SaveData.profile.get("rank_points", 0))], 26, UITheme.GOLD)

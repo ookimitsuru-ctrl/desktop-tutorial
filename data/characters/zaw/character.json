@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "id": "zaw",
+  "name": [
+    "ゾー・ミン",
+    "Zaw Min"
+  ],
+  "style": [
+    "ラウェイ",
+    "Lethwei"
+  ],
+  "difficulty": 2,
+  "weight_class": "middle",
+  "body": {
+    "height": "1.72",
+    "shoulder": "1.02",
+    "hip": "0.98",
+    "arm": "1.0",
+    "leg": "0.98",
+    "torso": "1.0"
+  },
+  "physics": {
+    "push_radius": "0.30",
+    "float_factor": "1.00",
+    "hurt_mul": "1.00",
+    "throw_range": "0.90"
+  },
+  "movement": {
+    "walk_f": "1.50",
+    "walk_b": "1.20",
+    "dash_f": [
+      18,
+      "1.35"
+    ],
+    "dash_b": [
+      20,
+      "1.05"
+    ],
+    "run": "4.5",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.30",
+    "depth": "0.38",
+    "crouch": "0.06",
+    "turn": "22",
+    "guard": "high",
+    "lean": "4"
+  },
+  "model": {
+    "build": "lean",
+    "skin": "#B9855E",
+    "hair": "buzz",
+    "face": {
+      "jaw": "0.65",
+      "brow": "0.7",
+      "nose": "0.55"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#B9855E",
+      "hair": "#141210",
+      "primary": "#7A1F24",
+      "secondary": "#3A1012",
+      "accent": "#D4AF37",
+      "gloves": "#E8E2D2",
+      "shoes": "#2A2A2A",
+      "tertiary": "#1E2A4D"
+    },
+    {
+      "skin": "#B9855E",
+      "hair": "#141210",
+      "primary": "#1F4FA8",
+      "secondary": "#F0F0F0",
+      "accent": "#E8E8E8",
+      "gloves": "#F0EEE8",
+      "shoes": "#2A2A2A",
+      "tertiary": "#F0F0F0"
+    },
+    {
+      "skin": "#B9855E",
+      "hair": "#141210",
+      "primary": "#151515",
+      "secondary": "#1F6B3A",
+      "accent": "#2FA05A",
+      "gloves": "#D8D2C2",
+      "shoes": "#2A2A2A",
+      "tertiary": "#1F6B3A"
+    },
+    {
+      "skin": "#B9855E",
+      "hair": "#141210",
+      "primary": "#EDEDED",
+      "secondary": "#B3262B",
+      "accent": "#B3262B",
+      "gloves": "#E8E2D2",
+      "shoes": "#2A2A2A",
+      "tertiary": "#B3262B"
+    }
+  ],
+  "home_stage": "temple",
+  "rival": "toma",
+  "voice": {
+    "pitch": "0.88",
+    "type": "male_low",
+    "rough": "0.15"
+  },
+  "side_throw": "zaw_side_pg",
+  "back_throw": "zaw_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "ファイトショーツ",
+        "Fight Shorts"
+      ],
+      "model": {
+        "outfit": [
+          "shorts",
+          "wraps"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "トラックジャケット",
+        "Track Jacket"
+      ],
+      "model": {
+        "outfit": [
+          "jacket_short",
+          "shorts",
+          "wraps"
+        ],
+        "recolor": {
+          "jacket_short": {
+            "primary": "tertiary"
+          }
+        }
+      }
+    }
+  ]
+}

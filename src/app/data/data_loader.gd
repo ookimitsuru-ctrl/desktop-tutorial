@@ -317,7 +317,17 @@ static func _move(d: Dictionary, idx: int, cd: CharDef) -> MoveDef:
 		m.throw_escape = _esc(String(th.get("esc", "N")))
 		m.throw_len = int(th.get("len", 60))
 		m.throw_dmg_frame = int(th.get("dmg_frame", 36))
-		m.throw_end_down = SE.DOWN_FACE if String(th.get("end", "up")) == "face" else SE.DOWN_UP
+		var te := String(th.get("end", "up"))
+		m.throw_end_down = SE.DOWN_FACE if te == "face" else SE.DOWN_UP
+		match te:
+			"stagger":
+				m.throw_end_kind = SE.TE_STAGGER
+			"stand":
+				m.throw_end_kind = SE.TE_STAND
+			"backturn":
+				m.throw_end_kind = SE.TE_BACKTURN
+		m.throw_end_stun = int(th.get("stun", 30))
+		m.throw_mash = int(th.get("mash", 0))
 		m.throw_end_air = bool(th.get("air", false))
 		m.throw_vs_down = bool(th.get("vs_down", false))
 		m.throw_stage = bool(th.get("stage", false))

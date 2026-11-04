@@ -88,6 +88,11 @@ static func verify(char_id: String, only: String = "") -> Array[String]:
 		# 最大距離ぎりぎりではなく、確実に当たる距離で測る
 		dist = maxi(FP.from_str("0.6"), dist - FP.from_str("0.12"))
 		var rb := trial(char_id, m, ctx, dist, "block")
+		# ガード姿勢は体が引けるので、届かなければ近づけて測り直す
+		var dd := dist
+		while String(rb["kind"]) == "" and dd > FP.from_str("0.65"):
+			dd -= FP.from_str("0.10")
+			rb = trial(char_id, m, ctx, dd, "block")
 		if String(rb["kind"]) != "block":
 			errs.append("%s: ガードされない (%s)" % [m.id, rb["kind"]])
 		else:

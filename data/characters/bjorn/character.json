@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "id": "bjorn",
+  "name": [
+    "ビョルン・ハルヴォルセン",
+    "Bjorn Halvorsen"
+  ],
+  "style": [
+    "グレコローマン・レスリング",
+    "Greco-Roman Wrestling"
+  ],
+  "difficulty": 4,
+  "weight_class": "heavy",
+  "body": {
+    "height": "1.96",
+    "shoulder": "1.18",
+    "hip": "1.08",
+    "arm": "1.02",
+    "leg": "0.98",
+    "torso": "1.06"
+  },
+  "physics": {
+    "push_radius": "0.34",
+    "float_factor": "1.10",
+    "hurt_mul": "1.08",
+    "throw_range": "1.05"
+  },
+  "movement": {
+    "walk_f": "1.30",
+    "walk_b": "1.05",
+    "dash_f": [
+      20,
+      "1.20"
+    ],
+    "dash_b": [
+      22,
+      "0.90"
+    ],
+    "run": "4.2",
+    "evade": 24
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.36",
+    "depth": "0.40",
+    "crouch": "0.10",
+    "turn": "18",
+    "guard": "wide",
+    "lean": "12"
+  },
+  "model": {
+    "build": "heavy",
+    "skin": "#E8C2A8",
+    "hair": "short",
+    "beard": "braided",
+    "face": {
+      "jaw": "0.85",
+      "brow": "0.75",
+      "nose": "0.65"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#E8C2A8",
+      "hair": "#A8452A",
+      "primary": "#1F4D33",
+      "secondary": "#E6DCC4",
+      "accent": "#E6DCC4",
+      "gloves": "#2A2A2A",
+      "shoes": "#1E1E1E",
+      "tertiary": "#3B4A2A"
+    },
+    {
+      "skin": "#E8C2A8",
+      "hair": "#A8452A",
+      "primary": "#1E2A4D",
+      "secondary": "#F0F0F0",
+      "accent": "#F0F0F0",
+      "gloves": "#2A2A2A",
+      "shoes": "#151515",
+      "tertiary": "#1E2A4D"
+    },
+    {
+      "skin": "#E8C2A8",
+      "hair": "#A8452A",
+      "primary": "#E0B020",
+      "secondary": "#1A1A1A",
+      "accent": "#1A1A1A",
+      "gloves": "#2A2A2A",
+      "shoes": "#222222",
+      "tertiary": "#E0B020"
+    },
+    {
+      "skin": "#E8C2A8",
+      "hair": "#A8452A",
+      "primary": "#5A3A22",
+      "secondary": "#B3262B",
+      "accent": "#B3262B",
+      "gloves": "#2A2A2A",
+      "shoes": "#2A1E14",
+      "tertiary": "#5A3A22"
+    }
+  ],
+  "home_stage": "harbor",
+  "rival": "adrien",
+  "voice": {
+    "pitch": "0.78",
+    "type": "male_deep",
+    "rough": "0.25"
+  },
+  "side_throw": "bjorn_side_pg",
+  "back_throw": "bjorn_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "シングレット",
+        "Singlet"
+      ],
+      "model": {
+        "outfit": [
+          "singlet",
+          "vest_open",
+          "wrestling_shoes"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "漁師",
+        "Fisherman"
+      ],
+      "model": {
+        "outfit": [
+          "overalls",
+          "boots"
+        ],
+        "recolor": {
+          "overalls": {
+            "secondary": "tertiary"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -38,7 +38,8 @@ def torso_shell(B, Prim, v3, slot, grow, top_y, bottom_y, cuts=(), mtype=MT_CLOT
     M = p["mus"]
     hips, spine, chest, neck = B.j("Hips"), B.j("Spine"), B.j("Chest"), B.j("Neck")
     sw = abs(B.j("RightUpperArm")[0]) / (0.185 * s)
-    g = grow
+    # 筋肉・脂肪の多い体型は服の余裕を足す（体の形状が服の外にはみ出さないように）
+    g = grow + 0.032 * s * max(0.0, M - 1.0) + 0.035 * s * F
     pr = [
         Prim("ell", [v3(chest + [0, 0.10 * s, 0.005]), v3([0.150 * s * sw * T + g, 0.150 * s + g, 0.105 * s * T + g])], B.b("Chest"), slot, mtype, k=k, layer="cloth"),
         Prim("ell", [v3(spine + [0, 0.05 * s, 0.0]), v3([(0.125 + 0.05 * F) * s * T + g, 0.13 * s + g, (0.090 + 0.05 * F) * s * T + g])], B.b("Spine"), slot, mtype, k=k, layer="cloth"),
@@ -77,6 +78,7 @@ def sleeve(B, Prim, v3, nm, slot, grow, length, flare=0.0, mtype=MT_CLOTH, k=0.0
 def pant_leg(B, Prim, v3, nm, slot, grow, length, flare=0.0, mtype=MT_CLOTH, k=0.02):
     """length: 0..1 = 股関節→足首の割合"""
     s, L, F = B.s, B.p["limb"], B.p["fat"]
+    grow = grow + 0.03 * s * F + 0.012 * s * max(0.0, B.p["mus"] - 1.0)
     hp, kn, an = B.j(nm + "UpperLeg"), B.j(nm + "LowerLeg"), B.j(nm + "Foot")
     ul, ll = B.b(nm + "UpperLeg"), B.b(nm + "LowerLeg")
     pr = []
@@ -89,6 +91,16 @@ def pant_leg(B, Prim, v3, nm, slot, grow, length, flare=0.0, mtype=MT_CLOTH, k=0
         t = (length - 0.5) / 0.5
         end = kn + (an - kn) * t
         pr.append(Prim("cone", [kn, v3(end), 0.055 * s * L + grow + flare * 0.4, 0.040 * s * L + grow + flare], ll, slot, mtype, k=k, layer="cloth"))
+    # 太ももの筋肉（体の形状と同じ楕円 + 余裕）を覆う
+    M = B.p["mus"]
+    if length >= 0.3 and M > 1.05:
+        R = sdf.frame_from(kn - hp)
+        q = Prim("ell", [v3(hp + (kn - hp) * 0.38 + [0, 0, -0.02 * s]), v3([0.072 * s * M * L + grow, 0.17 * s, 0.070 * s * L + grow]), R],
+                 ul, slot, mtype, k=k, layer="cloth")
+        if length < 0.5:
+            cut_y = (hp + (kn - hp) * (length / 0.5))
+            q = _cut(q, [((0, -1, 0), (0, cut_y[1], 0))])
+        pr.append(q)
     return pr
 
 
@@ -155,7 +167,23 @@ def clothes(B, c, Prim, v3):
     hips, chest, neck = B.j("Hips"), B.j("Chest"), B.j("Neck")
     top_neck = neck[1] - 0.02 * s
     pr = []
+    # 衣装ごとの色スロット差し替え: {"部位名": {"primary": "tertiary", ...}}
+    slot_names = {"skin": SKIN, "hair": HAIR, "primary": PRIMARY, "secondary": SECONDARY, "accent": ACCENT, "gloves": GLOVES,
+                  "shoes": SHOES, "metal": METAL, "tertiary": TERTIARY}
+    recolor = c.get("recolor", {})
     for pc in pieces:
+        n0 = len(pr)
+        _piece(B, c, Prim, v3, pc, pr, s, hips, chest, neck, top_neck)
+        rc = recolor.get(pc)
+        if rc:
+            mp = {slot_names[a]: slot_names[b] for a, b in rc.items()}
+            for q in pr[n0:]:
+                q.slot = mp.get(q.slot, q.slot)
+    return pr
+
+
+def _piece(B, c, Prim, v3, pc, pr, s, hips, chest, neck, top_neck):
+    if True:
         if pc == "gi_top":
             g = 0.016 * s
             pr += torso_shell(B, Prim, v3, PRIMARY, g, top_neck, hips[1] - 0.20 * s,
@@ -244,7 +272,7 @@ def clothes(B, c, Prim, v3):
             pr += torso_shell(B, Prim, v3, PRIMARY, 0.026 * s, top_neck, hips[1] - 0.42 * s,
                               cuts=[((0.0, 0.3, -0.95), v3([0, chest[1] + 0.05 * s, -0.08 * s]))])
             for nm in ("Left", "Right"):
-                pr += sleeve(B, Prim, v3, nm, PRIMARY, 0.030 * s, 0.80, flare=0.07 * s)
+                pr += sleeve(B, Prim, v3, nm, PRIMARY, 0.030 * s, 0.80, flare=0.045 * s)
         elif pc == "hakama":
             for nm in ("Left", "Right"):
                 pr += pant_leg(B, Prim, v3, nm, SECONDARY, 0.05 * s, 0.97, flare=0.09 * s, k=0.04)
@@ -290,7 +318,6 @@ def clothes(B, c, Prim, v3):
             pr.append(Prim("torus", [v3(c2), 0.088 * s, 0.014 * s, R], B.b("Head"), ACCENT, MT_CLOTH, k=0.005, layer="cloth", bias=0.004))
             pr.append(Prim("capsule", [v3(c2 + [0, 0, 0.09 * s]), v3(B.j("Hair2")), 0.016 * s], B.b("Hair1"), ACCENT, MT_CLOTH, k=0.004, layer="cloth", own_bone=True))
             pr.append(Prim("capsule", [v3(B.j("Hair2")), v3(B.j("Hair3")), 0.014 * s], B.b("Hair2"), ACCENT, MT_CLOTH, k=0.004, layer="cloth", own_bone=True))
-    return pr
 
 
 def hair(B, c, Prim, v3):

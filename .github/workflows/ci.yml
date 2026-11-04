@@ -74,6 +74,9 @@ jobs:
       - name: Lint (simulation layer)
         run: python3 tools/validate/lint_sim.py
 
+      - name: Asset ledger
+        run: python3 tools/validate/check_ledger.py
+
       - name: Bake consistency
         run: |
           ~/godot/godot --headless --path . -s res://tools/bake/bake_all.gd

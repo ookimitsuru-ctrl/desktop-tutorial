@@ -568,6 +568,7 @@ static func begin_throw(w: SimWorld, ai: int, m: MoveDef, check_variant: bool) -
 	a.facing = FighterCtl.angle_to_opp(w, ai)
 	FighterCtl.set_state(d, SE.ST_THROWN, 0)
 	d.throw_escape = _collect_escape(w, di, w.rules.throw_escape_before, 0)
+	d.mash = 0
 	d.slide = 0
 	d.y = 0
 	w.emit("throw", {"attacker": ai, "defender": di, "move": tm.index, "escapable": a.throw_grab == 1})
@@ -635,13 +636,35 @@ static func advance_throws(w: SimWorld) -> void:
 			if esc:
 				_escape(w, ai)
 				continue
+		# レバガチャ脱出（首相撲など）: 累計が閾値に達したら脱出
+		if tm.throw_mash > 0:
+			if (InputBits.pressed(d.input_now) & (InputBits.P | InputBits.K | InputBits.G)) != 0 or InputBits.dir(d.h(0)) != InputBits.dir(d.h(1)):
+				d.mash += 1
+			if d.mash >= tm.throw_mash:
+				_escape(w, ai)
+				continue
 		# 連続投げ
 		if tm.throw_next_to.size() > 0 and a.throw_frame >= tm.throw_dmg_frame and a.throw_frame <= tm.throw_dmg_frame + tm.throw_next_window:
-			var pr := InputBits.pressed(a.input_now)
-			var dd := InputBits.dir(a.input_now)
+			# 先行入力（ヒットストップ中の入力を含む）も受け付ける。消費済みの入力は使わない
+			var hit_k := -1
+			for back: int in range(0, w.rules.buffer_frames + 1):
+				if w.frame - back <= a.consumed:
+					break
+				var e := a.h(back)
+				var pr := InputBits.pressed(e)
+				if pr == 0:
+					continue
+				var dd := InputBits.dir(e)
+				for k0: int in range(tm.throw_next_to.size()):
+					var need0 := tm.throw_next_btn[k0]
+					if (pr & need0) != 0 and (InputBits.held(e) & need0) == need0 and CommandSpec.dir_matches(tm.throw_next_dir[k0], dd):
+						hit_k = k0
+						break
+				if hit_k >= 0:
+					break
 			for k: int in range(tm.throw_next_to.size()):
-				var need := tm.throw_next_btn[k]
-				if (pr & need) != 0 and (InputBits.held(a.input_now) & need) == need and CommandSpec.dir_matches(tm.throw_next_dir[k], dd):
+				if k == hit_k:
+					a.consumed = w.frame
 					var nm := cd.moves[tm.throw_next_to[k]]
 					a.throw_move = nm.index
 					a.move = nm.index
@@ -654,7 +677,7 @@ static func advance_throws(w: SimWorld) -> void:
 				continue
 		_place_victim(w, ai, tm, a.throw_frame)
 		FighterCtl._apply_motion(w, ai, tm.throw_anim, a.throw_frame)
-		if a.throw_frame == tm.throw_dmg_frame:
+		if a.throw_frame == tm.throw_dmg_frame and tm.damage > 0:
 			var dmg := tm.damage
 			d.hp -= dmg
 			if w.training_infinite_hp and d.hp < 1:
@@ -714,7 +737,26 @@ static func _end_throw(w: SimWorld, ai: int, tm: MoveDef) -> void:
 	a.throw_move = -1
 	a.throw_protect = 0
 	d.no_tech = 1 if tm.has_flag(SE.F_NO_TECH) else 0
-	if tm.throw_end_air:
+	if d.ko != 0 and tm.throw_end_kind != SE.TE_DOWN:
+		d.y = 0
+		FighterCtl._to_down(w, di, SE.DOWN_UP, false)
+	elif tm.throw_end_kind == SE.TE_STAGGER:
+		d.y = 0
+		FighterCtl.set_state(d, SE.ST_STAGGER, 0)
+		d.reaction = SE.R_STAGGER_GUT
+		d.stun = tm.throw_end_stun
+		d.stun_len = tm.throw_end_stun
+		d.stagger_min = (tm.throw_end_stun * w.rules.stagger_max_reduce_pct) / 100
+		w.emit("stagger", {"player": di, "frames": tm.throw_end_stun})
+	elif tm.throw_end_kind == SE.TE_STAND or tm.throw_end_kind == SE.TE_BACKTURN:
+		d.y = 0
+		FighterCtl.set_state(d, SE.ST_HITSTUN, 0)
+		d.reaction = SE.R_TURN if tm.throw_end_kind == SE.TE_BACKTURN else SE.R_MID_HEAVY
+		d.stun = tm.throw_end_stun
+		d.stun_len = tm.throw_end_stun
+		if tm.throw_end_kind == SE.TE_BACKTURN:
+			d.facing = (FighterCtl.angle_to_opp(w, di) + FP.ANG_HALF) & 0xFFFF
+	elif tm.throw_end_air:
 		FighterCtl.to_air(w, di, SE.AIR_TRIP, FP.from_str("0.03"), 0, 0)
 		d.air_hits = 1
 	else:

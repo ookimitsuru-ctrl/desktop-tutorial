@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "id": "lena",
+  "name": [
+    "レナ・ヴォルコワ",
+    "Lena Volkova"
+  ],
+  "style": [
+    "システマ",
+    "Systema"
+  ],
+  "difficulty": 3,
+  "weight_class": "light",
+  "body": {
+    "height": "1.68",
+    "shoulder": "0.90",
+    "hip": "1.02",
+    "arm": "0.97",
+    "leg": "1.03",
+    "torso": "0.96",
+    "hair_chain": true,
+    "hair_len": "0.34"
+  },
+  "physics": {
+    "push_radius": "0.27",
+    "float_factor": "0.93",
+    "hurt_mul": "0.96",
+    "throw_range": "0.85"
+  },
+  "movement": {
+    "walk_f": "1.70",
+    "walk_b": "1.40",
+    "dash_f": [
+      17,
+      "1.55"
+    ],
+    "dash_b": [
+      19,
+      "1.30"
+    ],
+    "run": "4.7",
+    "evade": 20
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.26",
+    "depth": "0.42",
+    "crouch": "0.09",
+    "turn": "34",
+    "guard": "low",
+    "lean": "4"
+  },
+  "stances": [
+    {
+      "id": "relax",
+      "name": [
+        "脱力",
+        "Relax"
+      ],
+      "max_frames": 60,
+      "low_profile": true,
+      "crouch": true,
+      "pose": {
+        "chest": [
+          16,
+          0,
+          0
+        ],
+        "hips": [
+          8,
+          0,
+          0
+        ],
+        "head": [
+          -10,
+          0,
+          0
+        ],
+        "hand_l": [
+          0.04,
+          -0.3,
+          0.02
+        ],
+        "hand_r": [
+          -0.02,
+          -0.28,
+          0.06
+        ],
+        "fist_l": 0.1,
+        "fist_r": 0.1
+      }
+    }
+  ],
+  "model": {
+    "build": "slim",
+    "female": true,
+    "skin": "#EBCDB7",
+    "hair": "ponytail",
+    "face": {
+      "jaw": "0.35",
+      "brow": "0.35",
+      "nose": "0.4"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#EBCDB7",
+      "hair": "#C9CCD1",
+      "primary": "#4A4D52",
+      "secondary": "#1F2124",
+      "accent": "#7FC8E8",
+      "gloves": "#111111",
+      "shoes": "#222222",
+      "tertiary": "#141414",
+      "metal": "#EDEDED"
+    },
+    {
+      "skin": "#EBCDB7",
+      "hair": "#C9CCD1",
+      "primary": "#1E2A44",
+      "secondary": "#E8E8E8",
+      "accent": "#C8372D",
+      "gloves": "#151515",
+      "shoes": "#1A1A1A",
+      "tertiary": "#E2E2E2",
+      "metal": "#F2F2F2"
+    },
+    {
+      "skin": "#EBCDB7",
+      "hair": "#C9CCD1",
+      "primary": "#6B1E2C",
+      "secondary": "#151515",
+      "accent": "#D9B36A",
+      "gloves": "#111111",
+      "shoes": "#1E1E1E",
+      "tertiary": "#2A0E14",
+      "metal": "#E8E0D8"
+    },
+    {
+      "skin": "#EBCDB7",
+      "hair": "#C9CCD1",
+      "primary": "#5B6142",
+      "secondary": "#C9B48A",
+      "accent": "#E07B39",
+      "gloves": "#2F2A20",
+      "shoes": "#3B3226",
+      "tertiary": "#3A3D2B",
+      "metal": "#E6DCC4"
+    }
+  ],
+  "home_stage": "fort",
+  "rival": "adrien",
+  "voice": {
+    "pitch": "0.92",
+    "type": "female_low",
+    "rough": "0.05"
+  },
+  "side_throw": "lena_side_pg",
+  "back_throw": "lena_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "タクティカル",
+        "Tactical"
+      ],
+      "model": {
+        "outfit": [
+          "turtleneck",
+          "jacket_short",
+          "cargo",
+          "gloves_open",
+          "boots"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "トレーニング",
+        "Training"
+      ],
+      "model": {
+        "outfit": [
+          "tank",
+          "pants",
+          "wraps",
+          "sneakers"
+        ],
+        "recolor": {
+          "tank": {
+            "primary": "metal"
+          },
+          "pants": {
+            "secondary": "tertiary"
+          }
+        }
+      }
+    }
+  ]
+}

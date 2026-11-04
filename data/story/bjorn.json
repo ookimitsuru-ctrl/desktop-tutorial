@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "bjorn",
+  "opening": [
+    "ロフォーテン諸島の漁師、ビョルン・ハルヴォルセン。かつてはオリンピック候補と呼ばれたレスラーだ。\nあの嵐の夜、彼の漁船「ソールヴァ号」は波にのまれた。仲間は全員救ったが、船は戻らなかった。\n「新しい船がいる。金がいる。なら、組み合えばいい！」\n大きな笑い声とともに、ビョルンは大会への切符を握りしめた。",
+    "Bjorn Halvorsen, a fisherman from the Lofoten Islands — once an Olympic hopeful in wrestling.\nOn a stormy night his boat, the Solva, was swallowed by the waves. He saved his whole crew, but the boat never came back.\n\"I need a new boat. I need money. So — let's wrestle!\"\nWith a booming laugh, Bjorn gripped his ticket to the tournament."
+  ],
+  "rival": [
+    [
+      "アドリアン「やあ、酒場の友よ。今日は飲み比べじゃないぞ」",
+      "Adrien: \"Ah, my friend from the tavern. No drinking contest today.\""
+    ],
+    [
+      "ビョルン「ハッハ！ 勝ったほうが一杯おごる。いつも通りだ！」",
+      "Bjorn: \"Ha-ha! Loser buys the round. Same as always!\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「大きいのう。だが大きいものほど、よく転がる」",
+      "Gensai: \"My, you are big. But the bigger they are, the better they roll.\""
+    ],
+    [
+      "ビョルン「爺さん、海の上じゃもっと揺れるぞ！」",
+      "Bjorn: \"Old man, the sea rocks a lot harder than this!\""
+    ]
+  ],
+  "ending": [
+    "優勝の夜、ビョルンは灯台の食堂で玄斎と大皿のスープを分け合った。「爺さん、あんたの投げは波みたいだった。逆らうと沈む」\n春、ロフォーテンの港に新しい漁船が浮かんだ。舳先に書かれた名は「ソールヴァ二世」。\n進水式で仲間たちに担ぎ上げられたビョルンは、海に向かって叫んだ。\n「さあ行くぞ！ 今度の嵐とも、組み合ってやる！」",
+    "On the night of his victory, Bjorn shared a huge bowl of soup with Gensai in the lighthouse kitchen. \"Old man, your throws were like waves. Fight them and you sink.\"\nIn spring a new fishing boat floated in the Lofoten harbor, her bow painted: Solva II.\nHoisted onto his crew's shoulders at the launch, Bjorn roared at the sea.\n\"Let's go! Next storm, I'll wrestle that too!\""
+  ],
+  "win_quotes": [
+    [
+      "ハッハ！ 海の上じゃ、もっと揺れるぞ！",
+      "Ha-ha! The sea rocks a lot harder than that!"
+    ],
+    [
+      "いい投げられっぷりだ！ 飯でも食いに行こう！",
+      "You fall like a champion! Let's go eat!"
+    ],
+    [
+      "網にかかった魚は逃がさないぞ",
+      "Once a fish is in the net, it doesn't get away."
+    ]
+  ]
+}

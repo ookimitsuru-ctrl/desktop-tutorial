@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "gensai",
+  "opening": [
+    "環財団の相談役、鷹司 玄斎。七十二歳。大会の「最後の壁」として、半世紀にわたり挑戦者を退けてきた。\n今年、彼は初めて自らトーナメントの組み合わせに名を連ねた。\n「若い者の拳を、この身で確かめておきたくなってのう」\n黒い羽織が嵐の風に翻る。老人は静かに、最初の挑戦者を待った。",
+    "Gensai Takatsukasa, 72, advisor to the Tamaki Foundation. For half a century he has stood as the tournament's 'last wall.'\nThis year, for the first time, he put his own name into the bracket.\n\"I wanted to feel the young ones' fists with my own body.\"\nHis black haori snapped in the storm wind as the old man quietly awaited his first challenger."
+  ],
+  "rival": [
+    [
+      "月嵐「あなたが……祖母が話していた方ですね」",
+      "Yuelan: \"You're... the one my grandmother told me about.\""
+    ],
+    [
+      "玄斎「蘇の孫か。婆さんの崩拳、わしの肋が覚えておるわ」",
+      "Gensai: \"Su's granddaughter. My ribs still remember her crushing fist.\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「……己と戦うのは、いつになっても骨が折れる」",
+      "Gensai: \"...Fighting yourself is always tiring, no matter your age.\""
+    ]
+  ],
+  "ending": [
+    "大会が終わった夜、玄斎は灯台の書庫で筆を執った。今年の挑戦者たちの技を、ひとつ残らず書き留めるために。\n灯真の読み、ゾーの真っ直ぐな拳、月嵐の崩拳、ビョルンの波のような投げ——。\n「武は、人から人へしか渡らん。だから財団は、場を作り続ける」\n書き終えると、老人は窓の外の海を眺めた。嵐はもう去っていた。\n「さて、来年はどんな若造が来るかのう」",
+    "The night the tournament ended, Gensai took up his brush in the lighthouse archive to record every technique of this year's challengers.\nToma's reading, Zaw's straight fists, Yuelan's crushing fist, Bjorn's wave-like throws—\n\"Martial arts pass only from person to person. That's why the Foundation keeps building the stage.\"\nFinished, the old man gazed out at the sea. The storm had already passed.\n\"Now then — what sort of youngsters will come next year?\""
+  ],
+  "win_quotes": [
+    [
+      "ほう。その一手、どこで覚えた？",
+      "Oh? Where did you learn that move?"
+    ],
+    [
+      "若いのう。だが悪くない",
+      "So young. But not bad."
+    ],
+    [
+      "力に逆らわず、流れに乗る。それだけのことよ",
+      "Don't resist the force, ride its flow. That's all there is to it."
+    ]
+  ]
+}

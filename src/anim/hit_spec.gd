@@ -42,8 +42,8 @@ static func for_move(md: Dictionary, lead: int) -> Array[Dictionary]:
 			var pk := "Right" if side3 > 0 else "Left"
 			var style2 := String(an.get("style", "front"))
 			if t == "knee" or style2 in ["knee", "jump_knee"]:
-				out.append(_c(pk + "LowerLeg", 0.0, 0.25, 0.10))
-				out.append(_c(pk + "UpperLeg", 0.55, 1.0, 0.08))
+				out.append(_c(pk + "LowerLeg", 0.0, 0.30, 0.115))
+				out.append(_c(pk + "UpperLeg", 0.50, 1.0, 0.095))
 			else:
 				out.append(_c(pk + "Foot", 0.0, 1.0, 0.08))
 				out.append(_c(pk + "LowerLeg", 0.25, 1.0, 0.065))
@@ -51,8 +51,8 @@ static func for_move(md: Dictionary, lead: int) -> Array[Dictionary]:
 			out.append(_c("Head", 0.15, 0.65, 0.115))
 		"shoulder":
 			var ps := "Left" if lead < 0 else "Right"
-			out.append(_c(ps + "UpperArm", 0.0, 0.45, 0.12))
-			out.append(_c("Chest", 0.3, 0.9, 0.15))
+			out.append(_c(ps + "UpperArm", 0.0, 1.0, 0.11))
+			out.append(_c(ps + "LowerArm", 0.0, 1.0, 0.09))
 		"down_attack":
 			out.append(_c("RightHand", 0.0, 1.0, 0.11))
 			out.append(_c("RightLowerArm", 0.3, 1.0, 0.07))

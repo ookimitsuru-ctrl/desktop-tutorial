@@ -68,6 +68,7 @@ var stat_counters: int = 0
 var stat_escapes: int = 0
 var stat_evades: int = 0
 var last_air_kind: int = 0
+var mash: int = 0
 
 const FIELDS: Array[String] = [
 	"side", "char_idx", "x", "z", "y", "vx", "vz", "vy", "facing", "hp", "state", "sub", "sf",
@@ -77,7 +78,7 @@ const FIELDS: Array[String] = [
 	"tap2_frame", "rise_window", "consumed", "throw_move", "throw_frame", "throw_escape", "throw_protect",
 	"throw_grab", "stagger_min", "stance", "invuln", "reaction", "hit_from_back", "anim", "anim_frame",
 	"input_now", "hist_head", "ko", "guard_crouch", "parry_lock", "stat_damage", "stat_max_combo",
-	"stat_counters", "stat_escapes", "stat_evades", "last_air_kind",
+	"stat_counters", "stat_escapes", "stat_evades", "last_air_kind", "mash",
 ]
 
 

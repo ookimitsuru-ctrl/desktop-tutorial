@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "id": "lena",
+  "opening": [
+    "元要人警護官、レナ・ヴォルコワ。今はフリーの護衛として、危険な依頼だけを選んで受けている。\n今回の依頼主は匿名。内容は「環財団が武術家を集める本当の理由を調べろ」。\n潜入の方法はひとつしかない。選手としてリングに上がることだ。\n「力を抜いて。……仕事はいつも通りよ」",
+    "Former VIP bodyguard Lena Volkova now works freelance, taking only the dangerous jobs.\nThis client is anonymous. The task: find out why the Tamaki Foundation really gathers martial artists.\nThere's only one way in — step into the ring as a fighter.\n\"Relax. ...Just another job.\""
+  ],
+  "rival": [
+    [
+      "アドリアン「マドモワゼル、その歩き方……プロの護衛だね？」",
+      "Adrien: \"Mademoiselle, that walk... a professional bodyguard, yes?\""
+    ],
+    [
+      "レナ「観察眼は認めるわ。でも、口が軽いのは減点」",
+      "Lena: \"Good eye. Too much talking, though. Points off.\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「嗅ぎ回っておるのは、お前さんか」",
+      "Gensai: \"So you're the one who's been sniffing around.\""
+    ],
+    [
+      "レナ「財団は何を集めているの。武術家の、何を？」",
+      "Lena: \"What is the Foundation collecting? What do they want from fighters?\""
+    ],
+    [
+      "玄斎「勝てば教えよう。負ければ、それもまた答えじゃ」",
+      "Gensai: \"Win, and I'll tell you. Lose, and that too is an answer.\""
+    ]
+  ],
+  "ending": [
+    "玄斎が案内したのは、灯台の地下に広がる書庫だった。世界中の武術の型、組手、口伝——失われかけた技の記録が、静かに眠っていた。\n「財団は、消えゆく武を残すために大会を開いておる。お前さんの依頼主は、それを売り物にしたい連中じゃろう」\nレナは報告書を一枚だけ書いた。『異常なし』。\n帰りの船の上で、彼女は小さく息を吐いた。「……たまには、守る仕事も悪くないわね」",
+    "Gensai led her to an archive beneath the lighthouse. Forms, sparring records, oral traditions from martial arts around the world — techniques on the edge of being lost, quietly preserved.\n\"The Foundation holds the tournament to keep vanishing arts alive. Your client likely wants to sell them.\"\nLena wrote a one-line report: 'Nothing unusual.'\nOn the boat home she let out a small breath. \"...Protecting something for once isn't so bad.\""
+  ],
+  "win_quotes": [
+    [
+      "力を抜いて。……そう、倒れるのが一番楽よ",
+      "Relax. ...Yes, falling down is the easiest part."
+    ],
+    [
+      "呼吸が乱れてる。それじゃ守れないわ",
+      "Your breathing is a mess. You can't protect anything like that."
+    ],
+    [
+      "仕事は終わり。請求書は財団に回して",
+      "Job done. Send the invoice to the Foundation."
+    ]
+  ]
+}

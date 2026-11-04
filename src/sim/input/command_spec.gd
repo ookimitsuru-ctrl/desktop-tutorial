@@ -37,7 +37,10 @@ static func parse(s: String) -> CommandSpec:
 					pass
 				_:
 					c.valid = false
-	if digits.length() == 1:
+	if digits.length() == 1 and c.buttons == 0 and rest.length() == 0:
+		# 方向のみ（例: 構え中の "6"）: その方向を新たに入れたフレームで成立
+		c.motion.append(digits.to_int())
+	elif digits.length() == 1:
 		c.dir = digits.to_int()
 	elif digits.length() > 1:
 		for ch: String in digits:

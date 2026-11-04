@@ -24,7 +24,7 @@ static func _home(id: String) -> String:
 static func start(char_id: String) -> void:
 	var chars := DataDB.characters()
 	var rival := String(DataDB.char_json(char_id).get("rival", ""))
-	if not chars.has(rival) or rival == char_id:
+	if not chars.has(rival) or rival == char_id or (rival == "gensai" and char_id != "gensai"):
 		rival = ""
 	var pool: Array[String] = []
 	for c: String in chars:

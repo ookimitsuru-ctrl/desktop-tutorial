@@ -1,3 +1,5 @@
+Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. (Noto Sans JP)
+Copyright 2020 The Dela Gothic Project Authors (https://github.com/syakuzen/DelaGothic) (Dela Gothic One)
 Copyright 2016 The Oswald Project Authors (https://github.com/googlefonts/OswaldFont)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.

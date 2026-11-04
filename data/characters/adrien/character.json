@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "id": "adrien",
+  "name": [
+    "アドリアン・ルフェーヴル",
+    "Adrien Lefèvre"
+  ],
+  "style": [
+    "サバット",
+    "Savate"
+  ],
+  "difficulty": 3,
+  "weight_class": "middle",
+  "body": {
+    "height": "1.88",
+    "shoulder": "1.0",
+    "hip": "0.98",
+    "arm": "1.02",
+    "leg": "1.07",
+    "torso": "0.98"
+  },
+  "physics": {
+    "push_radius": "0.30",
+    "float_factor": "1.02",
+    "hurt_mul": "1.00",
+    "throw_range": "0.90"
+  },
+  "movement": {
+    "walk_f": "1.55",
+    "walk_b": "1.35",
+    "dash_f": [
+      18,
+      "1.50"
+    ],
+    "dash_b": [
+      20,
+      "1.35"
+    ],
+    "run": "4.7",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.24",
+    "depth": "0.48",
+    "crouch": "0.04",
+    "turn": "36",
+    "guard": "mid",
+    "lean": "2"
+  },
+  "stances": [
+    {
+      "id": "garde",
+      "name": [
+        "ガルド",
+        "Garde"
+      ],
+      "max_frames": 0,
+      "low_profile": false,
+      "pose": {
+        "root": [
+          0,
+          0.015,
+          0
+        ],
+        "hand_l": [
+          0.0,
+          0.04,
+          0.05
+        ],
+        "hand_r": [
+          0.0,
+          0.03,
+          0.03
+        ],
+        "foot_l": [
+          0,
+          0.03,
+          0.04
+        ],
+        "chest": [
+          -3,
+          0,
+          0
+        ]
+      }
+    }
+  ],
+  "model": {
+    "build": "lean",
+    "skin": "#EAC7AE",
+    "hair": "short",
+    "face": {
+      "jaw": "0.55",
+      "brow": "0.5",
+      "nose": "0.7"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#EAC7AE",
+      "hair": "#3A2A1E",
+      "primary": "#F2F2F2",
+      "secondary": "#1E2A4D",
+      "accent": "#B3262B",
+      "gloves": "#1B1B1B",
+      "shoes": "#141414",
+      "tertiary": "#333333"
+    },
+    {
+      "skin": "#EAC7AE",
+      "hair": "#3A2A1E",
+      "primary": "#9A9A9A",
+      "secondary": "#1A1A1A",
+      "accent": "#1A1A1A",
+      "gloves": "#1B1B1B",
+      "shoes": "#101010",
+      "tertiary": "#333333"
+    },
+    {
+      "skin": "#EAC7AE",
+      "hair": "#3A2A1E",
+      "primary": "#E6D7B8",
+      "secondary": "#6B4A2E",
+      "accent": "#3A2A1E",
+      "gloves": "#1B1B1B",
+      "shoes": "#3A2414",
+      "tertiary": "#333333"
+    },
+    {
+      "skin": "#EAC7AE",
+      "hair": "#3A2A1E",
+      "primary": "#F2EEE8",
+      "secondary": "#5E1A2A",
+      "accent": "#151515",
+      "gloves": "#1B1B1B",
+      "shoes": "#151515",
+      "tertiary": "#333333"
+    }
+  ],
+  "home_stage": "skyline",
+  "rival": "bjorn",
+  "voice": {
+    "pitch": "0.95",
+    "type": "male_mid",
+    "rough": "0.08"
+  },
+  "side_throw": "adrien_side_pg",
+  "back_throw": "adrien_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "シャツとサスペンダー",
+        "Shirt & Suspenders"
+      ],
+      "model": {
+        "outfit": [
+          "shirt",
+          "pants",
+          "suspenders",
+          "shoes"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "競技スーツ",
+        "Competition Suit"
+      ],
+      "model": {
+        "outfit": [
+          "singlet",
+          "pants",
+          "shoes"
+        ]
+      }
+    }
+  ]
+}

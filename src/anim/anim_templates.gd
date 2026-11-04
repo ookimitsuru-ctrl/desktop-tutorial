@@ -866,6 +866,8 @@ func move(md: Dictionary) -> AnimClip:
 			_shoulder(c, base, an, S, A, R)
 		"stance":
 			_stance_enter(c, base, an, T)
+		"step":
+			_step(c, base, an, T)
 		"parry":
 			_parry(c, base, an, S, A, R)
 		"throw":
@@ -883,6 +885,8 @@ func move(md: Dictionary) -> AnimClip:
 func _start_pose(md: Dictionary) -> PoseData:
 	var fr: Array = md.get("from", ["stand"])
 	var an: Dictionary = md.get("anim", {})
+	if md.has("stance") and not an.has("start"):
+		return stance_pose(String(md["stance"]))
 	if an.has("start"):
 		var sp := String(an["start"])
 		if sp == "crouch":
@@ -1217,10 +1221,14 @@ func _kick(c: AnimClip, base: PoseData, an: Dictionary, S: int, A: int, R: int) 
 			kchamber = V(0.5 * side, ank + 0.05, 0.2 + step)
 			set_ankle(hit, side, V(0, 90.0 * side, 0))
 		"knee":
-			foot_t = V(0.0, h - 0.40, 0.15 + step)
-			knee_dir = V(0, 0.2, 1.0)
+			# 腰を突き出して膝を体の中心線へ
+			var kz := float(str(an.get("kz", "0.38")))
+			var kh := float(str(an.get("kh", "0.56")))
+			foot_t = V(-0.04 * side * s, h - kh, kz * s + step)
+			knee_dir = V(-0.05 * side, 0.3, 1.0)
 			kchamber = V(0.05 * side, h - 0.45, 0.05 + step)
-			hit.hips += V(-14, 15.0 * side, 0)
+			hit.hips += V(float(str(an.get("kp", "0"))), -18.0 * side, 0)
+			hit.root += V(0, 0.0, 0.06 * s)
 			hit.chest += V(10, 0, 0)
 			var gh := chin_h - 0.25
 			hit.hand_l = V(-0.12 * s, gh, 0.40 + step)
@@ -1264,6 +1272,10 @@ func _kick(c: AnimClip, base: PoseData, an: Dictionary, S: int, A: int, R: int) 
 			kchamber = V(0.05 * side, 0.75, 0.45 + step)
 			hit.chest += V(18, 0, 0)
 			hit.root += V(0, -0.10 * s, 0)
+	# しゃがみから出る蹴り（立ち途中）は打点で立ち上がる
+	if base.root.y < st.root.y - 0.05 and style not in ["low", "sweep", "stomp"]:
+		hit.root.y = st.root.y
+		chamber.root.y = lerpf(base.root.y, st.root.y, 0.7)
 	set_foot(hit, side, foot_t)
 	set_knee(hit, side, knee_dir)
 	if style != "sweep":
@@ -1322,17 +1334,40 @@ func _shoulder(c: AnimClip, base: PoseData, an: Dictionary, S: int, A: int, R: i
 	var step := float(str(an.get("step", "0.35")))
 	var tm := _times(S, A, R)
 	var hit := base.copy()
-	hit.hips = V(8, -70.0 * -lead * -1.0, 0)
-	hit.chest = V(14, 0, 0)
+	hit.hips = V(8, 70.0 * lead, 0)
+	hit.chest = V(16, 10.0 * lead, 0)
+	hit.head = V(0, -60.0 * lead, 0)
 	hit.root = base.root + V(0, -0.10 * s, step)
 	set_foot(hit, lead, foot(base, lead) + V(0, 0, step + 0.1))
-	set_hand(hit, lead, V(0.05 * lead, chin_h - 0.2, 0.20 + step))
-	set_hand(hit, -lead, V(-0.05 * lead, chin_h - 0.15, 0.10 + step))
+	set_hand(hit, lead, V(0.02 * lead, chin_h - 0.12, 0.40 * s + step))
+	set_elbow(hit, lead, V(0.3 * lead, -1.0, 0.6))
+	set_hand(hit, -lead, V(-0.05 * lead, chin_h - 0.15, 0.22 + step))
 	hit.face = 1
 	var ant := base.copy()
 	ant.root += V(0, -0.06 * s, 0)
 	var end := _end_at(an, V(0, 0, step))
 	c.add(0, base).add(tm[0], ant).add(tm[1], hit, E.IN_CUBIC).add(tm[2], hit.copy()).add(tm[3], PoseData.lerp_pose(hit, end, 0.5)).add(tm[4], end)
+
+
+## 移動技（構え中のステップ・進歩・滑り込み）: dx/dz だけ移動し、終了姿勢は構え（anim.stance）か通常の構え
+func _step(c: AnimClip, base: PoseData, an: Dictionary, T: int) -> void:
+	var dx := float(str(an.get("dx", "0"))) * s
+	var dz := float(str(an.get("dz", "0"))) * s
+	var hop := float(str(an.get("hop", "0.03"))) * s
+	var low := float(str(an.get("low", "0"))) * s
+	var end := stance_pose(String(an["stance"])) if an.has("stance") else _end_pose(an)
+	end = shifted(end, V(dx, 0, dz))
+	var mid := PoseData.lerp_pose(base, end, 0.5)
+	mid.root.y += hop - low
+	if low > 0.05:
+		mid.chest += V(18, 0, 0)
+		mid.hips += V(8, 0, 0)
+	# 足の運び: 前（進行方向）の足を先に
+	var lead_side := lead if dz >= 0 else -lead
+	var m1 := PoseData.lerp_pose(base, end, 0.3)
+	m1.root.y += hop * 0.6 - low * 0.7
+	set_foot(m1, lead_side, foot(end, lead_side) + V(0, 0.05 * s, 0))
+	c.add(0, base).add(maxi(1, int(T * 0.3)), m1, E.OUT_QUAD).add(maxi(2, int(T * 0.6)), mid).add(T, end, E.SMOOTH)
 
 
 func _stance_enter(c: AnimClip, base: PoseData, an: Dictionary, T: int) -> void:

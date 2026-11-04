@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "mariel",
+  "opening": [
+    "セブ島出身のスタントパフォーマー、マリエル・サントス。家族はカリの道場を営んでいる。\nある日届いた映画の主演オファー。条件はひとつ——「RINGBOUND でベスト4に入ること」。\n「最高じゃない！ 道場の宣伝にもなるし、主演も取れる！」\nマリエルはバンダナをきゅっと結び、空港へ駆け出した。",
+    "Mariel Santos, a stunt performer from Cebu whose family runs a Kali school.\nOne day an offer arrived: a leading role in a movie. One condition — reach the top four at RINGBOUND.\n\"This is perfect! Great promo for the school, and I get the lead!\"\nMariel tied her bandana tight and dashed for the airport."
+  ],
+  "rival": [
+    [
+      "アドリアン「おや、共演予定の主演女優じゃないか」",
+      "Adrien: \"Well, if it isn't my future leading lady.\""
+    ],
+    [
+      "マリエル「カット！ ……え、今のは本番？ じゃあ本気で行くよ！」",
+      "Mariel: \"Cut! ...Wait, is this a real take? Then I'm going all out!\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「手が速いのう。だが速い手ほど、取りやすい」",
+      "Gensai: \"Quick hands. But the quicker the hand, the easier to catch.\""
+    ],
+    [
+      "マリエル「取れるもんなら取ってみて！ スタントは一発勝負なんだから！」",
+      "Mariel: \"Catch me if you can! Stunts are one take only!\""
+    ]
+  ],
+  "ending": [
+    "ベスト4どころか、優勝。撮影現場に戻ったマリエルを、スタッフ全員の拍手が迎えた。\n映画のクライマックスは、灯台での一騎打ち。監督は言った。「本物を見た君にしか撮れない場面だ」\n公開初日、セブ島の小さな映画館には家族と道場の生徒たちが詰めかけた。\nスクリーンの中でマリエルが叫ぶ。「カット！ ……え、今のは本番？」\n客席は笑いと歓声で揺れた。",
+    "Not just the top four — she won it all. Back on set, the whole crew greeted Mariel with applause.\nThe film's climax became a duel at a lighthouse. \"Only someone who saw the real thing can shoot this scene,\" said the director.\nOn opening day, a small theater in Cebu was packed with her family and the school's students.\nOn screen Mariel shouted, \"Cut! ...Wait, was that a real take?\"\nThe seats shook with laughter and cheers."
+  ],
+  "win_quotes": [
+    [
+      "カット！ ……え、今のは本番？",
+      "Cut! ...Wait, was that a real take?"
+    ],
+    [
+      "はい、OKテイク！ お疲れさま！",
+      "That's a wrap! Good work!"
+    ],
+    [
+      "手数で負けたことはないの。ごめんね！",
+      "I've never lost on hand speed. Sorry!"
+    ]
+  ]
+}
