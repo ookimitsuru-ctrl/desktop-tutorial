@@ -13,6 +13,7 @@ var _bgm_b: AudioStreamPlayer
 var _bgm_id := ""
 var _voice: Array[AudioStreamPlayer] = []
 var _ann: AudioStreamPlayer
+var _ann_queue: Array[AudioStream] = []
 var _duck := 0.0
 
 
@@ -99,10 +100,15 @@ func voice(char_id: String, kind: String, player: int) -> void:
 	p.play()
 
 
-func announce(id: String) -> void:
+## アナウンス。queue = true なら再生中の声が終わってから続けて流す（例: "K.O." → "Perfect"）
+func announce(id: String, queue: bool = false) -> void:
 	var s := _stream("res://assets/audio/announcer/%s.wav" % id)
 	if s == null:
 		return
+	if queue and _ann.playing:
+		_ann_queue.append(s)
+		return
+	_ann_queue.clear()
 	_ann.stream = s
 	_ann.play()
 	duck(0.6)
@@ -142,6 +148,10 @@ func duck(amount: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if not _ann_queue.is_empty() and not _ann.playing:
+		_ann.stream = _ann_queue.pop_front()
+		_ann.play()
+		duck(0.6)
 	var bi := AudioServer.get_bus_index("BGM")
 	if bi < 0:
 		return

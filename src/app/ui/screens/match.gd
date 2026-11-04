@@ -422,7 +422,7 @@ func _on_round_end(e: Dictionary) -> void:
 	hud.announce(txt, "PERFECT" if bool(e["perfect"]) else "", 1.6, UITheme.ACCENT if reason == SE.END_KO else UITheme.TEXT)
 	AudioHub.announce(ann)
 	if bool(e["perfect"]):
-		AudioHub.announce("perfect")
+		AudioHub.announce("perfect", true)
 	if reason == SE.END_KO:
 		_slow = 45
 		_slow_div = 3
