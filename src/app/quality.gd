@@ -48,7 +48,9 @@ static func apply_viewport(vp: Viewport, preset: int) -> void:
 	var s := float(scales[clampi(preset, 0, 3)]) if rs <= 0 else rs / 100.0
 	if bool(Settings.g("power_save")):
 		s = 0.6
-	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if s < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR
+	# FSR は Forward+ のみ。Mobile / Compatibility レンダラーでは双線形で拡大する
+	var forward_plus := RenderingServer.get_current_rendering_method() == "forward_plus"
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if (s < 0.99 and forward_plus) else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.scaling_3d_scale = s
 	vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_4X][clampi(preset, 0, 3)]
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if preset == 0 else Viewport.SCREEN_SPACE_AA_DISABLED

@@ -90,6 +90,12 @@ jobs:
       - name: Tests
         run: ~/godot/godot --headless --path . -s res://tests/run_tests.gd
 
+      - name: UI smoke (every screen, CPU matches on every stage)
+        run: |
+          ~/godot/godot --headless --path . res://tools/validate/ui_smoke.tscn 2>&1 | tee ui_smoke.log
+          grep -q "ui_smoke: [0-9]* screen(s) visited" ui_smoke.log
+          if grep -E "SCRIPT ERROR|^ERROR:|^WARNING:" ui_smoke.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::UI smoke でエラーが出ました"; exit 1; fi
+
       - name: Combo routes (combos.json) still work
         run: ~/godot/godot --headless --path . -s res://tools/validate/combo_search.gd -- --verify
 

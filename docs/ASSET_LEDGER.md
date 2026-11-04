@@ -17,3 +17,4 @@
 | `assets/ui/icon*.png` | texture | 自作（`assets/ui/icon.svg` から書き出し） | 自作 | 2026-11-04 | — | 不要 |
 | `assets/ui/icon.svg` | texture | 自作 | 自作 | 2026-11-04 | — | 不要 |
 | `assets/ui/theme.tres` | other | 自作（Godot の Theme リソース） | 自作 | 2026-11-04 | — | 不要 |
+| `assets/audio/ambience/*.ogg` | sfx | 自作（`tools/audio/gen_ambience.py`: 雑音の帯域整形・揺らぎ・粒の合成でループを作成） | 自作 | 2026-11-04 | ループ化（末尾を先頭へクロスフェード） | 不要 |

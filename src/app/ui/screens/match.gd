@@ -120,6 +120,7 @@ func _ready() -> void:
 	elif mode == Game.Mode.ARCADE or mode == Game.Mode.SURVIVAL or mode == Game.Mode.TIME_ATTACK:
 		mode_ctrl = null
 	AudioHub.bgm(String(DataDB.stage_json(g.stage).get("audio", {}).get("bgm", "bgm_arena")))
+	AudioHub.ambience(String(DataDB.stage_json(g.stage).get("audio", {}).get("ambience", "")))
 	_last_usec = Time.get_ticks_usec()
 	for i3: int in range(2):
 		fighters[i3].sync(world, i3, 0.0)
@@ -362,6 +363,9 @@ func _on_event(e: Dictionary) -> void:
 			AudioHub.voice(world.chars[wpl].id, "win", wpl)
 		"match_end":
 			_ended = true
+			var mw := int(e.get("winner", -1))
+			if (mw == 0 or mw == 1) and not training:
+				AudioHub.announce("win_" + world.chars[mw].id, true)
 			_end_timer = 1.6
 	if mode_ctrl != null and mode_ctrl.has_method("on_event"):
 		mode_ctrl.call("on_event", e)
@@ -490,6 +494,7 @@ func _toggle_pause() -> void:
 
 
 func _exit_tree() -> void:
+	AudioHub.stop_ambience()
 	if InputHub.pause_requested.is_connected(_on_pause_request):
 		InputHub.pause_requested.disconnect(_on_pause_request)
 

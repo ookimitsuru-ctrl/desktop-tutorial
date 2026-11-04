@@ -12,6 +12,8 @@ var _bgm: AudioStreamPlayer
 var _bgm_b: AudioStreamPlayer
 var _bgm_id := ""
 var _voice: Array[AudioStreamPlayer] = []
+var _amb: AudioStreamPlayer
+var _amb_id := ""
 var _ann: AudioStreamPlayer
 var _ann_queue: Array[AudioStream] = []
 var _duck := 0.0
@@ -39,6 +41,9 @@ func _ready() -> void:
 	_ann = AudioStreamPlayer.new()
 	_ann.bus = "Announcer"
 	add_child(_ann)
+	_amb = AudioStreamPlayer.new()
+	_amb.bus = "Ambience"
+	add_child(_amb)
 	Settings.apply_audio()
 
 
@@ -132,6 +137,30 @@ func bgm(id: String, fade: float = 0.6) -> void:
 		var tw2 := create_tween()
 		tw2.tween_property(old, "volume_db", -40.0, fade)
 		tw2.tween_callback(old.stop)
+
+
+## ステージの環境音（ループ）。id が空なら止める
+func ambience(id: String, fade: float = 1.0) -> void:
+	if id == _amb_id and _amb.playing:
+		return
+	_amb_id = id
+	var s := _stream("res://assets/audio/ambience/%s.ogg" % id) if id != "" else null
+	if s == null:
+		stop_ambience(fade)
+		return
+	_amb.stream = s
+	_amb.volume_db = -40.0
+	_amb.play()
+	var tw := create_tween()
+	tw.tween_property(_amb, "volume_db", -6.0, fade)
+
+
+func stop_ambience(fade: float = 0.6) -> void:
+	_amb_id = ""
+	if _amb.playing:
+		var tw := create_tween()
+		tw.tween_property(_amb, "volume_db", -40.0, fade)
+		tw.tween_callback(_amb.stop)
 
 
 func stop_bgm(fade: float = 0.5) -> void:

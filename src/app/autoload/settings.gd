@@ -80,7 +80,7 @@ func s(key: String, value: Variant) -> void:
 
 
 func apply_audio() -> void:
-	for pair: Array in [["Master", "vol_master"], ["BGM", "vol_bgm"], ["SFX", "vol_sfx"], ["Voice", "vol_voice"], ["Announcer", "vol_announcer"]]:
+	for pair: Array in [["Master", "vol_master"], ["BGM", "vol_bgm"], ["SFX", "vol_sfx"], ["Voice", "vol_voice"], ["Announcer", "vol_announcer"], ["Ambience", "vol_sfx"]]:
 		var idx := AudioServer.get_bus_index(String(pair[0]))
 		if idx >= 0:
 			var v := float(g(String(pair[1]))) / 100.0
