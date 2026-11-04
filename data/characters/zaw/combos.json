@@ -24,11 +24,11 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 193,
+      "expected_damage": 189,
       "id": "zaw_c_wsp_2_1",
       "route": [
         "zaw_wsp",
-        "zaw_3k"
+        "zaw_k"
       ],
       "starter": "zaw_wsp",
       "timing": [

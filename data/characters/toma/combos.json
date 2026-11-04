@@ -3,33 +3,36 @@
   "combos": [
     {
       "context": "launch",
-      "difficulty": 1,
-      "expected_damage": 239,
-      "id": "toma_c_9k_2_1",
+      "difficulty": 2,
+      "expected_damage": 354,
+      "id": "toma_c_9k_4_1",
       "route": [
         "toma_9k",
-        "toma_6pk"
+        "toma_9k",
+        "toma_9k",
+        "toma_6p"
       ],
       "starter": "toma_9k",
       "timing": [
         0,
-        54
+        54,
+        52,
+        52
       ],
       "wall": false,
       "weight_classes": [
         "light",
-        "middle",
-        "heavy"
+        "middle"
       ]
     },
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 193,
+      "expected_damage": 176,
       "id": "toma_c_wsp_2_1",
       "route": [
         "toma_wsp",
-        "toma_3k"
+        "toma_k"
       ],
       "starter": "toma_wsp",
       "timing": [

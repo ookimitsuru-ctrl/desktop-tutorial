@@ -4,7 +4,7 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 226,
+      "expected_damage": 204,
       "id": "bjorn_c_wsp_3_1",
       "route": [
         "bjorn_wsp",
@@ -26,7 +26,7 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 216,
+      "expected_damage": 194,
       "id": "bjorn_c_3p_3_1",
       "route": [
         "bjorn_3p",
@@ -48,7 +48,7 @@
     {
       "context": "wall",
       "difficulty": 4,
-      "expected_damage": 265,
+      "expected_damage": 240,
       "id": "bjorn_c_kg_6_1",
       "route": [
         "bjorn_kg",

@@ -11,13 +11,14 @@ func _init() -> void:
 	var a := OS.get_cmdline_user_args()
 	var per := int(a[0]) if a.size() > 0 else 6
 	var lv := int(a[1]) if a.size() > 1 else 7
+	var seed_base := int(a[2]) if a.size() > 2 else 1000
 	var wins := {}
 	var games := {}
 	var total_w := {}
 	var total_g := {}
 	var frames := 0
 	var t0 := Time.get_ticks_msec()
-	var seed_value := 1000
+	var seed_value := seed_base
 	for i: int in range(IDS.size()):
 		for j: int in range(IDS.size()):
 			if i == j:

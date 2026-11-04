@@ -4,7 +4,7 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 176,
+      "expected_damage": 194,
       "id": "gensai_c_3p_2_1",
       "route": [
         "gensai_3p",
@@ -24,7 +24,7 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 176,
+      "expected_damage": 194,
       "id": "gensai_c_wsp_2_1",
       "route": [
         "gensai_wsp",
@@ -44,7 +44,7 @@
     {
       "context": "wall",
       "difficulty": 1,
-      "expected_damage": 184,
+      "expected_damage": 199,
       "id": "gensai_c_6pk_3_1",
       "route": [
         "gensai_6pk",

@@ -24,7 +24,7 @@
   "physics": {
     "push_radius": "0.26",
     "float_factor": "0.94",
-    "hurt_mul": "0.95",
+    "hurt_mul": "0.98",
     "throw_range": "0.85"
   },
   "movement": {

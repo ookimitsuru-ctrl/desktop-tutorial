@@ -4,7 +4,7 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 162,
+      "expected_damage": 199,
       "id": "mariel_c_wsp_2_1",
       "route": [
         "mariel_wsp",
@@ -24,11 +24,11 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 153,
+      "expected_damage": 182,
       "id": "mariel_c_wsp_2_2",
       "route": [
         "mariel_wsp",
-        "mariel_6k"
+        "mariel_k"
       ],
       "starter": "mariel_wsp",
       "timing": [
@@ -44,7 +44,7 @@
     {
       "context": "wall",
       "difficulty": 2,
-      "expected_damage": 191,
+      "expected_damage": 231,
       "id": "mariel_c_4k_4_1",
       "route": [
         "mariel_4k",

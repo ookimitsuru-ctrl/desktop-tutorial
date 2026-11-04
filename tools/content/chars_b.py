@@ -8,20 +8,20 @@ HL, HH, ML, MH, LO = "high_light", "high_heavy", "mid_light", "mid_heavy", "low"
 def mariel():
     c = Char("mariel")
     i = c.id
-    c.S("p", "P", ("ジャブ", "Jab"), "high", "punch", 40, (10, 2, 12), (2, 5, 7), "light", HL,
+    c.S("p", "P", ("ジャブ", "Jab"), "high", "punch", 45, (10, 2, 12), (2, 5, 7), "light", HL,
         A("punch", side="l", h="high", reach=0.60), tags=["jab", "fast_high"],
         chain=[ch(i("pp"), "P", (3, 20), 11)])
-    c.S("pp", "P", ("裏打ち", "Backhand"), "high", "punch", 40, (11, 2, 14), (0, 4, 6), "light", HL,
+    c.S("pp", "P", ("裏打ち", "Backhand"), "high", "punch", 45, (11, 2, 14), (0, 4, 6), "light", HL,
         A("punch", side="r", style="back", h="high", reach=0.60), frm=None,
         chain=[ch(i("ppp"), "P", (3, 22), 12), ch(i("pp2p"), "2P", (3, 22), 13)])
-    c.S("ppp", "P", ("肘打ち", "Elbow"), "mid", "elbow", 50, (12, 2, 16), (-3, 3, 5), "light", ML,
+    c.S("ppp", "P", ("肘打ち", "Elbow"), "mid", "elbow", 55, (12, 2, 16), (-3, 3, 5), "light", ML,
         A("elbow", side="l", style="fwd", h="mid", step=0.10), frm=None, trk="half_left",
         chain=[ch(i("pppp"), "P", (3, 24), 14)])
-    c.S("pppp", "P", ("ハンマー", "Hammerfist"), "mid", "punch", 70, (14, 3, 22), (-8, "KD", "KD"), "heavy", "knockback",
+    c.S("pppp", "P", ("ハンマー", "Hammerfist"), "mid", "punch", 80, (14, 3, 22), (-8, "KD", "KD"), "heavy", "knockback",
         A("punch", side="r", style="hammer", h="mid", reach=0.60, step=0.10), frm=None)
     c.S("pp2p", "2P", ("下段打ち", "Low Strike"), "low", "punch", 40, (14, 2, 18), (-6, 2, 4), "medium", LO,
         A("punch", side="l", h="low", reach=0.60, crouch=0.40, end="crouch"), frm=None, flags=["end_crouch"])
-    c.S("6p", "6P", ("肘突き", "Elbow Thrust"), "mid", "elbow", 60, (13, 2, 15), (1, 4, 6), "light", ML,
+    c.S("6p", "6P", ("肘突き", "Elbow Thrust"), "mid", "elbow", 65, (13, 2, 15), (1, 4, 6), "light", ML,
         A("elbow", side="r", style="fwd", h="mid", step=0.16), tags=["fast_mid", "plus_mid"],
         chain=[ch(i("6pp"), "P", (3, 22), 14)])
     c.S("6pp", "P", ("返しフック", "Return Hook"), "high", "punch", 55, (13, 2, 17), (-4, 3, "KD"), "medium", HL,
@@ -37,10 +37,10 @@ def mariel():
     c.T("trap_k", "K", ("膝裏蹴り崩し", "Knee Break"), 100, "none", "trap_knee", frm=None, length=48, dmgf=24, stage=True, cat="system")
     c.T("trap_pg", "P+G", ("関節極め投げ", "Joint Lock Throw"), 180, "none", "trap_lock", frm=None, length=60, dmgf=40, stage=True,
         end="face", flags=["can_ringout"], cat="system")
-    c.S("2p", "2P", ("下段突き", "Low Punch"), "low", "punch", 35, (11, 2, 13), (-3, 3, 5), "light", LO,
+    c.S("2p", "2P", ("下段突き", "Low Punch"), "low", "punch", 40, (11, 2, 13), (-3, 3, 5), "light", LO,
         A("punch", side="l", h="low", reach=0.58, crouch=0.40, start="crouch", end="crouch"),
         frm=("stand", "crouch"), flags=["end_crouch"], tags=["fast_low"])
-    c.S("wsp", "P", ("突き上げ", "Rising Uppercut"), "mid", "punch", 90, (15, 3, 24), (-12, "LAUNCH", "LAUNCH"), "launch", "launch",
+    c.S("wsp", "P", ("突き上げ", "Rising Uppercut"), "mid", "punch", 100, (15, 3, 24), (-12, "LAUNCH", "LAUNCH"), "launch", "launch",
         A("punch", side="r", style="upper", h="head_high", reach=0.55, step=0.12, start="crouch"), frm=("rise",),
         launch=["0.118", "0.006"], tags=["launcher", "punisher"])
     c.S("wsk", "K", ("膝連打", "Rising Knee"), "mid", "knee", 80, (15, 3, 20), (-6, 4, "STAGGER"), "medium", ML,
@@ -50,21 +50,21 @@ def mariel():
         posture=[[1, 8, "low_profile"]])
     c.S("pk2", "P+K", ("双肘", "Twin Elbows"), "mid", "elbow", 90, (16, 3, 20), (-4, "KD", "KD"), "heavy", "knockback",
         A("elbow", side="l", style="fwd", h="mid", step=0.28), cat="special")
-    c.S("k", "K", ("ハイキック", "High Kick"), "high", "kick", 70, (13, 3, 19), (-4, 4, "KD"), "medium", HH,
+    c.S("k", "K", ("ハイキック", "High Kick"), "high", "kick", 80, (13, 3, 19), (-4, 4, "KD"), "medium", HH,
         A("kick", side="r", style="round", h="high", reach=0.76), trk="half_right", chr="knockback",
         chain=[ch(i("kk"), "K", (3, 28), 17)])
     c.S("kk", "K", ("返しロー", "Return Low Kick"), "low", "kick", 50, (14, 2, 20), (-8, 2, "KD"), "medium", LO,
         A("kick", side="l", style="low", reach=0.74), frm=None, chr="trip")
     c.S("6k", "6K", ("前蹴り", "Front Kick"), "mid", "kick", 75, (15, 3, 18), (-4, 3, 6), "medium", ML,
         A("kick", side="l", style="front", h="mid", reach=0.80))
-    c.S("3k", "3K", ("膝", "Knee"), "mid", "knee", 85, (14, 3, 20), (-6, 4, "LAUNCH"), "medium", ML,
+    c.S("3k", "3K", ("膝", "Knee"), "mid", "knee", 95, (14, 3, 20), (-6, 4, "LAUNCH"), "medium", ML,
         A("kick", side="r", style="knee", h="mid", step=0.26), chr="launch", tags=["ch_launch"])
     c.S("2k", "2K", ("下段蹴り", "Low Kick"), "low", "kick", 40, (13, 2, 16), (-5, 2, 4), "light", LO,
         A("kick", side="l", style="low", reach=0.72, start="crouch", end="crouch"), frm=("stand", "crouch"), flags=["end_crouch"])
-    c.S("1k", "1K", ("刈り蹴り", "Reaping Kick"), "low", "kick", 70, (18, 3, 26), (-14, "KD", "KD"), "heavy", "trip",
+    c.S("1k", "1K", ("刈り蹴り", "Reaping Kick"), "low", "kick", 80, (18, 3, 26), (-14, "KD", "KD"), "heavy", "trip",
         A("kick", side="r", style="sweep", reach=0.84, start="crouch", end="crouch"), frm=("stand", "crouch"),
         trk="half_left", flags=["end_crouch"], tags=["low_kd"])
-    c.S("4k", "4K", ("回転裏蹴り", "Spinning Back Kick"), "mid", "kick", 100, (20, 3, 22), (-8, "KD", "KD"), "heavy", "knockback",
+    c.S("4k", "4K", ("回転裏蹴り", "Spinning Back Kick"), "mid", "kick", 110, (20, 3, 22), (-8, "KD", "KD"), "heavy", "knockback",
         A("kick", side="r", style="back", h="mid", reach=0.80), trk="full", flags=["wall_splat"])
     c.S("evp", "P", ("サイド肘", "Side Elbow"), "mid", "elbow", 70, (13, 2, 17), (-3, 4, 6), "medium", ML,
         A("elbow", side="r", style="fwd", h="mid", step=0.10), frm=("evade",), cat="evade", trk="full")
@@ -87,12 +87,16 @@ def mariel():
     c.side_back_wall_run(side=("側面腕絡み", "Side Arm Wrap", 270, "neck"), back=("背後落とし", "Back Drop", 310, "back"),
                          wall=("壁打ち連打", "Wall Flurry", 290, "wall"), run=("走りタックル", "Running Tackle", 200, "tackle"))
     c.down_attacks(("飛び込み肘", "Diving Elbow"), ("追い打ち", "Down Strike"), d8=100, d2=35)
+    # バランス調整: 打撃ダメージを 8% 上げる（手数型で 1 発が軽すぎたため）
+    for m in c.moves:
+        if m["lv"] not in ("throw", "lthrow", "none", "parry"):
+            m["dmg"] = int(round(m["dmg"] * 1.08 / 5.0)) * 5
     ch_json = {
         "schema_version": 1, "id": "mariel", "name": ["マリエル・サントス", "Mariel Santos"],
         "style": ["カリ／パナントゥカン", "Kali / Panantukan"], "difficulty": 3, "weight_class": "light",
         "body": {"height": "1.63", "shoulder": "0.90", "hip": "1.0", "arm": "0.97", "leg": "1.0", "torso": "0.96",
                  "hair_chain": True, "hair_len": "0.22"},
-        "physics": {"push_radius": "0.27", "float_factor": "0.92", "hurt_mul": "0.95", "throw_range": "0.85"},
+        "physics": {"push_radius": "0.27", "float_factor": "0.96", "hurt_mul": "0.90", "throw_range": "0.85"},
         "movement": {"walk_f": "1.65", "walk_b": "1.35", "dash_f": [17, "1.45"], "dash_b": [19, "1.25"], "run": "4.8", "evade": 20},
         "stance": {"lead": "l", "width": "0.28", "depth": "0.40", "crouch": "0.08", "turn": "26", "guard": "high", "lean": "5"},
         "model": {"build": "lean", "female": True, "skin": "#C99A74", "hair": "short", "face": {"jaw": "0.35", "brow": "0.35", "nose": "0.45"}},
@@ -138,7 +142,7 @@ def adrien():
     c.S("kk", "K", ("フェッテ・ドゥブル", "Double Fouetté"), "high", "kick", 90, (15, 3, 22), (-8, "KD", "KD"), "heavy", "knockback",
         A("kick", side="l", style="round", h="high", reach=0.86), frm=None, trk="half_left")
     c.S("6k", "6K", ("シャッセ・メディアン", "Chassé Médian"), "mid", "kick", 110, (17, 3, 20), (-4, "KD", "KD"), "heavy", "knockback",
-        A("kick", side="l", style="side", h="mid", reach=1.02, step=0.15), push=["0.60", "0.40"], flags=["can_ringout"], tags=["ringout"])
+        A("kick", side="l", style="side", h="mid", reach=1.02, step=0.15), push=["0.45", "0.30"], flags=["can_ringout"], tags=["ringout"])
     c.S("3k", "3K", ("シャッセ・バ", "Chassé Bas"), "low", "kick", 70, (17, 3, 22), (-9, 1, "KD"), "medium", LO,
         A("kick", side="l", style="low", reach=1.00, step=0.10), chr="trip")
     c.S("2k", "2K", ("クー・ド・ピエ・バ", "Coup de Pied Bas"), "low", "kick", 50, (14, 2, 17), (-6, 2, 4), "light", LO,
@@ -165,7 +169,7 @@ def adrien():
         A("punch", side="l", h="high", reach=0.68, step=0.08, end="stand"), frm=("stance",), stance="garde", cat="stance")
     c.S("garde_k", "K", ("シャッセ", "Chassé"), "mid", "kick", 110, (15, 3, 20), (1, "KD", "KD"), "heavy", "knockback",
         A("kick", side="l", style="side", h="mid", reach=1.02, step=0.12), frm=("stance",), stance="garde", cat="stance",
-        push=["0.85", "0.50"], flags=["can_ringout"], tags=["plus_mid", "ringout"])
+        push=["0.60", "0.40"], flags=["can_ringout"], tags=["plus_mid", "ringout"])
     c.S("garde_2k", "2K", ("ガルド・クー・ド・ピエ・バ", "Garde Low Kick"), "low", "kick", 60, (14, 2, 18), (-6, 2, "KD"), "medium", LO,
         A("kick", side="l", style="low", reach=0.86), frm=("stance",), stance="garde", cat="stance", chr="trip")
     c.S("garde_6k", "6K", ("ガルド・フェッテ", "Garde Fouetté"), "high", "kick", 100, (15, 3, 21), (-6, "KD", "KD"), "heavy", "knockback",
@@ -234,25 +238,25 @@ def ravi():
     c.stance_move("pp_lion", "P+K", ("獅子へ", "Into Lion"), "lion", frm=None, f=(1, 1, 8))
     c.S("pk", "K", ("蹴り上げ", "Rising Kick"), "mid", "kick", 80, (15, 3, 20), (-6, 3, 5), "medium", ML,
         A("kick", side="r", style="front", h="mid", reach=0.84), frm=None)
-    c.S("6p", "6P", ("突き掌", "Thrusting Palm"), "mid", "punch", 75, (14, 2, 17), (-3, 4, 6), "medium", ML,
+    c.S("6p", "6P", ("突き掌", "Thrusting Palm"), "mid", "punch", 85, (14, 2, 17), (-3, 4, 6), "medium", ML,
         A("punch", side="r", style="palm", h="mid", reach=0.64, step=0.14), tags=["fast_mid"])
-    c.S("3p", "3P", ("突き上げ", "Uppercut"), "mid", "punch", 95, (16, 3, 24), (-12, "LAUNCH", "LAUNCH"), "launch", "launch",
+    c.S("3p", "3P", ("突き上げ", "Uppercut"), "mid", "punch", 105, (16, 3, 24), (-12, "LAUNCH", "LAUNCH"), "launch", "launch",
         A("punch", side="r", style="upper", h="head_high", reach=0.55, step=0.12), tags=["launcher"], launch=["0.115", "0.006"])
     c.S("2p", "2P", ("下段突き", "Low Punch"), "low", "punch", 40, (11, 2, 14), (-4, 3, 5), "light", LO,
         A("punch", side="l", h="low", reach=0.60, crouch=0.40, start="crouch", end="crouch"),
         frm=("stand", "crouch"), flags=["end_crouch"], tags=["fast_low"])
-    c.S("wsp", "P", ("蛇昇", "Rising Serpent"), "mid", "punch", 100, (14, 3, 25), (-13, "LAUNCH", "LAUNCH"), "launch", "launch",
+    c.S("wsp", "P", ("蛇昇", "Rising Serpent"), "mid", "punch", 110, (14, 3, 25), (-13, "LAUNCH", "LAUNCH"), "launch", "launch",
         A("punch", side="r", style="upper", h="head_high", reach=0.55, step=0.12, start="crouch"), frm=("rise",),
         launch=["0.118", "0.006"], tags=["launcher", "punisher"])
-    c.S("k", "K", ("蹴り上げ", "Vertical Kick"), "high", "kick", 90, (14, 3, 20), (-5, 4, "KD"), "medium", HH,
+    c.S("k", "K", ("蹴り上げ", "Vertical Kick"), "high", "kick", 100, (14, 3, 20), (-5, 4, "KD"), "medium", HH,
         A("kick", side="r", style="front", h="1.62", reach=0.70), chr="knockback")
-    c.S("6k", "6K", ("前蹴り", "Front Kick"), "mid", "kick", 85, (15, 3, 18), (-4, 3, 6), "medium", ML,
+    c.S("6k", "6K", ("前蹴り", "Front Kick"), "mid", "kick", 95, (15, 3, 18), (-4, 3, 6), "medium", ML,
         A("kick", side="l", style="front", h="mid", reach=0.86))
-    c.S("3k", "3K", ("弧蹴り", "Arc Kick"), "mid", "kick", 105, (17, 3, 21), (-6, 4, "STAGGER"), "medium", MH,
+    c.S("3k", "3K", ("弧蹴り", "Arc Kick"), "mid", "kick", 115, (17, 3, 21), (-6, 4, "STAGGER"), "medium", MH,
         A("kick", side="l", style="round", h="mid", reach=0.82), trk="half_left", chr="stagger_gut", tags=["ch_stagger"])
     c.S("2k", "2K", ("下段蹴り", "Low Kick"), "low", "kick", 45, (14, 2, 17), (-6, 2, 4), "light", LO,
         A("kick", side="l", style="low", reach=0.78, start="crouch", end="crouch"), frm=("stand", "crouch"), flags=["end_crouch"])
-    c.S("1k", "1K", ("地這い払い", "Ground Sweep"), "low", "kick", 80, (19, 3, 26), (-15, "KD", "KD"), "heavy", "trip",
+    c.S("1k", "1K", ("地這い払い", "Ground Sweep"), "low", "kick", 90, (19, 3, 26), (-15, "KD", "KD"), "heavy", "trip",
         A("kick", side="r", style="sweep", reach=0.94, start="crouch", end="crouch"), frm=("stand", "crouch"),
         trk="full", flags=["end_crouch"], tags=["low_kd"])
     c.S("4k", "4K", ("後方宙返り蹴り", "Backflip Kick"), "mid", "kick", 120, (18, 4, 28), (-12, "LAUNCH", "LAUNCH"), "launch", "launch",
@@ -317,7 +321,7 @@ def ravi():
         "schema_version": 1, "id": "ravi", "name": ["ラヴィ・ナーヤル", "Ravi Nair"], "style": ["カラリパヤット", "Kalaripayattu"],
         "difficulty": 5, "weight_class": "middle",
         "body": {"height": "1.75", "shoulder": "0.98", "hip": "0.98", "arm": "1.0", "leg": "1.02", "torso": "0.98", "sash_chain": True},
-        "physics": {"push_radius": "0.29", "float_factor": "0.98", "hurt_mul": "1.00", "throw_range": "0.90"},
+        "physics": {"push_radius": "0.29", "float_factor": "0.98", "hurt_mul": "0.94", "throw_range": "0.90"},
         "movement": {"walk_f": "1.40", "walk_b": "1.20", "dash_f": [19, "1.30"], "dash_b": [20, "1.15"], "run": "4.5", "evade": 22},
         "stance": {"lead": "l", "width": "0.32", "depth": "0.50", "crouch": "0.14", "turn": "30", "guard": "open", "lean": "8"},
         "stances": [
@@ -355,14 +359,14 @@ def gensai():
     c.S("p", "P", ("当身突き", "Vital Strike"), "high", "punch", 50, (10, 2, 13), (1, 4, 6), "light", HL,
         A("punch", side="l", style="spear", h="high", reach=0.60), tags=["jab", "fast_high"],
         chain=[ch(i("pp"), "P", (3, 24), 13), ch(i("pk"), "K", (3, 24), 14)])
-    c.S("pp", "P", ("手刀", "Knife Hand"), "mid", "punch", 70, (15, 3, 20), (-6, 3, "STAGGER"), "medium", ML,
+    c.S("pp", "P", ("手刀", "Knife Hand"), "mid", "punch", 75, (15, 3, 20), (-6, 3, "STAGGER"), "medium", ML,
         A("punch", side="r", style="chop", h="mid", reach=0.60, step=0.08), frm=None, chr="stagger_gut",
         chain=[ch(i("ppp"), "P", (3, 28), 19)])
     c.S("ppp", "P", ("掌底", "Palm Heel"), "mid", "punch", 80, (16, 3, 22), (-8, "KD", "KD"), "heavy", "knockback",
         A("punch", side="l", style="palm", h="mid", reach=0.62, step=0.18), frm=None)
     c.S("pk", "K", ("前蹴り", "Front Kick"), "mid", "kick", 80, (16, 3, 20), (-6, 3, 5), "medium", ML,
         A("kick", side="r", style="front", h="mid", reach=0.80), frm=None)
-    c.S("6p", "6P", ("掌打", "Palm Strike"), "mid", "punch", 80, (14, 3, 18), (-3, 4, "KD"), "medium", ML,
+    c.S("6p", "6P", ("掌打", "Palm Strike"), "mid", "punch", 90, (14, 3, 18), (-3, 4, "KD"), "medium", ML,
         A("punch", side="r", style="palm", h="mid", reach=0.62, step=0.14), chr="knockback", tags=["fast_mid"],
         chain=[ch(i("6pp"), "P", (3, 26), 17)])
     c.S("6pp", "P", ("返し手刀", "Return Knife Hand"), "high", "punch", 60, (13, 2, 18), (-5, 3, "KD"), "medium", HL,
@@ -379,7 +383,7 @@ def gensai():
         launch=["0.118", "0.006"], tags=["launcher", "punisher"])
     c.S("k", "K", ("前蹴り", "Front Kick"), "mid", "kick", 80, (15, 3, 18), (-4, 3, 6), "medium", ML,
         A("kick", side="r", style="front", h="mid", reach=0.80))
-    c.S("3k", "3K", ("膝当て", "Knee Strike"), "mid", "knee", 90, (16, 3, 21), (-6, 4, "STAGGER"), "medium", ML,
+    c.S("3k", "3K", ("膝当て", "Knee Strike"), "mid", "knee", 100, (16, 3, 21), (-6, 4, "STAGGER"), "medium", ML,
         A("kick", side="r", style="knee", h="mid", step=0.26), chr="stagger_gut", tags=["ch_stagger"])
     c.S("2k", "2K", ("足刀払い", "Blade Foot Sweep"), "low", "kick", 60, (15, 2, 18), (-7, 2, "KD"), "medium", LO,
         A("kick", side="l", style="low", reach=0.76, start="crouch", end="crouch"), frm=("stand", "crouch"),
@@ -426,6 +430,10 @@ def gensai():
     c.side_back_wall_run(side=("側面小手返し", "Side Wrist Turn", 280, "flip"), back=("背後崩し", "Rear Collapse", 320, "back"),
                          wall=("壁当て", "Wall Strike", 300, "wall"), run=("走り隅落とし", "Running Corner Drop", 200, "trip"))
     c.down_attacks(("踏み下ろし当身", "Downward Strike"), ("追い当身", "Down Strike"))
+    # バランス調整: 打撃ダメージを 6% 上げる（当て身頼みで打撃が控えめだったため）
+    for m in c.moves:
+        if m["lv"] not in ("throw", "lthrow", "none", "parry"):
+            m["dmg"] = int(round(m["dmg"] * 1.06 / 5.0)) * 5
     ch_json = {
         "schema_version": 1, "id": "gensai", "name": ["鷹司 玄斎", "Gensai Takatsukasa"], "style": ["鷹司流 古流柔術", "Takatsukasa-ryu Jujutsu"],
         "difficulty": 4, "weight_class": "middle",

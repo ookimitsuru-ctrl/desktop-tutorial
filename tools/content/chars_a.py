@@ -167,7 +167,7 @@ def bjorn():
         A("punch", side="r", style="hammer", h="mid", reach=0.70, step=0.30), cat="special", chr="wall_splat", flags=["wall_splat"])
     c.S("66p", "P", ("ラリアット", "Lariat"), "high", "punch", 140, (17, 4, 26), (-11, "KD", "KD"), "heavy", "spin",
         A("punch", side="r", style="hook", h="high", reach=0.70, step=0.55), frm=("dash",), cat="special", trk="half_right")
-    c.S("pk2", "P+K", ("両手押し", "Double Shove"), "mid", "punch", 70, (15, 3, 18), (3, "KD", "KD"), "heavy", "knockback",
+    c.S("pk2", "P+K", ("両手押し", "Double Shove"), "mid", "punch", 70, (15, 3, 18), (2, "KD", "KD"), "heavy", "knockback",
         A("punch", side="r", style="double", h="mid", reach=0.60, step=0.20), cat="special", push=["0.70", "0.45"],
         flags=["can_ringout"], tags=["plus_mid", "ringout"])
     c.S("kg", "K+G", ("ショルダータックル", "Shoulder Tackle"), "mid", "body", 120, (18, 3, 24), (-6, "KD", "WALLSPLAT"), "heavy", "knockback",
@@ -204,8 +204,8 @@ def bjorn():
     c.S("runk", "K", ("走り込み膝", "Running Knee"), "mid", "knee", 130, (15, 4, 28), (-12, "KD", "KD"), "heavy", "knockback",
         A("kick", side="r", style="jump_knee", h="high", step=0.55), frm=("run",), cat="special", posture=[[4, 18, "airborne"]])
     # 投げ
-    c.T("pg", "P+G", ("ボディスラム", "Body Slam"), 270, "N", "slam", length=68, dmgf=44)
-    c.T("6pg", "6P+G", ("正面落とし", "Front Drop"), 290, "6", "over", length=66, dmgf=40, flags=["can_ringout"], tags=["ringout"])
+    c.T("pg", "P+G", ("ボディスラム", "Body Slam"), 250, "N", "slam", length=68, dmgf=44)
+    c.T("6pg", "6P+G", ("正面落とし", "Front Drop"), 270, "6", "over", length=66, dmgf=40, flags=["can_ringout"], tags=["ringout"])
     c.T("4pg", "4P+G", ("投げ捨て", "Toss Away"), 260, "4", "push", length=58, dmgf=36, flags=["can_ringout"], tags=["ringout"])
     c.T("46pg", "46P+G", ("腰抱え", "Waist Lock"), 100, "6", "chain1", length=56, dmgf=24, next_window=20,
         next=[{"to": i("swing"), "in": "4P+G"}, {"to": i("lift"), "in": "P+G"}], tags=["chain_throw"])
@@ -224,11 +224,15 @@ def bjorn():
     c.side_back_wall_run(side=("側面ボディスラム", "Side Slam", 290, "slam"), back=("ジャーマン", "German Suplex", 340, "back"),
                          wall=("壁押し潰し", "Wall Crush", 320, "wall"), run=("走りタックル", "Running Tackle", 230, "tackle"))
     c.down_attacks(("エルボードロップ", "Elbow Drop"), ("踏みつけ", "Stomp"), d8=120, d2=45)
+    # バランス調整: 打撃ダメージを 1 割下げる（投げの化身なので打撃は控えめ）
+    for m in c.moves:
+        if m["lv"] not in ("throw", "lthrow", "none", "parry"):
+            m["dmg"] = int(round(m["dmg"] * 0.9 / 5.0)) * 5
     ch_json = {
         "schema_version": 1, "id": "bjorn", "name": ["ビョルン・ハルヴォルセン", "Bjorn Halvorsen"],
         "style": ["グレコローマン・レスリング", "Greco-Roman Wrestling"], "difficulty": 4, "weight_class": "heavy",
         "body": {"height": "1.96", "shoulder": "1.18", "hip": "1.08", "arm": "1.02", "leg": "0.98", "torso": "1.06"},
-        "physics": {"push_radius": "0.34", "float_factor": "1.10", "hurt_mul": "1.08", "throw_range": "1.05"},
+        "physics": {"push_radius": "0.34", "float_factor": "1.10", "hurt_mul": "1.16", "throw_range": "1.05"},
         "movement": {"walk_f": "1.30", "walk_b": "1.05", "dash_f": [20, "1.20"], "dash_b": [22, "0.90"], "run": "4.2", "evade": 24},
         "stance": {"lead": "l", "width": "0.36", "depth": "0.40", "crouch": "0.10", "turn": "18", "guard": "wide", "lean": "12"},
         "model": {"build": "heavy", "skin": "#E8C2A8", "hair": "short", "beard": "braided", "face": {"jaw": "0.85", "brow": "0.75", "nose": "0.65"}},
@@ -262,7 +266,7 @@ def zaw():
         A("kick", side="r", style="knee", h="mid", step=0.26), frm=None, launch=["0.105", "0.005"])
     c.S("pk", "K", ("中段回し蹴り", "Mid Roundhouse"), "mid", "kick", 90, (16, 3, 21), (-7, 4, 6), "medium", MH,
         A("kick", side="r", style="round", h="mid", reach=0.82), frm=None, trk="half_right")
-    c.S("6p", "6P", ("縦肘", "Vertical Elbow"), "mid", "elbow", 90, (14, 3, 18), (-3, 4, "STAGGER"), "medium", ML,
+    c.S("6p", "6P", ("縦肘", "Vertical Elbow"), "mid", "elbow", 95, (14, 3, 18), (-3, 4, "STAGGER"), "medium", ML,
         A("elbow", side="r", style="down", h="mid", step=0.16), chr="stagger_gut", tags=["fast_mid", "ch_stagger"],
         chain=[ch(i("6pp"), "P", (3, 26), 16)])
     c.S("6pp", "P", ("返し肘", "Return Elbow"), "mid", "elbow", 70, (14, 2, 20), (-6, 3, 5), "medium", ML,
@@ -283,11 +287,11 @@ def zaw():
         A("headbutt", step=0.65), frm=("dash",), cat="special", chr="wall_splat", flags=["wall_splat"])
     c.S("pk2", "P+K", ("ダブル肘", "Double Elbow"), "mid", "elbow", 100, (18, 3, 20), (1, 5, "KD"), "heavy", MH,
         A("elbow", side="r", style="down", h="mid", step=0.20), cat="special", chr="knockback", tags=["plus_mid"])
-    c.S("k", "K", ("上段回し蹴り", "High Roundhouse"), "high", "kick", 100, (14, 3, 21), (-5, 4, "KD"), "heavy", HH,
+    c.S("k", "K", ("上段回し蹴り", "High Roundhouse"), "high", "kick", 105, (14, 3, 21), (-5, 4, "KD"), "heavy", HH,
         A("kick", side="r", style="round", h="high", reach=0.80), trk="half_right", chr="knockback")
     c.S("6k", "6K", ("前蹴り", "Teep"), "mid", "kick", 85, (15, 3, 18), (-4, 3, 6), "medium", ML,
         A("kick", side="l", style="push", h="mid", reach=0.86))
-    c.S("3k", "3K", ("ミドルキック", "Middle Kick"), "mid", "kick", 110, (16, 3, 21), (-6, 5, "STAGGER"), "medium", MH,
+    c.S("3k", "3K", ("ミドルキック", "Middle Kick"), "mid", "kick", 115, (16, 3, 21), (-6, 5, "STAGGER"), "medium", MH,
         A("kick", side="r", style="round", h="mid", reach=0.82), trk="half_right", chr="stagger_gut", stagger=40, tags=["ch_stagger"])
     c.S("2k", "2K", ("ローキック", "Low Kick"), "low", "kick", 60, (15, 2, 18), (-7, 2, 4), "medium", LO,
         A("kick", side="r", style="low", reach=0.80), trk="half_right")
@@ -342,7 +346,7 @@ def zaw():
         "schema_version": 1, "id": "zaw", "name": ["ゾー・ミン", "Zaw Min"], "style": ["ラウェイ", "Lethwei"],
         "difficulty": 2, "weight_class": "middle",
         "body": {"height": "1.72", "shoulder": "1.02", "hip": "0.98", "arm": "1.0", "leg": "0.98", "torso": "1.0"},
-        "physics": {"push_radius": "0.30", "float_factor": "1.00", "hurt_mul": "1.00", "throw_range": "0.90"},
+        "physics": {"push_radius": "0.30", "float_factor": "1.00", "hurt_mul": "0.97", "throw_range": "0.90"},
         "movement": {"walk_f": "1.50", "walk_b": "1.20", "dash_f": [18, "1.35"], "dash_b": [20, "1.05"], "run": "4.5", "evade": 22},
         "stance": {"lead": "l", "width": "0.30", "depth": "0.38", "crouch": "0.06", "turn": "22", "guard": "high", "lean": "4"},
         "model": {"build": "lean", "skin": "#B9855E", "hair": "buzz", "face": {"jaw": "0.65", "brow": "0.7", "nose": "0.55"}},
@@ -375,7 +379,7 @@ def yuelan():
         A("punch", side="l", h="mid", reach=0.64, step=0.22), frm=None)
     c.S("pk", "K", ("中段蹴り", "Mid Kick"), "mid", "kick", 75, (15, 3, 20), (-6, 3, 5), "medium", ML,
         A("kick", side="r", style="front", h="mid", reach=0.80), frm=None)
-    c.S("6p", "6P", ("崩拳", "Crushing Fist"), "mid", "punch", 90, (13, 3, 17), (-2, 5, "KD"), "medium", MH,
+    c.S("6p", "6P", ("崩拳", "Crushing Fist"), "mid", "punch", 80, (13, 3, 17), (-2, 5, "KD"), "medium", MH,
         A("punch", side="r", h="mid", reach=0.64, step=0.24), chr="knockback", tags=["fast_mid"],
         chain=[ch(i("6pp"), "P", (3, 26), 17, just=16, just_to=i("6pp_j"))])
     c.S("6pp", "P", ("連環崩拳", "Linked Crushing Fist"), "mid", "punch", 100, (14, 3, 20), (-6, "KD", "KD"), "heavy", "knockback",
@@ -389,7 +393,7 @@ def yuelan():
     c.S("2p", "2P", ("下段突き", "Low Punch"), "low", "punch", 40, (11, 2, 14), (-4, 3, 5), "light", LO,
         A("punch", side="l", h="low", reach=0.58, crouch=0.40, start="crouch", end="crouch"),
         frm=("stand", "crouch"), flags=["end_crouch"], tags=["fast_low"])
-    c.S("46p", "46P", ("炮拳", "Cannon Fist"), "mid", "punch", 140, (18, 3, 22), (-5, "KD", "WALLSPLAT"), "heavy", "knockback",
+    c.S("46p", "46P", ("炮拳", "Cannon Fist"), "mid", "punch", 130, (18, 3, 22), (-5, "KD", "WALLSPLAT"), "heavy", "knockback",
         A("punch", side="r", style="double", h="mid", reach=0.62, step=0.30), cat="special", chr="wall_splat", flags=["wall_splat"])
     c.S("46pk", "46P+K", ("劈拳", "Splitting Fist"), "mid", "punch", 150, (22, 3, 22), (3, "KD", "KD"), "heavy", "trip",
         A("punch", side="r", style="hammer", h="mid", reach=0.66, step=0.30), cat="special", tags=["plus_mid"])
@@ -415,7 +419,7 @@ def yuelan():
         trk="half_right", flags=["end_crouch"], posture=[[1, 18, "low_profile"]], tags=["low_kd"])
     c.S("4k", "4K", ("鷂形・回し蹴り", "Sparrowhawk Spin Kick"), "high", "kick", 110, (21, 4, 24), (-10, "KD", "KD"), "heavy", "spin",
         A("kick", side="r", style="spin", h="high", reach=0.78), trk="full")
-    c.S("pk2", "P+K", ("馬形・双拳", "Horse Twin Fists"), "mid", "punch", 120, (17, 3, 22), (-4, "KD", "KD"), "heavy", "knockback",
+    c.S("pk2", "P+K", ("馬形・双拳", "Horse Twin Fists"), "mid", "punch", 110, (17, 3, 22), (-4, "KD", "KD"), "heavy", "knockback",
         A("punch", side="r", style="double", h="mid", reach=0.60, step=0.25), cat="special", flags=["can_ringout"])
     c.S("kg", "K+G", ("鶴形・踵", "Crane Heel"), "mid", "kick", 110, (23, 3, 22), (1, "KD", "KD"), "heavy", "trip",
         A("kick", side="r", style="axe", h="mid", reach=0.72, step=0.12), cat="special")
@@ -444,7 +448,7 @@ def yuelan():
         "difficulty": 4, "weight_class": "light",
         "body": {"height": "1.60", "shoulder": "0.88", "hip": "1.02", "arm": "0.96", "leg": "1.0", "torso": "0.96",
                  "hair_chain": True, "hair_len": "0.32"},
-        "physics": {"push_radius": "0.26", "float_factor": "0.94", "hurt_mul": "0.95", "throw_range": "0.85"},
+        "physics": {"push_radius": "0.26", "float_factor": "0.94", "hurt_mul": "0.98", "throw_range": "0.85"},
         "movement": {"walk_f": "1.45", "walk_b": "1.20", "dash_f": [18, "1.60"], "dash_b": [20, "1.10"], "run": "4.6", "evade": 22},
         "stance": {"lead": "l", "width": "0.22", "depth": "0.52", "crouch": "0.12", "turn": "40", "guard": "open", "lean": "10"},
         "model": {"build": "slim", "female": True, "skin": "#EED3BC", "hair": "braid", "face": {"jaw": "0.3", "brow": "0.3", "nose": "0.35"}},
