@@ -1,5 +1,7 @@
-# Welcome to GitHub Desktop!
+# RINGBOUND（仮題）
 
-This is your README. READMEs are where you can communicate what your project is and how to use it.
+Android 向けのオリジナル 3D 対戦格闘ゲーム。P・K・G の3ボタン、上中下段、投げ、横移動、リングアウト、フレーム単位の有利不利で戦う、正統派の 3D 格闘ゲームを目指す。
 
-Write your name on line 6, save it, and then head back to GitHub Desktop.
+- 開発指示書（仕様書一式）: [`docs/spec/README.md`](docs/spec/README.md)
+- エンジン: Godot 4.5 系（GDScript）／ 対象: Android 10 以上・横画面・60fps
+- 現在の状態: 指示書 v1.0 完成、実装はマイルストーン M0（基盤構築）から開始する（[ロードマップ](docs/spec/16_roadmap.md)）
