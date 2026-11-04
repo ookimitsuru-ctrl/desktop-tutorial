@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "gensai",
+  "profile": {
+    "age": "72",
+    "origin": [
+      "日本・京都",
+      "Kyoto, Japan"
+    ],
+    "size": "165cm / 60kg",
+    "bio": [
+      "飄々として慇懃、底知れない老師。環財団の相談役にして大会の「最後の壁」。",
+      "Unflappable, courteous and unfathomable. Advisor to the Tamaki Foundation and the tournament's last wall."
+    ]
+  },
   "opening": [
     "環財団の相談役、鷹司 玄斎。七十二歳。大会の「最後の壁」として、半世紀にわたり挑戦者を退けてきた。\n今年、彼は初めて自らトーナメントの組み合わせに名を連ねた。\n「若い者の拳を、この身で確かめておきたくなってのう」\n黒い羽織が嵐の風に翻る。老人は静かに、最初の挑戦者を待った。",
     "Gensai Takatsukasa, 72, advisor to the Tamaki Foundation. For half a century he has stood as the tournament's 'last wall.'\nThis year, for the first time, he put his own name into the bracket.\n\"I wanted to feel the young ones' fists with my own body.\"\nHis black haori snapped in the storm wind as the old man quietly awaited his first challenger."

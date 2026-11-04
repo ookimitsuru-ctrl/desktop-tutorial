@@ -1,0 +1,75 @@
+{
+  "character": "lena",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 166,
+      "id": "lena_c_wsp_2_1",
+      "route": [
+        "lena_wsp",
+        "lena_3k"
+      ],
+      "starter": "lena_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 162,
+      "id": "lena_c_wsp_2_2",
+      "route": [
+        "lena_wsp",
+        "lena_6k"
+      ],
+      "starter": "lena_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 4,
+      "expected_damage": 198,
+      "id": "lena_c_6k_6_1",
+      "route": [
+        "lena_6k",
+        "lena_3pk",
+        "lena_3p",
+        "lena_2p",
+        "lena_3p",
+        "lena_2p"
+      ],
+      "starter": "lena_6k",
+      "timing": [
+        0,
+        45,
+        45,
+        42,
+        42,
+        42
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

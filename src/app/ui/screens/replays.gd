@@ -27,10 +27,16 @@ func build() -> void:
 		var txt := "%s   %s vs %s   %s" % [String(h.get("date", "")).replace("T", " "), DataDB.char_name(String(chars[0])), DataDB.char_name(String(chars[1])), DataDB.pick(DataDB.stage_json(String(h.get("stage", "arena"))).get("name", ["", ""]))]
 		if not ok:
 			txt += "  (" + DataDB.t("replay_old") + ")"
-		var b := UITheme.button(txt, _play.bind(p, h), r.size.x - 60)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		vb.add_child(row)
+		var b := UITheme.button(txt, _play.bind(p, h), r.size.x - 230)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.disabled = not ok
-		vb.add_child(b)
+		row.add_child(b)
+		if not p.get_file().begins_with("fav_"):
+			var kb := UITheme.button(DataDB.t("replay_keep"), _keep.bind(p), 150)
+			row.add_child(kb)
 	focus_first(vb)
 
 
@@ -50,3 +56,15 @@ func _play(p: String, h: Dictionary) -> void:
 	Game.round_seconds = int(h.get("round_seconds", 45))
 	Game.ringout = bool(h.get("ringout", true))
 	SceneRouter.goto("match", {"mode": Game.Mode.REPLAY})
+
+
+## 自動削除の対象外にする（ファイル名に fav_ を付ける）
+func _keep(p: String) -> void:
+	var np := p.get_base_dir() + "/fav_" + p.get_file()
+	if DirAccess.rename_absolute(p, np) == OK:
+		SaveData.add_stat("replays_saved")
+		for a_id: String in Progress.check():
+			SceneRouter.toast(DataDB.t("achievement_unlocked") % Progress.achievement_name(a_id))
+		SaveData.save_profile()
+		SceneRouter.toast(DataDB.t("replay_kept"), 1.5)
+		SceneRouter.goto("replays", {}, 0.0)

@@ -62,3 +62,38 @@ func back() -> void:
 	var keep := history.duplicate()
 	await goto(prev)
 	history = keep
+
+
+## 画面上部に短い通知を出す（実績解除など）。複数あれば縦に並べる
+var _toasts: Array[Control] = []
+
+
+func toast(text: String, seconds: float = 3.2) -> void:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.07, 0.11, 0.92)
+	sb.border_color = UITheme.GOLD
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := UITheme.label(text, 22, "bold", UITheme.GOLD)
+	pc.add_child(l)
+	_layer.add_child(pc)
+	_toasts.append(pc)
+	var vs := get_viewport().get_visible_rect().size
+	pc.reset_size()
+	pc.position = Vector2((vs.x - pc.size.x) * 0.5, 16 + 56 * (_toasts.size() - 1))
+	pc.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(pc, "modulate:a", 1.0, 0.2)
+	tw.tween_interval(seconds)
+	tw.tween_property(pc, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(func() -> void:
+		_toasts.erase(pc)
+		pc.queue_free())
+	AudioHub.sfx("just", -6.0, 0.0)

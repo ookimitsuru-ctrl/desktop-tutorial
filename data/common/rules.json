@@ -11,7 +11,7 @@
   "throw": {"whiff_recovery": 20, "escape_before": 8, "escape_after": 7, "post_stun_protect": 2, "escape_advantage": 2},
   "counter": {"damage_num": 5, "damage_den": 4, "default_extra_adv": 3},
   "hitstop": {"hit": [6, 8, 11, 10], "block": [5, 6, 8, 7], "ch_bonus": 3, "finisher": 20},
-  "juggle": {"gravity": "0.0065", "relaunch_num": 86, "relaunch_den": 100, "gravity_add_pct": 5, "max_air_hits": 8,
+  "juggle": {"gravity": "0.0065", "relaunch_num": 88, "relaunch_den": 100, "gravity_add_pct": 5, "launch_gravity_pct": 62, "launch_vy_pct": 85, "juggle_vy": "0.072", "air_hurt_bonus": "0.15", "max_air_hits": 8,
              "scaling_pct": [100, 85, 70, 60, 50], "wall_pct": 80},
   "stagger": {"max_reduction_pct": 50},
   "tech": {"window_before": 4, "window_after": 5, "invuln_frames": 10},

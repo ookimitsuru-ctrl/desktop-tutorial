@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "lena",
+  "profile": {
+    "age": "27",
+    "origin": [
+      "東欧の都市ヴェルスク",
+      "Versk, Eastern Europe"
+    ],
+    "size": "168cm / 55kg",
+    "bio": [
+      "冷静で皮肉屋、仕事には誠実。呼吸を乱さない元要人警護官。",
+      "Calm, sardonic and dependable. A former VIP bodyguard who never loses her breath."
+    ]
+  },
   "opening": [
     "元要人警護官、レナ・ヴォルコワ。今はフリーの護衛として、危険な依頼だけを選んで受けている。\n今回の依頼主は匿名。内容は「環財団が武術家を集める本当の理由を調べろ」。\n潜入の方法はひとつしかない。選手としてリングに上がることだ。\n「力を抜いて。……仕事はいつも通りよ」",
     "Former VIP bodyguard Lena Volkova now works freelance, taking only the dangerous jobs.\nThis client is anonymous. The task: find out why the Tamaki Foundation really gathers martial artists.\nThere's only one way in — step into the ring as a fighter.\n\"Relax. ...Just another job.\""

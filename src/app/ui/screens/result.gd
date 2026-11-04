@@ -7,6 +7,11 @@ var preview: CharPreview
 func build() -> void:
 	var r := safe_rect()
 	var winner := int(params.get("winner", -1))
+	# 戦績・実績（結果画面の構築は 1 試合につき 1 回）
+	var new_ach := Progress.on_match(params)
+	if not bool(Settings.g("unlock_all")):
+		for a_id: String in new_ach:
+			SceneRouter.toast(DataDB.t("achievement_unlocked") % Progress.achievement_name(a_id))
 	var chars: Array = params.get("chars", Game.p_char)
 	var title := DataDB.t("draw")
 	if winner == 0 or winner == 1:

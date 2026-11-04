@@ -1,0 +1,71 @@
+{
+  "character": "mariel",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 162,
+      "id": "mariel_c_wsp_2_1",
+      "route": [
+        "mariel_wsp",
+        "mariel_3k"
+      ],
+      "starter": "mariel_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 153,
+      "id": "mariel_c_wsp_2_2",
+      "route": [
+        "mariel_wsp",
+        "mariel_6k"
+      ],
+      "starter": "mariel_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 2,
+      "expected_damage": 191,
+      "id": "mariel_c_4k_4_1",
+      "route": [
+        "mariel_4k",
+        "mariel_3k",
+        "mariel_3p",
+        "mariel_3p"
+      ],
+      "starter": "mariel_4k",
+      "timing": [
+        0,
+        53,
+        41,
+        42
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

@@ -69,6 +69,10 @@ static func load_rules() -> RulesDef:
 	r.relaunch_num = int(jg["relaunch_num"])
 	r.relaunch_den = int(jg["relaunch_den"])
 	r.gravity_add_pct = int(jg["gravity_add_pct"])
+	r.launch_gravity_pct = int(jg.get("launch_gravity_pct", 100))
+	r.launch_vy_pct = int(jg.get("launch_vy_pct", 100))
+	r.air_hurt_bonus_mm = (fpv(jg.get("air_hurt_bonus", "0")) * 1000) >> 16
+	r.juggle_vy = fpv(jg.get("juggle_vy", "0.055"))
 	r.max_air_hits = int(jg["max_air_hits"])
 	r.scaling_pct = _ints(jg["scaling_pct"])
 	r.wall_scale_pct = int(jg["wall_pct"])

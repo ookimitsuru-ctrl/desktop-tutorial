@@ -18,6 +18,8 @@ func _run(c0: String, c1: String, seed_value: int, kinds: Dictionary) -> SimWorl
 			kinds[k] = int(kinds.get(k, 0)) + 1
 			if k == "move":
 				(moves[int(e["player"])] as Dictionary)[String(e["id"])] = true
+			if k == "hit" and int(e["combo"]) >= 3:
+				kinds["combo3"] = int(kinds.get("combo3", 0)) + 1
 		if w.phase == SE.PH_MATCH_END:
 			break
 	check((moves[0] as Dictionary).size() >= 6, "%s が多様な技を使う (%d)" % [c0, (moves[0] as Dictionary).size()])
@@ -35,3 +37,5 @@ func test_cpu_matches_all_characters() -> void:
 	for k: String in ["hit", "block", "throw", "round_end", "move"]:
 		check(int(kinds.get(k, 0)) > 0, "イベント %s が発生する" % k)
 	check(int(kinds.get("throw_chain", 0)) > 0, "連続投げ・首相撲・トラップの分岐が使われる")
+	check(int(kinds.get("combo3", 0)) > 0, "3 ヒット以上のコンボが出る")
+	print("  combo3=%d throw_chain=%d launch=%d" % [int(kinds.get("combo3", 0)), int(kinds.get("throw_chain", 0)), int(kinds.get("launch", 0))])

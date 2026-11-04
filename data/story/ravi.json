@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "ravi",
+  "profile": {
+    "age": "41",
+    "origin": [
+      "インド・ケーララ州",
+      "Kerala, India"
+    ],
+    "size": "175cm / 70kg",
+    "bio": [
+      "穏やかで哲学的、ユーモアのある師範。伝統医療にも通じる。",
+      "A gentle, philosophical master with a sense of humor, also versed in traditional medicine."
+    ]
+  },
   "opening": [
     "ケーララ州でカラリパヤットの道場を開く師範、ラヴィ・ナーヤル。伝統医療にも通じ、弟子たちに慕われている。\n伝統を「見世物」にしてよいのか——招待状を前に彼は迷った。\nだが弟子たちは言った。「先生の技を、世界に見せてください」\n「獅子も、蛇も、象も、ひとつの体の中にいる。……行こう、外の世界へ」",
     "Ravi Nair, master of a Kalaripayattu school in Kerala, versed in traditional medicine and beloved by his students.\nShould tradition become a spectacle? Facing the invitation, he hesitated.\nBut his students said, \"Show the world your art, master.\"\n\"The lion, the serpent and the elephant all live in one body. ...Let us go out into the world.\""

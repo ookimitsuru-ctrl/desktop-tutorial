@@ -225,9 +225,23 @@ S["gensai"] = {
     ],
 }
 
+
+PROFILE = {
+    "toma": ("23", ["日本・石川県金沢市", "Kanazawa, Ishikawa, Japan"], "178cm / 76kg", ["実直、負けず嫌い、少し不器用。礼を重んじる。父が遺した町道場を守るために戦う。", "Earnest, competitive and a little clumsy, with deep respect for etiquette. Fights to protect the dojo his father left behind."]),
+    "lena": ("27", ["東欧の都市ヴェルスク", "Versk, Eastern Europe"], "168cm / 55kg", ["冷静で皮肉屋、仕事には誠実。呼吸を乱さない元要人警護官。", "Calm, sardonic and dependable. A former VIP bodyguard who never loses her breath."]),
+    "bjorn": ("35", ["ノルウェー・ロフォーテン諸島", "Lofoten Islands, Norway"], "196cm / 118kg", ["豪快で陽気、仲間思いの漁師。元オリンピック候補のレスラー。", "A boisterous, warm-hearted fisherman and former Olympic hopeful in wrestling."]),
+    "zaw": ("29", ["ミャンマー・マンダレー", "Mandalay, Myanmar"], "172cm / 72kg", ["寡黙で誠実、家族思い。戦いの前後に伝統の礼を欠かさない。", "Quiet, honest and devoted to family. Never skips the traditional salute before and after a fight."]),
+    "yuelan": ("20", ["中国・山西省", "Shanxi, China"], "160cm / 50kg", ["生真面目な努力家。褒められると照れる。祖母から形意拳を受け継いだ。", "A serious, hard-working student who gets flustered by praise. Learned Xingyiquan from her grandmother."]),
+    "mariel": ("30", ["フィリピン・セブ島", "Cebu, Philippines"], "163cm / 54kg", ["陽気でおしゃべり、面倒見のいいスタントパフォーマー。家族はカリの道場を営む。", "A cheerful, talkative stunt performer who looks after everyone. Her family runs a Kali school."]),
+    "adrien": ("32", ["フランス・マルセイユ", "Marseille, France"], "188cm / 82kg", ["洒脱で皮肉と冗談を好むが、責任感の強い元消防士。", "Witty and fond of a joke, but a deeply responsible former firefighter."]),
+    "ravi": ("41", ["インド・ケーララ州", "Kerala, India"], "175cm / 70kg", ["穏やかで哲学的、ユーモアのある師範。伝統医療にも通じる。", "A gentle, philosophical master with a sense of humor, also versed in traditional medicine."]),
+    "gensai": ("72", ["日本・京都", "Kyoto, Japan"], "165cm / 60kg", ["飄々として慇懃、底知れない老師。環財団の相談役にして大会の「最後の壁」。", "Unflappable, courteous and unfathomable. Advisor to the Tamaki Foundation and the tournament's last wall."]),
+}
+
 os.makedirs(os.path.join(ROOT, "data/story"), exist_ok=True)
 for cid, d in S.items():
-    d = {"schema_version": 1, "id": cid, **d}
+    pr = PROFILE[cid]
+    d = {"schema_version": 1, "id": cid, "profile": {"age": pr[0], "origin": pr[1], "size": pr[2], "bio": pr[3]}, **d}
     with open(os.path.join(ROOT, "data/story", cid + ".json"), "w") as fp:
         json.dump(d, fp, ensure_ascii=False, indent=2)
         fp.write("\n")

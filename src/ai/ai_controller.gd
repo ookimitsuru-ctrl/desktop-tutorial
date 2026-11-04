@@ -50,6 +50,9 @@ var _chain_start := -1
 var _chain_k := -1
 var _chain_mf := 0
 var _throw_seen := -1
+# コンボ（combos.json）: 始動技 id → コンボの配列
+var combos: Dictionary = {}
+var runner: ComboRunner = null
 # 適応学習（相手の傾向: 指数移動平均）
 var tend := {"crouch": 0.3, "attack_after_block": 0.4, "throw_n": 0.34, "throw_4": 0.33, "throw_6": 0.33, "evade": 0.1, "tech": 0.5}
 var _prev_opp_state := -1
@@ -88,6 +91,24 @@ func setup(p_w: SimWorld, p_me: int, p_level: int, p_boss: bool) -> void:
 	learn = float(t[7])
 	mistake = float(t[8])
 	_classify()
+	_load_combos()
+
+
+func _load_combos() -> void:
+	var path := "res://data/characters/%s/combos.json" % cd.id
+	if not FileAccess.file_exists(path):
+		return
+	var j: Variant = DataLoader.read_json(path)
+	if not (j is Dictionary):
+		return
+	var wc := ["light", "middle", "heavy"][clampi(od.weight_class, 0, 2)] as String
+	for c: Dictionary in (j as Dictionary).get("combos", []):
+		if not (c.get("weight_classes", []) as Array).has(wc):
+			continue
+		var st := String(c["starter"])
+		if not combos.has(st):
+			combos[st] = []
+		(combos[st] as Array).append(c)
 
 
 func _classify() -> void:
@@ -212,6 +233,14 @@ func next_input(p_w: SimWorld) -> int:
 		hold_dir = N
 		hold_btn = 0
 		return _emit(InputBits.make(N, 0, 0, 0))
+	# コンボ実行中
+	if runner != null:
+		runner.observe(w.events)
+		if runner.done:
+			runner = null
+		else:
+			plan.clear()
+			return _emit_raw(_to_screen(runner.next_input()))
 	if not plan.is_empty():
 		var v: int = plan.pop_front()
 		return _emit(_to_screen(v))
@@ -220,6 +249,12 @@ func next_input(p_w: SimWorld) -> int:
 		var v2: int = plan.pop_front()
 		return _emit(_to_screen(v2))
 	return _emit(_to_screen(InputBits.make(hold_dir, hold_btn, 0, 0)))
+
+
+## ComboRunner が整えた入力をそのまま出す（押下状態だけ同期）
+func _emit_raw(v: int) -> int:
+	last_btn = InputBits.held(v)
+	return v
 
 
 ## held のビットから pressed/released を整える
@@ -282,6 +317,8 @@ func _think(p: FighterState) -> void:
 		_think_throw(p)
 		return
 	if p.state == SE.ST_MOVE:
+		if _try_combo(p):
+			return
 		_think_chain(p)
 		return
 	if p.state == SE.ST_STANCE:
@@ -564,3 +601,31 @@ func _think_stance(p: FighterState) -> void:
 		_do_move(_pick(moves_out))
 	elif r < 0.9:
 		_press(N, InputBits.G)
+
+
+## 始動技が当たって相手が浮いた（壁に張り付いた）ら、コンボのルートを実行する
+func _try_combo(p: FighterState) -> bool:
+	if p.move_contact != SE.MC_HIT:
+		return false
+	var m := cd.moves[p.move]
+	if not combos.has(m.id):
+		return false
+	var o := w.f[1 - me]
+	var list: Array = combos[m.id]
+	var c: Dictionary = list[int(_rand() * list.size()) % list.size()]
+	var wall := bool(c.get("wall", false))
+	if wall and o.state != SE.ST_WALL and o.state != SE.ST_AIR:
+		return false
+	if not wall and o.state != SE.ST_AIR:
+		return false
+	if p.move_start_frame == _chain_start and _chain_k == -2:
+		return false
+	_chain_start = p.move_start_frame
+	_chain_k = -2
+	if _rand() > combo_rate - mistake:
+		return false
+	var rn := ComboRunner.new()
+	if not rn.start(w, me, (c["route"] as Array).slice(1)):
+		return false
+	runner = rn
+	return true

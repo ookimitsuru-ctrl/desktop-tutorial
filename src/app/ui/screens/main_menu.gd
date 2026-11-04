@@ -20,6 +20,7 @@ func build() -> void:
 		[DataDB.t("menu_watch"), func() -> void: _select(Game.Mode.WATCH)],
 		[DataDB.t("menu_replay"), func() -> void: SceneRouter.goto("replays")],
 		[DataDB.t("menu_records"), func() -> void: SceneRouter.goto("records")],
+		[DataDB.t("menu_gallery"), func() -> void: SceneRouter.goto("gallery")],
 		[DataDB.t("menu_options"), func() -> void: SceneRouter.goto("options")],
 	]
 	var sc := ScrollContainer.new()

@@ -29,10 +29,29 @@ func _ready() -> void:
 	Game.seed_value = 12345
 	Settings.data["intros"] = "skip"
 	SceneRouter.goto(scr, {"mode": Game.mode}, 0.0)
+	# SHOT_CLICKS="frame:ボタン名,frame:ボタン名" で指定フレームにボタンを押す（画面確認用）
+	for c: String in OS.get_environment("SHOT_CLICKS").split(",", false):
+		var kv := c.split(":")
+		clicks[kv[0].to_int()] = kv[1]
+
+
+var clicks := {}
+
+
+func _press_button(n0: Node, text: String) -> bool:
+	for c: Node in n0.get_children():
+		if c is Button and (c as Button).text.contains(text) and not (c as Button).disabled:
+			(c as Button).pressed.emit()
+			return true
+		if _press_button(c, text):
+			return true
+	return false
 
 
 func _process(_d: float) -> void:
 	n += 1
+	if clicks.has(n):
+		_press_button(get_tree().root, String(clicks[n]))
 	if frames.has(n):
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("%s/shot_%04d.png" % [out, n])

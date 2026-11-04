@@ -1,0 +1,67 @@
+{
+  "character": "zaw",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 240,
+      "id": "zaw_c_9k_2_1",
+      "route": [
+        "zaw_9k",
+        "zaw_6pk"
+      ],
+      "starter": "zaw_9k",
+      "timing": [
+        0,
+        56
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 193,
+      "id": "zaw_c_wsp_2_1",
+      "route": [
+        "zaw_wsp",
+        "zaw_3k"
+      ],
+      "starter": "zaw_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 1,
+      "expected_damage": 177,
+      "id": "zaw_c_66pk_2_1",
+      "route": [
+        "zaw_66pk",
+        "zaw_2p"
+      ],
+      "starter": "zaw_66pk",
+      "timing": [
+        0,
+        58
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,69 @@
+{
+  "character": "toma",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 239,
+      "id": "toma_c_9k_2_1",
+      "route": [
+        "toma_9k",
+        "toma_6pk"
+      ],
+      "starter": "toma_9k",
+      "timing": [
+        0,
+        54
+      ],
+      "wall": false,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 193,
+      "id": "toma_c_wsp_2_1",
+      "route": [
+        "toma_wsp",
+        "toma_3k"
+      ],
+      "starter": "toma_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 1,
+      "expected_damage": 184,
+      "id": "toma_c_46p_2_1",
+      "route": [
+        "toma_46p",
+        "toma_6p"
+      ],
+      "starter": "toma_46p",
+      "timing": [
+        0,
+        59
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

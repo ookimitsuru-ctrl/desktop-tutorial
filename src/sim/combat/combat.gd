@@ -89,6 +89,8 @@ static func geom_hit(w: SimWorld, ai: int, m: MoveDef) -> bool:
 	var dfx := FP.sin(d.facing)
 	var dfz := FP.cos(d.facing)
 	var hm := w.chars[di].hurt_mul
+	# 空中やられ中は食らい判定を広げる（空中コンボの成立しやすさ）
+	var air_bonus := w.rules.air_hurt_bonus_mm if d.state == SE.ST_AIR else 0
 	for s: int in range(2):
 		var o := ho + s * 7
 		var rad: int = bka.hit[o + 6]
@@ -124,7 +126,7 @@ static func geom_hit(w: SimWorld, ai: int, m: MoveDef) -> bool:
 			var x2 := dx + (-dfz * r2 + dfx * f2) / 65536
 			var z2 := dz + (dfx * r2 + dfz * f2) / 65536
 			var y2 := dy + u2
-			var lim := rad + cr
+			var lim := rad + cr + air_bonus
 			var lim2 := lim * lim
 			# 攻撃カプセルを 4 点で標本化（間隔は半径以下になる長さ）
 			for k: int in range(4):
@@ -398,7 +400,12 @@ static func _launch(w: SimWorld, di: int, m: MoveDef, reaction: int, fx: int, fz
 			vy = FP.from_str("0.07")
 			push = FP.from_str("0.04")
 			kind = SE.AIR_KNOCK
+	if reaction == SE.R_LAUNCH or reaction == SE.R_LAUNCH_SPIN:
+		# 浮かせは低い重力でゆっくり落ちる（空中コンボの猶予）
+		vy = (vy * w.rules.launch_vy_pct) / 100
 	FighterCtl.to_air(w, di, kind, vy, FP.mul(fx, push), FP.mul(fz, push))
+	if reaction == SE.R_LAUNCH or reaction == SE.R_LAUNCH_SPIN:
+		d.gravity = (d.gravity * w.rules.launch_gravity_pct) / 100
 	d.reaction = reaction
 	d.air_hits = 1
 	w.emit("launch", {"player": di, "kind": kind})
@@ -408,14 +415,14 @@ static func _juggle(w: SimWorld, di: int, m: MoveDef, reaction: int, fx: int, fz
 	var d := w.f[di]
 	var base := m.air_vy
 	if base <= 0:
-		base = (m.launch_vy * 7) / 10 if m.launch_vy > 0 else FP.from_str("0.055")
+		base = (m.launch_vy * 7) / 10 if m.launch_vy > 0 else w.rules.juggle_vy
 	if reaction == SE.R_LAUNCH and m.launch_vy > 0:
 		base = maxi(base, (m.launch_vy * 8) / 10)
 	var vy := base
 	for _k: int in range(d.air_hits):
 		vy = (vy * w.rules.relaunch_num) / w.rules.relaunch_den
 	d.vy = maxi(d.vy, vy)
-	d.gravity += (FP.mul(w.rules.gravity, w.chars[di].float_factor) * w.rules.gravity_add_pct) / 100
+	d.gravity += (d.gravity * w.rules.gravity_add_pct) / 100
 	d.air_hits += 1
 	var push := FP.from_str("0.012")
 	if reaction == SE.R_KNOCKBACK or reaction == SE.R_WALLSPLAT or reaction == SE.R_SPIN:

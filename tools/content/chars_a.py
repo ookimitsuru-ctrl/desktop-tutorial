@@ -57,7 +57,7 @@ def lena():
     c.S("kk", "K", ("返し下段", "Return Low"), "low", "kick", 50, (14, 2, 20), (-8, 2, "KD"), "medium", LO,
         A("kick", side="l", style="low", reach=0.78), frm=None, chr="trip")
     c.S("6k", "6K", ("前蹴り押し", "Push Kick"), "mid", "kick", 85, (15, 3, 19), (-3, "KD", "KD"), "heavy", "knockback",
-        A("kick", side="l", style="push", h="mid", reach=0.86), push=["0.45", "0.30"], flags=["can_ringout"])
+        A("kick", side="l", style="push", h="mid", reach=0.86), push=["0.45", "0.30"], flags=["can_ringout", "wall_splat"])
     c.S("3k", "3K", ("膝蹴り", "Knee"), "mid", "knee", 90, (14, 3, 20), (-5, 4, "LAUNCH"), "medium", ML,
         A("kick", side="r", style="knee", h="mid", step=0.26), chr="launch", tags=["ch_launch"])
     c.S("2k", "2K", ("下段蹴り", "Low Kick"), "low", "kick", 45, (14, 2, 17), (-6, 2, 4), "light", LO,

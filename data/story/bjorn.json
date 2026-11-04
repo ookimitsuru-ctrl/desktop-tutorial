@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "bjorn",
+  "profile": {
+    "age": "35",
+    "origin": [
+      "ノルウェー・ロフォーテン諸島",
+      "Lofoten Islands, Norway"
+    ],
+    "size": "196cm / 118kg",
+    "bio": [
+      "豪快で陽気、仲間思いの漁師。元オリンピック候補のレスラー。",
+      "A boisterous, warm-hearted fisherman and former Olympic hopeful in wrestling."
+    ]
+  },
   "opening": [
     "ロフォーテン諸島の漁師、ビョルン・ハルヴォルセン。かつてはオリンピック候補と呼ばれたレスラーだ。\nあの嵐の夜、彼の漁船「ソールヴァ号」は波にのまれた。仲間は全員救ったが、船は戻らなかった。\n「新しい船がいる。金がいる。なら、組み合えばいい！」\n大きな笑い声とともに、ビョルンは大会への切符を握りしめた。",
     "Bjorn Halvorsen, a fisherman from the Lofoten Islands — once an Olympic hopeful in wrestling.\nOn a stormy night his boat, the Solva, was swallowed by the waves. He saved his whole crew, but the boat never came back.\n\"I need a new boat. I need money. So — let's wrestle!\"\nWith a booming laugh, Bjorn gripped his ticket to the tournament."

@@ -220,3 +220,18 @@ v_xlarge,特大,Extra Large
 vs_2p,2P 対戦,2 Players
 vs_cpu,CPU 戦,vs CPU
 wins,の勝ち,Wins
+menu_gallery,ギャラリー,Gallery
+gallery_endings,エンディング,Endings
+gallery_chars,キャラクター,Characters
+gallery_bgm,BGM,Music
+achievements,実績,Achievements
+gallery_endings_hint,アーケードをクリアしたキャラクターのエンディングを見られます。,View the endings of fighters who cleared Arcade.
+gallery_pose,ポーズ,Pose
+profile_age,年齢,Age
+profile_origin,出身,From
+profile_size,身長 / 体重,Height / Weight
+achievement_unlocked,実績解除: %s,Achievement unlocked: %s
+replay_keep,★ 保存,★ Keep
+replay_kept,保存しました,Saved
+trial_combo,コンボ,Combo
+trial_wall_combo,壁コンボ,Wall Combo

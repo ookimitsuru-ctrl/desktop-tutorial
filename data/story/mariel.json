@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "mariel",
+  "profile": {
+    "age": "30",
+    "origin": [
+      "フィリピン・セブ島",
+      "Cebu, Philippines"
+    ],
+    "size": "163cm / 54kg",
+    "bio": [
+      "陽気でおしゃべり、面倒見のいいスタントパフォーマー。家族はカリの道場を営む。",
+      "A cheerful, talkative stunt performer who looks after everyone. Her family runs a Kali school."
+    ]
+  },
   "opening": [
     "セブ島出身のスタントパフォーマー、マリエル・サントス。家族はカリの道場を営んでいる。\nある日届いた映画の主演オファー。条件はひとつ——「RINGBOUND でベスト4に入ること」。\n「最高じゃない！ 道場の宣伝にもなるし、主演も取れる！」\nマリエルはバンダナをきゅっと結び、空港へ駆け出した。",
     "Mariel Santos, a stunt performer from Cebu whose family runs a Kali school.\nOne day an offer arrived: a leading role in a movie. One condition — reach the top four at RINGBOUND.\n\"This is perfect! Great promo for the school, and I get the lead!\"\nMariel tied her bandana tight and dashed for the airport."

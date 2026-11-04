@@ -77,6 +77,11 @@ jobs:
       - name: Asset ledger
         run: python3 tools/validate/check_ledger.py
 
+      - name: Font glyph coverage
+        run: |
+          pip install --quiet fonttools
+          python3 tools/validate/check_glyphs.py
+
       - name: Bake consistency
         run: |
           ~/godot/godot --headless --path . -s res://tools/bake/bake_all.gd
@@ -84,6 +89,9 @@ jobs:
 
       - name: Tests
         run: ~/godot/godot --headless --path . -s res://tests/run_tests.gd
+
+      - name: Combo routes (combos.json) still work
+        run: ~/godot/godot --headless --path . -s res://tools/validate/combo_search.gd -- --verify
 
       - name: Version
         run: |

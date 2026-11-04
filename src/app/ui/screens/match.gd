@@ -13,6 +13,7 @@ var vfx: Vfx
 var hud: HUD
 var touch: TouchControls
 var touch_layer: CanvasLayer
+var round_log: Array = []
 var sources: Array = [null, null]   # null = 人, AIController, Callable
 var recorder: ReplayRecorder
 var replay_inputs: PackedInt32Array = PackedInt32Array()
@@ -403,6 +404,7 @@ func _on_hit(e: Dictionary) -> void:
 
 
 func _on_round_end(e: Dictionary) -> void:
+	round_log.append({"winner": int(e["winner"]), "reason": int(e["reason"]), "perfect": bool(e["perfect"])})
 	var reason := int(e["reason"])
 	var winner := int(e["winner"])
 	var txt := "K.O."
@@ -443,6 +445,7 @@ func _finish() -> void:
 			{"damage": world.f[0].stat_damage, "max_combo": world.f[0].stat_max_combo, "counters": world.f[0].stat_counters, "escapes": world.f[0].stat_escapes, "evades": world.f[0].stat_evades},
 			{"damage": world.f[1].stat_damage, "max_combo": world.f[1].stat_max_combo, "counters": world.f[1].stat_counters, "escapes": world.f[1].stat_escapes, "evades": world.f[1].stat_evades},
 		], "frames": world.frame, "hp_left": world.f[0].hp,
+		"rounds": round_log, "boss": bool(params.get("boss", false)),
 	}
 	Game.last_result = res
 	if recorder != null and bool(Settings.g("replay_autosave")):

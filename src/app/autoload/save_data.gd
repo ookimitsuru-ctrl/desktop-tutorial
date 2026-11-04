@@ -60,6 +60,19 @@ func unlocked(key: String) -> bool:
 	return bool((profile["unlocks"] as Dictionary).get(key, false))
 
 
+## 「全て解禁」設定に関係なく、実際に解禁済みか
+func has_unlock(key: String) -> bool:
+	return bool((profile["unlocks"] as Dictionary).get(key, false))
+
+
+## 保存せずに解禁（まとめて保存する場合）
+func unlock_quiet(key: String) -> bool:
+	if has_unlock(key):
+		return false
+	profile["unlocks"][key] = true
+	return true
+
+
 func unlock(key: String) -> bool:
 	if (profile["unlocks"] as Dictionary).get(key, false):
 		return false

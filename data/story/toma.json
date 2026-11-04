@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "toma",
+  "profile": {
+    "age": "23",
+    "origin": [
+      "日本・石川県金沢市",
+      "Kanazawa, Ishikawa, Japan"
+    ],
+    "size": "178cm / 76kg",
+    "bio": [
+      "実直、負けず嫌い、少し不器用。礼を重んじる。父が遺した町道場を守るために戦う。",
+      "Earnest, competitive and a little clumsy, with deep respect for etiquette. Fights to protect the dojo his father left behind."
+    ]
+  },
   "opening": [
     "金沢の小さな町道場「篠宮道場」。父が遺したその看板は、借金とともに灯真の肩に残った。\n届いたのは、環財団からの招待状。世界中の武術家が拳を交える大会「RINGBOUND」——優勝賞金があれば、道場は守れる。\n「親父の一撃必倒じゃない。一手先を読む空手で、俺は勝つ」\n灯真は帯を締め直し、海を渡った。",
     "In Kanazawa stands the small Shinomiya Dojo. When his father died, Toma inherited its sign — and its debts.\nThen came an invitation from the Tamaki Foundation: RINGBOUND, a tournament of the world's martial artists. The prize money could save the dojo.\n\"Not Father's one-strike karate. I'll win by reading one move ahead.\"\nToma tightened his belt and crossed the sea."

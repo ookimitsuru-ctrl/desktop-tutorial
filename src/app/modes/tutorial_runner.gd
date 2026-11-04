@@ -40,7 +40,10 @@ func _load() -> void:
 	steps = []
 	if mode == Game.Mode.TRIAL:
 		var tr: Dictionary = trial_list[clampi(lesson, 0, trial_list.size() - 1)]
-		steps = [{"text": tr["text"], "dummy": tr.get("dummy", "stand"), "check": "move_hit", "arg": tr["move"], "need": 1}]
+		if tr.has("route"):
+			steps = [{"text": tr["text"], "dummy": "stand", "check": "combo_route", "arg": tr["route"], "need": 1}]
+		else:
+			steps = [{"text": tr["text"], "dummy": tr.get("dummy", "stand"), "check": "move_hit", "arg": tr["move"], "need": 1}]
 	else:
 		match lesson:
 			0:
@@ -97,15 +100,35 @@ func _build_trials() -> void:
 			continue
 		picked.append(m)
 	picked.sort_custom(func(a: MoveDef, b: MoveDef) -> bool: return a.startup < b.startup)
-	for m2: MoveDef in picked.slice(0, 16):
+	for m2: MoveDef in picked.slice(0, 14):
 		var ctx := "rise" if (m2.from_mask & SE.FROM_RISE) != 0 and (m2.from_mask & SE.FROM_STAND) == 0 else ""
 		var cmdtxt := (_t("trial_rise") if ctx == "rise" else "") + (_t("trial_dash") if (m2.from_mask & SE.FROM_DASH) != 0 and (m2.from_mask & SE.FROM_STAND) == 0 else "") + m2.cmd.text
 		trial_list.append({"text": "%s  %s" % [DataDB.move_name(cd, m2), cmdtxt], "move": m2.id})
 	# 連携
 	for m3: MoveDef in cd.moves:
-		if m3.chain_to.size() > 0 and (m3.from_mask & SE.FROM_STAND) != 0 and trial_list.size() < 20:
+		if m3.chain_to.size() > 0 and (m3.from_mask & SE.FROM_STAND) != 0 and trial_list.size() < 17:
 			var nm := cd.moves[m3.chain_to[0]]
 			trial_list.append({"text": "%s → %s  %s, %s" % [DataDB.move_name(cd, m3), DataDB.move_name(cd, nm), m3.cmd.text, CommandSpec.new().text if false else _btn_txt(m3.chain_btn[0])], "move": nm.id})
+
+
+	# コンボ（combos.json）
+	var path := "res://data/characters/%s/combos.json" % cd.id
+	if FileAccess.file_exists(path):
+		var j: Variant = DataLoader.read_json(path)
+		if j is Dictionary:
+			for c: Dictionary in (j as Dictionary).get("combos", []):
+				if trial_list.size() >= 20:
+					break
+				var names: Array[String] = []
+				var cmds: Array[String] = []
+				for id: Variant in c["route"]:
+					var mm: MoveDef = cd.move_by_id.get(String(id), null)
+					if mm == null:
+						continue
+					names.append(DataDB.move_name(cd, mm))
+					cmds.append(((_t("trial_rise") if (mm.from_mask & SE.FROM_RISE) != 0 and (mm.from_mask & SE.FROM_STAND) == 0 else "") + (_t("trial_dash") if (mm.from_mask & SE.FROM_DASH) != 0 and (mm.from_mask & SE.FROM_STAND) == 0 else "") + mm.cmd.text) if not mm.chain_only else _btn_txt(mm.cmd.buttons))
+				var head := _t("trial_wall_combo") if bool(c.get("wall", false)) else _t("trial_combo")
+				trial_list.append({"text": "%s: %s\n%s" % [head, " → ".join(names), "  ".join(cmds)], "route": c["route"], "move": String((c["route"] as Array)[0])})
 
 
 static func _btn_txt(b: int) -> String:
@@ -149,6 +172,16 @@ func _advance() -> void:
 			AudioHub.sfx("just", 0.0)
 			var key := ("trial_%s_%d" % [Game.p_char[0], lesson]) if mode == Game.Mode.TRIAL else ("tutorial_%d" % lesson)
 			SaveData.unlock(key)
+			if mode == Game.Mode.TRIAL:
+				var all_done := true
+				for k2: int in range(trial_list.size()):
+					if not SaveData.has_unlock("trial_%s_%d" % [Game.p_char[0], k2]):
+						all_done = false
+				if all_done:
+					SaveData.unlock("color4_" + Game.p_char[0])
+			var got := Progress.check()
+			for a_id: String in got:
+				SceneRouter.toast(DataDB.t("achievement_unlocked") % Progress.achievement_name(a_id))
 	_show()
 
 
@@ -254,6 +287,24 @@ func on_event(e: Dictionary) -> void:
 		"combo":
 			if k == "hit" and int(e["attacker"]) == 0 and int(e["combo"]) >= int(s["arg"]):
 				_advance()
+		"combo_route":
+			# ルートの技が順番に、途切れずに当たったら達成
+			if k == "hit" and int(e["attacker"]) == 0:
+				var rt: Array = s["arg"]
+				var idx := int(_flags.get("ri", 0))
+				var mid := w.chars[0].moves[int(e["move"])].id
+				if int(e["combo"]) <= 1:
+					idx = 0
+				if idx < rt.size() and mid == String(rt[idx]):
+					idx += 1
+				elif mid == String(rt[0]):
+					idx = 1
+				else:
+					idx = 0
+				_flags["ri"] = idx
+				if idx >= rt.size():
+					_flags["ri"] = 0
+					_advance()
 		"whiff_high":
 			if k == "move" and int(e["player"]) == 1 and w.f[0].is_crouching():
 				_flags["w"] = true

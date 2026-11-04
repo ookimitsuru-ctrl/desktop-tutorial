@@ -135,6 +135,8 @@ static func _complete(a: Dictionary) -> void:
 		SaveData.unlock("char_gensai")
 		SaveData.unlock("stage_lighthouse")
 	SaveData.unlock("arcade_clear")
+	if int(a["diff"]) >= 4 and int(a["continues"]) == 0 and String(a["kind"]) == "arcade":
+		SaveData.unlock("arcade_master_nc")
 	SaveData.add_rank_points(20)
 	SaveData.record_best("arcade_score_" + c, int(a["score"]))
 	if String(a["kind"]) == "time_attack":

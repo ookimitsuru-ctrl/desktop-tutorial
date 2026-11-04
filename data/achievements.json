@@ -1,0 +1,425 @@
+{
+ "schema_version": 1,
+ "achievements": [
+  {
+   "id": "first_win",
+   "type": "stat",
+   "key": "wins_total",
+   "need": 1,
+   "name": [
+    "初勝利",
+    "First Victory"
+   ],
+   "desc": [
+    "試合に勝利する",
+    "Win a match"
+   ]
+  },
+  {
+   "id": "first_perfect",
+   "type": "stat",
+   "key": "perfects",
+   "need": 1,
+   "name": [
+    "完璧な一戦",
+    "Flawless"
+   ],
+   "desc": [
+    "PERFECT でラウンドを取る",
+    "Win a round with a PERFECT"
+   ]
+  },
+  {
+   "id": "first_ringout",
+   "type": "stat",
+   "key": "ringout_wins",
+   "need": 1,
+   "name": [
+    "場外の達人",
+    "Out of Bounds"
+   ],
+   "desc": [
+    "リングアウトでラウンドを取る",
+    "Win a round by ring out"
+   ]
+  },
+  {
+   "id": "wins_10",
+   "type": "stat",
+   "key": "wins_total",
+   "need": 10,
+   "name": [
+    "十勝",
+    "Ten Wins"
+   ],
+   "desc": [
+    "累計 10 勝",
+    "Win 10 matches"
+   ]
+  },
+  {
+   "id": "wins_50",
+   "type": "stat",
+   "key": "wins_total",
+   "need": 50,
+   "name": [
+    "五十勝",
+    "Fifty Wins"
+   ],
+   "desc": [
+    "累計 50 勝",
+    "Win 50 matches"
+   ]
+  },
+  {
+   "id": "wins_200",
+   "type": "stat",
+   "key": "wins_total",
+   "need": 200,
+   "name": [
+    "二百勝",
+    "Two Hundred Wins"
+   ],
+   "desc": [
+    "累計 200 勝",
+    "Win 200 matches"
+   ]
+  },
+  {
+   "id": "matches_100",
+   "type": "stat",
+   "key": "matches",
+   "need": 100,
+   "name": [
+    "百戦錬磨",
+    "Hundred Battles"
+   ],
+   "desc": [
+    "累計 100 試合",
+    "Play 100 matches"
+   ]
+  },
+  {
+   "id": "escapes_100",
+   "type": "stat",
+   "key": "escapes",
+   "need": 100,
+   "name": [
+    "抜けの名手",
+    "Slippery"
+   ],
+   "desc": [
+    "投げ抜け累計 100 回",
+    "Escape 100 throws"
+   ]
+  },
+  {
+   "id": "evades_100",
+   "type": "stat",
+   "key": "evades",
+   "need": 100,
+   "name": [
+    "見切り",
+    "Sidestepper"
+   ],
+   "desc": [
+    "回避成功累計 100 回",
+    "Evade 100 attacks"
+   ]
+  },
+  {
+   "id": "counters_100",
+   "type": "stat",
+   "key": "counters",
+   "need": 100,
+   "name": [
+    "後の先",
+    "Counter Artist"
+   ],
+   "desc": [
+    "カウンターヒット累計 100 回",
+    "Land 100 counter hits"
+   ]
+  },
+  {
+   "id": "damage_10000",
+   "type": "stat",
+   "key": "damage_total",
+   "need": 10000,
+   "name": [
+    "一万の拳",
+    "Ten Thousand Blows"
+   ],
+   "desc": [
+    "累計ダメージ 10000",
+    "Deal 10,000 total damage"
+   ]
+  },
+  {
+   "id": "combo_200",
+   "type": "record",
+   "key": "max_combo",
+   "need": 200,
+   "name": [
+    "連撃",
+    "Combo Starter"
+   ],
+   "desc": [
+    "1 コンボで 200 ダメージ",
+    "Deal 200 damage in one combo"
+   ]
+  },
+  {
+   "id": "combo_350",
+   "type": "record",
+   "key": "max_combo",
+   "need": 350,
+   "name": [
+    "怒涛",
+    "Combo Master"
+   ],
+   "desc": [
+    "1 コンボで 350 ダメージ",
+    "Deal 350 damage in one combo"
+   ]
+  },
+  {
+   "id": "arcade_1",
+   "type": "unlock",
+   "key": "arcade_clear",
+   "need": 1,
+   "name": [
+    "環の挑戦者",
+    "Challenger"
+   ],
+   "desc": [
+    "アーケードをクリア",
+    "Clear Arcade"
+   ]
+  },
+  {
+   "id": "arcade_all",
+   "type": "count",
+   "key": "ending_",
+   "need": 9,
+   "name": [
+    "全員の物語",
+    "Every Story"
+   ],
+   "desc": [
+    "全キャラでアーケードをクリア",
+    "Clear Arcade with every fighter"
+   ]
+  },
+  {
+   "id": "arcade_master",
+   "type": "unlock",
+   "key": "arcade_master_nc",
+   "need": 1,
+   "name": [
+    "無双",
+    "Unbroken"
+   ],
+   "desc": [
+    "達人以上でノーコンティニュークリア",
+    "Clear Arcade on Master or higher without continuing"
+   ]
+  },
+  {
+   "id": "boss_beat",
+   "type": "stat",
+   "key": "boss_wins",
+   "need": 1,
+   "name": [
+    "最後の壁",
+    "The Last Wall"
+   ],
+   "desc": [
+    "アーケードで玄斎を倒す",
+    "Defeat Gensai in Arcade"
+   ]
+  },
+  {
+   "id": "survival_10",
+   "type": "record",
+   "key": "survival_*",
+   "need": 10,
+   "name": [
+    "十人抜き",
+    "Ten Down"
+   ],
+   "desc": [
+    "サバイバルで 10 人抜き",
+    "Defeat 10 in Survival"
+   ]
+  },
+  {
+   "id": "survival_30",
+   "type": "record",
+   "key": "survival_*",
+   "need": 30,
+   "name": [
+    "三十人抜き",
+    "Thirty Down"
+   ],
+   "desc": [
+    "サバイバルで 30 人抜き",
+    "Defeat 30 in Survival"
+   ]
+  },
+  {
+   "id": "time_attack",
+   "type": "record_low",
+   "key": "time_attack_*",
+   "need": 21600,
+   "name": [
+    "疾風",
+    "Swift"
+   ],
+   "desc": [
+    "タイムアタックを 6 分以内でクリア",
+    "Clear Time Attack in under 6 minutes"
+   ]
+  },
+  {
+   "id": "trials_one",
+   "type": "count",
+   "key": "color4_",
+   "need": 1,
+   "name": [
+    "技の探究者",
+    "Student of Technique"
+   ],
+   "desc": [
+    "1 キャラの技トライアルを全てクリア",
+    "Clear every trial for one fighter"
+   ]
+  },
+  {
+   "id": "trials_all",
+   "type": "count",
+   "key": "color4_",
+   "need": 9,
+   "name": [
+    "技の極み",
+    "Master of Technique"
+   ],
+   "desc": [
+    "全キャラの技トライアルを全てクリア",
+    "Clear every trial for all fighters"
+   ]
+  },
+  {
+   "id": "tutorial_all",
+   "type": "count",
+   "key": "tutorial_",
+   "need": 12,
+   "name": [
+    "基礎完了",
+    "Fundamentals"
+   ],
+   "desc": [
+    "チュートリアル全 12 課をクリア",
+    "Clear all 12 tutorial lessons"
+   ]
+  },
+  {
+   "id": "streak_cpu8",
+   "type": "record",
+   "key": "streak_cpu8",
+   "need": 10,
+   "name": [
+    "十連勝",
+    "Ten Straight"
+   ],
+   "desc": [
+    "CPU レベル 8 以上に 10 連勝",
+    "Win 10 in a row against level 8+ CPU"
+   ]
+  },
+  {
+   "id": "versus_2p",
+   "type": "stat",
+   "key": "versus_2p",
+   "need": 1,
+   "name": [
+    "好敵手",
+    "Rivals"
+   ],
+   "desc": [
+    "2P 対戦をプレイ",
+    "Play a 2P versus match"
+   ]
+  },
+  {
+   "id": "replay_saved",
+   "type": "stat",
+   "key": "replays_saved",
+   "need": 1,
+   "name": [
+    "記録者",
+    "Archivist"
+   ],
+   "desc": [
+    "リプレイを保存する",
+    "Save a replay"
+   ]
+  },
+  {
+   "id": "all_stages",
+   "type": "count",
+   "key": "stage_played_",
+   "need": 9,
+   "name": [
+    "世界の環",
+    "World Tour"
+   ],
+   "desc": [
+    "全ステージでプレイ",
+    "Fight on every stage"
+   ]
+  },
+  {
+   "id": "costume_all",
+   "type": "count",
+   "key": "costume_",
+   "need": 9,
+   "name": [
+    "衣装持ち",
+    "Wardrobe"
+   ],
+   "desc": [
+    "全キャラの衣装 B を解禁",
+    "Unlock costume B for every fighter"
+   ]
+  },
+  {
+   "id": "rank_shodan",
+   "type": "rank",
+   "key": "",
+   "need": 750,
+   "name": [
+    "初段",
+    "First Dan"
+   ],
+   "desc": [
+    "段位「初段」に到達",
+    "Reach the rank of First Dan"
+   ]
+  },
+  {
+   "id": "rank_master",
+   "type": "rank",
+   "key": "",
+   "need": 4500,
+   "name": [
+    "環闘士",
+    "Ringbound"
+   ],
+   "desc": [
+    "最上位の段位に到達",
+    "Reach the highest rank"
+   ]
+  }
+ ]
+}

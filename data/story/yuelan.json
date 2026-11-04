@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "yuelan",
+  "profile": {
+    "age": "20",
+    "origin": [
+      "中国・山西省",
+      "Shanxi, China"
+    ],
+    "size": "160cm / 50kg",
+    "bio": [
+      "生真面目な努力家。褒められると照れる。祖母から形意拳を受け継いだ。",
+      "A serious, hard-working student who gets flustered by praise. Learned Xingyiquan from her grandmother."
+    ]
+  },
   "opening": [
     "山西省の山あいで、祖母から形意拳を学んだ蘇 月嵐。\n「型は飾りではない。実戦で通じてこそ型だ」——祖母の口癖を証明するため、彼女は大会への出場を決めた。\n出発の前夜、祖母は古い写真を見せた。若き日の祖母が立つリング。その横断幕には、環財団の紋があった。\n「拳は、一直線に」",
     "In the mountains of Shanxi, Su Yuelan learned Xingyiquan from her grandmother.\n\"Forms are not decoration. A form is only a form if it works in a fight\" — to prove her grandmother's words, she entered the tournament.\nThe night before she left, her grandmother showed her an old photo: her younger self standing in a ring beneath a banner bearing the Tamaki Foundation crest.\n\"A fist goes in a straight line.\""

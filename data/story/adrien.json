@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "id": "adrien",
+  "profile": {
+    "age": "32",
+    "origin": [
+      "フランス・マルセイユ",
+      "Marseille, France"
+    ],
+    "size": "188cm / 82kg",
+    "bio": [
+      "洒脱で皮肉と冗談を好むが、責任感の強い元消防士。",
+      "Witty and fond of a joke, but a deeply responsible former firefighter."
+    ]
+  },
   "opening": [
     "マルセイユの元消防士、アドリアン・ルフェーヴル。現場で負った脚の怪我が、彼から仕事を奪った。\n医者は言った。「もう前のようには動けない」。\nだが彼の脚は、まだサバットの蹴りを覚えている。賞金は、火災で殉職した同僚の家族へ届けるつもりだ。\n「足元にご注意を、ムッシュ」",
     "Adrien Lefèvre, a former firefighter from Marseille. A leg injury on duty took his job from him.\n\"You'll never move like before,\" the doctor said.\nBut his legs still remember the kicks of Savate. The prize money is meant for the family of a colleague lost in a fire.\n\"Mind your step, monsieur.\""

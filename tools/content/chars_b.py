@@ -65,7 +65,7 @@ def mariel():
         A("kick", side="r", style="sweep", reach=0.84, start="crouch", end="crouch"), frm=("stand", "crouch"),
         trk="half_left", flags=["end_crouch"], tags=["low_kd"])
     c.S("4k", "4K", ("回転裏蹴り", "Spinning Back Kick"), "mid", "kick", 100, (20, 3, 22), (-8, "KD", "KD"), "heavy", "knockback",
-        A("kick", side="r", style="back", h="mid", reach=0.80), trk="full")
+        A("kick", side="r", style="back", h="mid", reach=0.80), trk="full", flags=["wall_splat"])
     c.S("evp", "P", ("サイド肘", "Side Elbow"), "mid", "elbow", 70, (13, 2, 17), (-3, 4, 6), "medium", ML,
         A("elbow", side="r", style="fwd", h="mid", step=0.10), frm=("evade",), cat="evade", trk="full")
     c.S("evk", "K", ("サイドロー", "Side Low Kick"), "low", "kick", 50, (15, 3, 20), (-8, 2, "KD"), "medium", LO,
@@ -259,7 +259,8 @@ def ravi():
         A("kick", side="r", style="flip", h="mid", back=-0.35), cat="special", posture=[[3, 16, "airborne"]],
         launch=["0.120", "0.006"], tags=["launcher"])
     c.S("pk2_g", "6P+K", ("象鼻打ち", "Trunk Swing"), "mid", "punch", 100, (17, 3, 22), (1, "KD", "KD"), "heavy", "knockback",
-        A("punch", side="r", style="hammer", h="mid", reach=0.64, step=0.18), cat="special", tags=["plus_mid"])
+        A("punch", side="r", style="hammer", h="mid", reach=0.64, step=0.18), cat="special", tags=["plus_mid"],
+        flags=["wall_splat"])
     # 三獣の構え
     c.stance_move("lion", "P+K", ("獅子の構え", "Lion Stance"), "lion", f=(1, 1, 8))
     c.stance_move("snake", "2P+K", ("蛇の構え", "Serpent Stance"), "snake", frm=("stand", "crouch"), f=(1, 1, 8),
@@ -390,7 +391,7 @@ def gensai():
         trk="half_left", flags=["end_crouch"])
     c.S("6pk", "6P+K", ("発勁", "Fajin Palm"), "mid", "punch", 110, (19, 3, 22), (2, "KD", "KD"), "heavy", "knockback",
         A("punch", side="r", style="double", h="mid", reach=0.58, step=0.20), cat="special", push=["0.55", "0.40"],
-        flags=["can_ringout"], tags=["plus_mid", "ringout"])
+        flags=["can_ringout", "wall_splat"], tags=["plus_mid", "ringout"])
     c.S("kg", "K+G", ("踵踏み", "Heel Drop"), "mid", "kick", 100, (22, 3, 22), (1, "KD", "KD"), "heavy", "trip",
         A("kick", side="r", style="axe", h="mid", reach=0.70, step=0.10), cat="special")
     c.S("66p", "P", ("踏み込み当身", "Stepping Strike"), "mid", "punch", 100, (16, 3, 22), (-6, "KD", "KD"), "heavy", "knockback",
