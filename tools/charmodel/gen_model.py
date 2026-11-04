@@ -223,7 +223,7 @@ def foot_prims(B, nm):
     R = sdf.frame_from(d, (0, 1, 0))
     mid = (an + to) * 0.5
     mid[1] = 0.035 * s
-    pr = [Prim("box", [v3(mid), v3([0.042 * s, 0.075 * s, 0.032 * s]), 0.026 * s, R @ np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=np.float32)], fb, k=0.025),
+    pr = [Prim("box", [v3(mid), v3([0.042 * s, 0.030 * s, 0.078 * s]), 0.026 * s, R @ np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=np.float32)], fb, k=0.025),
           Prim("sphere", [v3(an + [0, -0.035 * s, 0.03 * s]), 0.040 * s], fb, k=0.025),
           Prim("ell", [v3((to + tt) * 0.5 + [0, -0.005, 0]), v3([0.044 * s, 0.020 * s, 0.040 * s])], tb, k=0.015)]
     return pr

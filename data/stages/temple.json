@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "temple",
+  "name": [
+    "古寺の中庭",
+    "Temple Courtyard"
+  ],
+  "ring": {
+    "vertices": [
+      [
+        "-5.00",
+        "-5.00"
+      ],
+      [
+        "5.00",
+        "-5.00"
+      ],
+      [
+        "5.00",
+        "5.00"
+      ],
+      [
+        "-5.00",
+        "5.00"
+      ]
+    ],
+    "edges": [
+      {
+        "type": "wall"
+      },
+      {
+        "type": "wall"
+      },
+      {
+        "type": "wall"
+      },
+      {
+        "type": "wall"
+      }
+    ],
+    "start": [
+      [
+        "-1.20",
+        "0"
+      ],
+      [
+        "1.20",
+        "0"
+      ]
+    ]
+  },
+  "look": {
+    "theme": "temple"
+  },
+  "audio": {
+    "bgm": "bgm_temple",
+    "ambience": "amb_wind"
+  },
+  "ground": "gravel"
+}

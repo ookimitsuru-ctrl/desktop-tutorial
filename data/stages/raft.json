@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "raft",
+  "name": [
+    "川の筏",
+    "River Raft"
+  ],
+  "ring": {
+    "vertices": [
+      [
+        "-4.50",
+        "-4.50"
+      ],
+      [
+        "4.50",
+        "-4.50"
+      ],
+      [
+        "4.50",
+        "4.50"
+      ],
+      [
+        "-4.50",
+        "4.50"
+      ]
+    ],
+    "edges": [
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      }
+    ],
+    "start": [
+      [
+        "-1.20",
+        "0"
+      ],
+      [
+        "1.20",
+        "0"
+      ]
+    ]
+  },
+  "look": {
+    "theme": "raft"
+  },
+  "audio": {
+    "bgm": "bgm_raft",
+    "ambience": "amb_river"
+  },
+  "ground": "wood"
+}

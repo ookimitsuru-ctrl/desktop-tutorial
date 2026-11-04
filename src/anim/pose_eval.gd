@@ -141,9 +141,9 @@ func _arm(side: int, sh: int, ua: int, la: int, hand: int, fing: int, thumb: int
 	global[hand] = Transform3D(lb * wb, w)
 	# 指: 掌側へ曲げる
 	var curl_axis := v0.cross(_palm_n[side]).normalized()
-	var fb := Basis(curl_axis, deg_to_rad(100.0 * fist))
+	var fb := Basis(curl_axis, deg_to_rad(-105.0 * fist))
 	global[fing] = global[hand] * Transform3D(fb, rl[fing])
-	var tb := Basis(curl_axis, deg_to_rad(40.0 * fist))
+	var tb := Basis(curl_axis, deg_to_rad(-45.0 * fist))
 	global[thumb] = global[hand] * Transform3D(tb, rl[thumb])
 
 

@@ -103,7 +103,7 @@ def foot_shell(B, Prim, v3, nm, slot, grow, high=0.0, mtype=MT_LEATHER):
     mid = (an + to) * 0.5
     mid[1] = 0.037 * s
     R = sdf.frame_from(d, (0, 1, 0)) @ np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=np.float32)
-    pr = [Prim("box", [v3(mid), v3([0.046 * s + grow, 0.084 * s + grow, 0.036 * s + grow]), 0.028 * s, R], fb, slot, mtype, k=0.02, layer="cloth"),
+    pr = [Prim("box", [v3(mid), v3([0.046 * s + grow, 0.034 * s + grow, 0.086 * s + grow]), 0.028 * s, R], fb, slot, mtype, k=0.02, layer="cloth"),
           Prim("sphere", [v3(an + [0, -0.035 * s, 0.03 * s]), 0.044 * s + grow], fb, slot, mtype, k=0.02, layer="cloth"),
           Prim("ell", [v3((to + tt) * 0.5 + [0, -0.004, -0.006]), v3([0.048 * s + grow, 0.024 * s + grow, 0.048 * s + grow])], tb, slot, mtype, k=0.015, layer="cloth")]
     if high > 0:
@@ -315,15 +315,19 @@ def hair(B, c, Prim, v3):
         pr.append(back)
     if style == "short_spiky":
         rng = np.random.default_rng(7)
-        for k in range(16):
-            th = rng.uniform(-0.9, 0.9)
-            ph = rng.uniform(0.15, 1.2)
-            d = v3([math.sin(th) * math.sin(ph) * 0.9, math.cos(ph), math.cos(th) * math.sin(ph) * 0.6 + 0.35])
+        for k in range(22):
+            th = rng.uniform(-1.2, 1.2)
+            ph = rng.uniform(0.25, 1.35)
+            d = v3([math.sin(th) * math.sin(ph), math.cos(ph), math.cos(th) * math.sin(ph) * 0.8 + 0.25])
             d /= np.linalg.norm(d)
-            base = hc + d * 0.085 * s
-            tip = base + (d + v3([0, 0.25, 0.35])) * (0.045 + rng.uniform(0, 0.03)) * s
-            pr.append(Prim("cone", [v3(base), v3(tip), 0.022 * s, 0.006 * s], hb, HAIR, MT_HAIR, k=0.012, layer="hair", own_bone=True))
-        pr.append(Prim("cone", [v3(hc + [0.02 * s, 0.08 * s, -0.07 * s]), v3(hc + [-0.03 * s, 0.05 * s, -0.115 * s]), 0.024 * s, 0.006 * s], hb, HAIR, MT_HAIR, k=0.01, layer="hair", own_bone=True))
+            base = hc + d * 0.082 * s + v3([0, 0.01 * s, 0.005 * s])
+            sweep = v3([0, 0.10, 0.9])
+            tip = base + (d * 0.55 + sweep) / np.linalg.norm(d * 0.55 + sweep) * (0.030 + rng.uniform(0, 0.022)) * s
+            pr.append(Prim("cone", [v3(base), v3(tip), 0.020 * s, 0.006 * s], hb, HAIR, MT_HAIR, k=0.014, layer="hair", own_bone=True))
+        # 前髪
+        for sx in (-0.03, 0.0, 0.03):
+            base = hc + v3([sx * s, 0.085 * s, -0.065 * s])
+            pr.append(Prim("cone", [v3(base), v3(base + v3([sx * 0.3 * s, -0.035 * s, -0.025 * s])), 0.016 * s, 0.005 * s], hb, HAIR, MT_HAIR, k=0.012, layer="hair", own_bone=True))
     elif style in ("ponytail", "braid", "long_tied"):
         h1, h2, h3, t3 = B.j("Hair1"), B.j("Hair2"), B.j("Hair3"), B.t("Hair3")
         tie = h1 + v3([0, 0.0, 0.0])

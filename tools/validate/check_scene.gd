@@ -1,8 +1,9 @@
-extends SceneTree
-## 全スクリプトを読み込み、コンパイルエラーを検出する。
+extends Node
+## 全スクリプトのコンパイル確認（autoload を有効にするためシーンとして実行）
+## godot --headless --path . res://tools/validate/check_scene.tscn
 
 
-func _init() -> void:
+func _ready() -> void:
 	var files: Array[String] = []
 	_walk("res://src", files)
 	_walk("res://tools", files)
@@ -10,11 +11,11 @@ func _init() -> void:
 	var bad := 0
 	for p: String in files:
 		var s: Variant = load(p)
-		if s == null or not (s as Script).can_instantiate() and not p.contains("/tools/"):
+		if s == null or not (s as Script).can_instantiate():
 			bad += 1
 			print("NG ", p)
 	print("checked %d scripts, %d failed" % [files.size(), bad])
-	quit(1 if bad > 0 else 0)
+	get_tree().quit(1 if bad > 0 else 0)
 
 
 func _walk(dir: String, out: Array[String]) -> void:

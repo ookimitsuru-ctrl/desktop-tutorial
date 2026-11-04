@@ -168,18 +168,18 @@ func make_stance() -> PoseData:
 ## 構えの重心を下げたしゃがみ
 func make_crouch() -> PoseData:
 	var p := st.copy()
-	var d := 0.40 * s
+	var d := 0.30 * s
 	p.root = V(0, -d, 0)
-	p.hips = st.hips + V(18, 0, 0)
+	p.hips = st.hips + V(14, 0, 0)
 	p.spine = st.spine + V(10, 0, 0)
 	p.chest = st.chest + V(8, 0, 0)
 	p.head = st.head + V(-20, 0, 0)
-	p.foot_l = st.foot_l * V(1.25, 1, 0.9)
-	p.foot_r = st.foot_r * V(1.25, 1, 0.9)
-	p.knee_l = V(st.knee_l.x * 2.0, 0, 1)
-	p.knee_r = V(st.knee_r.x * 2.0, 0, 1)
-	p.hand_l = st.hand_l + V(0, -0.38 * s, 0.03)
-	p.hand_r = st.hand_r + V(0, -0.38 * s, 0.05)
+	p.foot_l = st.foot_l * V(1.1, 1, 0.95)
+	p.foot_r = st.foot_r * V(1.1, 1, 0.95)
+	p.knee_l = V(st.knee_l.x * 1.5, 0, 1)
+	p.knee_r = V(st.knee_r.x * 1.5, 0, 1)
+	p.hand_l = st.hand_l + V(0, -0.30 * s, 0.03)
+	p.hand_r = st.hand_r + V(0, -0.30 * s, 0.05)
 	p.toes_l = 0
 	p.toes_r = 18
 	return p
@@ -187,7 +187,7 @@ func make_crouch() -> PoseData:
 
 func make_guard(crouch: bool) -> PoseData:
 	var p := make_crouch() if crouch else st.copy()
-	var cy := chin_h - (0.40 * s if crouch else 0.0)
+	var cy := chin_h - (0.32 * s if crouch else 0.0)
 	p.hand_l = V(-0.08 * s, cy - 0.04 * s, 0.24 * s)
 	p.hand_r = V(0.08 * s, cy - 0.05 * s, 0.20 * s)
 	p.elbow_l = V(-0.2, -1, 0.3)

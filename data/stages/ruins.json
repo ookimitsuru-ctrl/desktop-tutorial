@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "ruins",
+  "name": [
+    "砂漠の遺跡",
+    "Desert Ruins"
+  ],
+  "ring": {
+    "vertices": [
+      [
+        "-7.00",
+        "-7.00"
+      ],
+      [
+        "7.00",
+        "-7.00"
+      ],
+      [
+        "7.00",
+        "7.00"
+      ],
+      [
+        "-7.00",
+        "7.00"
+      ]
+    ],
+    "edges": [
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      }
+    ],
+    "start": [
+      [
+        "-1.20",
+        "0"
+      ],
+      [
+        "1.20",
+        "0"
+      ]
+    ]
+  },
+  "look": {
+    "theme": "ruins"
+  },
+  "audio": {
+    "bgm": "bgm_ruins",
+    "ambience": "amb_wind"
+  },
+  "ground": "sand"
+}

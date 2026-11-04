@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "bamboo",
+  "name": [
+    "竹林の石舞台",
+    "Bamboo Stage"
+  ],
+  "ring": {
+    "vertices": [
+      [
+        "-5.50",
+        "-5.50"
+      ],
+      [
+        "5.50",
+        "-5.50"
+      ],
+      [
+        "5.50",
+        "5.50"
+      ],
+      [
+        "-5.50",
+        "5.50"
+      ]
+    ],
+    "edges": [
+      {
+        "type": "fence",
+        "height": "0.70"
+      },
+      {
+        "type": "open"
+      },
+      {
+        "type": "fence",
+        "height": "0.70"
+      },
+      {
+        "type": "open"
+      }
+    ],
+    "start": [
+      [
+        "-1.20",
+        "0"
+      ],
+      [
+        "1.20",
+        "0"
+      ]
+    ]
+  },
+  "look": {
+    "theme": "bamboo"
+  },
+  "audio": {
+    "bgm": "bgm_bamboo",
+    "ambience": "amb_wind"
+  },
+  "ground": "stone"
+}
