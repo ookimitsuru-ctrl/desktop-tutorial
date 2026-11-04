@@ -4,7 +4,7 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 190,
+      "expected_damage": 209,
       "id": "ravi_c_wsp_2_1",
       "route": [
         "ravi_wsp",
@@ -25,7 +25,7 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 185,
+      "expected_damage": 204,
       "id": "ravi_c_3p_2_1",
       "route": [
         "ravi_3p",
@@ -46,13 +46,13 @@
     {
       "context": "wall",
       "difficulty": 2,
-      "expected_damage": 217,
+      "expected_damage": 238,
       "id": "ravi_c_pk2_g_4_1",
       "route": [
         "ravi_pk2_g",
         "ravi_3k",
-        "ravi_3p",
-        "ravi_3p"
+        "ravi_2p",
+        "ravi_1p"
       ],
       "starter": "ravi_pk2_g",
       "timing": [

@@ -24,22 +24,21 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 255,
-      "id": "yuelan_c_wsp_3_1",
+      "expected_damage": 185,
+      "id": "yuelan_c_wsp_2_1",
       "route": [
         "yuelan_wsp",
-        "yuelan_3k",
         "yuelan_3k"
       ],
       "starter": "yuelan_wsp",
       "timing": [
         0,
-        49,
-        44
+        49
       ],
       "wall": false,
       "weight_classes": [
-        "middle"
+        "middle",
+        "heavy"
       ]
     },
     {

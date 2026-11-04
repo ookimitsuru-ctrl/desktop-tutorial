@@ -44,18 +44,16 @@
     {
       "context": "wall",
       "difficulty": 1,
-      "expected_damage": 199,
-      "id": "gensai_c_6pk_3_1",
+      "expected_damage": 179,
+      "id": "gensai_c_6pk_2_1",
       "route": [
         "gensai_6pk",
-        "gensai_6p",
-        "gensai_2p"
+        "gensai_6p"
       ],
       "starter": "gensai_6pk",
       "timing": [
         0,
-        52,
-        39
+        52
       ],
       "wall": true,
       "weight_classes": [

@@ -34,6 +34,9 @@ func test_cpu_matches_all_characters() -> void:
 		var w := _run(c0, c1, 100 + i, kinds)
 		check(w.phase == SE.PH_MATCH_END, "%s vs %s が決着する（frame %d, phase %d）" % [c0, c1, w.frame, w.phase])
 		check(w.f[0].stat_damage + w.f[1].stat_damage > 0, "%s vs %s でダメージが発生する" % [c0, c1])
+	# 固有の分岐投げを持つキャラ同士の追加試合（首相撲・トラップ・連続投げ）
+	for pair: Array in [["zaw", "gensai", 40], ["mariel", "toma", 40], ["bjorn", "lena", 41], ["zaw", "toma", 42]]:
+		_run(String(pair[0]), String(pair[1]), int(pair[2]), kinds)
 	for k: String in ["hit", "block", "throw", "round_end", "move"]:
 		check(int(kinds.get(k, 0)) > 0, "イベント %s が発生する" % k)
 	check(int(kinds.get("throw_chain", 0)) > 0, "連続投げ・首相撲・トラップの分岐が使われる")

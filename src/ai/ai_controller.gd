@@ -45,6 +45,7 @@ var plus_moves: Array[MoveDef] = []
 var stance_entries: Array[MoveDef] = []   # 構えに入る技
 var steps: Array[MoveDef] = []            # 移動技（進歩など）
 var parries: Array[MoveDef] = []          # 当て身・トラップ
+var sig_throws: Array[MoveDef] = []       # 分岐のある投げ（連続投げ・首相撲）
 # 連携・連続投げの判断（技ごとに 1 回）
 var _chain_start := -1
 var _chain_k := -1
@@ -135,6 +136,8 @@ func _classify() -> void:
 				low_throws.append(m)
 			elif not m.throw_vs_down and (m.from_mask & SE.FROM_WALL) == 0:
 				throws.append(m)
+				if not m.throw_next_to.is_empty():
+					sig_throws.append(m)
 			continue
 		if not m.is_strike():
 			continue
@@ -510,6 +513,9 @@ func _neutral(p: FighterState, o: FighterState) -> void:
 		_do_move(_pick(lows))
 	elif r3 < w_mid + w_low + w_throw:
 		var tl: Array[MoveDef] = low_throws if (o.is_crouching() and not low_throws.is_empty()) else throws
+		# キャラ固有の分岐投げ（連続投げ・首相撲）は優先して使う
+		if tl == throws and not sig_throws.is_empty() and _rand() < 0.5:
+			tl = sig_throws
 		_do_move(_pick(tl))
 	elif r3 < w_mid + w_low + w_throw + w_jab:
 		if jab != null:

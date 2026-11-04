@@ -53,10 +53,10 @@
       "route": [
         "bjorn_kg",
         "bjorn_k",
-        "bjorn_3p",
         "bjorn_2p",
-        "bjorn_3p",
-        "bjorn_2p"
+        "bjorn_2p",
+        "bjorn_2p",
+        "bjorn_3p"
       ],
       "starter": "bjorn_kg",
       "timing": [

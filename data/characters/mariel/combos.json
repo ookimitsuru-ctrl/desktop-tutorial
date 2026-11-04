@@ -4,16 +4,18 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 199,
-      "id": "mariel_c_wsp_2_1",
+      "expected_damage": 257,
+      "id": "mariel_c_wsp_3_1",
       "route": [
         "mariel_wsp",
-        "mariel_3k"
+        "mariel_3k",
+        "mariel_3kp_x"
       ],
       "starter": "mariel_wsp",
       "timing": [
         0,
-        49
+        49,
+        22
       ],
       "wall": false,
       "weight_classes": [
@@ -24,11 +26,11 @@
     {
       "context": "launch",
       "difficulty": 1,
-      "expected_damage": 182,
+      "expected_damage": 221,
       "id": "mariel_c_wsp_2_2",
       "route": [
         "mariel_wsp",
-        "mariel_k"
+        "mariel_4k"
       ],
       "starter": "mariel_wsp",
       "timing": [
@@ -37,27 +39,24 @@
       ],
       "wall": false,
       "weight_classes": [
-        "middle",
-        "heavy"
+        "middle"
       ]
     },
     {
       "context": "wall",
-      "difficulty": 2,
-      "expected_damage": 231,
-      "id": "mariel_c_4k_4_1",
+      "difficulty": 1,
+      "expected_damage": 219,
+      "id": "mariel_c_4k_3_1",
       "route": [
         "mariel_4k",
         "mariel_3k",
-        "mariel_3p",
         "mariel_3p"
       ],
       "starter": "mariel_4k",
       "timing": [
         0,
         53,
-        41,
-        42
+        41
       ],
       "wall": true,
       "weight_classes": [

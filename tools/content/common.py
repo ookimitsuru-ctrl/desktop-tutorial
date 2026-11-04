@@ -176,7 +176,11 @@ class Char:
         self.T("wall_pg", "P+G", wall[:2], wall[2], "N", wall[3], frm=("wall",), length=60, dmgf=36)
         self.T("runpg", "P+G", run[:2], run[2], "N", run[3], frm=("run",), length=56, dmgf=34, f=(10, 1, 24), range="1.20")
 
+    pre_write = None
+
     def write(self, character):
+        if Char.pre_write is not None:
+            Char.pre_write(self)
         d = os.path.join(ROOT, "data/characters", self.cid)
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "character.json"), "w") as fp:
