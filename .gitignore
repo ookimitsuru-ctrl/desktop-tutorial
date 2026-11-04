@@ -1,0 +1,14 @@
+.godot/
+*.import.bak
+/build/
+/export/
+*.apk
+*.aab
+*.keystore
+*.jks
+/reports/*
+!/reports/README.md
+/out/
+__pycache__/
+*.pyc
+.DS_Store
