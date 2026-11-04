@@ -11,8 +11,9 @@ uniform float hit_flash = 0.0;
 uniform float wetness = 0.0;
 uniform float ghost = 0.0;
 
-varying float v_slot;
-varying float v_mtype;
+// パレット色と材質は頂点で決めて補間する（パレット番号そのものを補間すると境界に別の色が混ざるため）
+varying vec3 v_base;
+varying vec4 v_mat;   // 肌, 布, 髪, 革・金属 の重み（残りは光沢）
 varying float v_ao;
 varying vec3 v_local;
 
@@ -31,42 +32,25 @@ float vnoise(vec3 x) {
 }
 
 void vertex() {
-	v_slot = COLOR.r * 16.0 - 0.5;
-	v_mtype = COLOR.g;
+	int idx = clamp(int(round(COLOR.r * 16.0 - 0.5)), 0, 11);
+	v_base = palette[idx].rgb;
+	float m = COLOR.g;
+	v_mat = vec4(m < 0.12 ? 1.0 : 0.0, (m >= 0.12 && m < 0.37) ? 1.0 : 0.0, (m >= 0.37 && m < 0.62) ? 1.0 : 0.0, (m >= 0.62 && m < 0.87) ? 1.0 : 0.0);
 	v_ao = COLOR.b;
 	v_local = VERTEX;
 }
 
 void fragment() {
-	int idx = clamp(int(round(v_slot)), 0, 11);
-	vec3 base = palette[idx].rgb;
+	vec3 base = v_base;
 	float n = vnoise(v_local * 90.0);
 	float n2 = vnoise(v_local * 18.0);
-	float rough = 0.6;
-	float spec = 0.4;
-	if (v_mtype < 0.12) {
-		// 肌: わずかな色ムラ
-		base *= 0.94 + 0.08 * n2;
-		rough = 0.55;
-		spec = 0.35;
-	} else if (v_mtype < 0.37) {
-		// 布: 織り目
-		base *= 0.90 + 0.12 * n;
-		rough = 0.88;
-		spec = 0.2;
-	} else if (v_mtype < 0.62) {
-		// 髪
-		base *= 0.85 + 0.25 * vnoise(v_local * vec3(40.0, 160.0, 40.0));
-		rough = 0.45;
-		spec = 0.5;
-	} else if (v_mtype < 0.87) {
-		// 革・金属
-		rough = 0.35;
-		spec = 0.6;
-	} else {
-		rough = 0.15;
-		spec = 0.7;
-	}
+	float nh = vnoise(v_local * vec3(40.0, 160.0, 40.0));
+	float glossy = clamp(1.0 - (v_mat.x + v_mat.y + v_mat.z + v_mat.w), 0.0, 1.0);
+	// 材質ごとの色ムラ（肌: わずかなムラ、布: 織り目、髪: 筋）
+	float tex = v_mat.x * (0.94 + 0.08 * n2) + v_mat.y * (0.90 + 0.12 * n) + v_mat.z * (0.85 + 0.25 * nh) + v_mat.w + glossy;
+	base *= tex;
+	float rough = v_mat.x * 0.55 + v_mat.y * 0.88 + v_mat.z * 0.45 + v_mat.w * 0.35 + glossy * 0.15;
+	float spec = v_mat.x * 0.35 + v_mat.y * 0.2 + v_mat.z * 0.35 + v_mat.w * 0.6 + glossy * 0.7;
 	float ao = mix(0.45, 1.0, v_ao);
 	ALBEDO = base * ao;
 	ROUGHNESS = mix(rough, 0.2, wetness);
@@ -87,10 +71,8 @@ void light() {
 	float wrap = 0.35;
 	float diff = clamp((ndl + wrap) / (1.0 + wrap), 0.0, 1.0);
 	vec3 tint = vec3(1.0);
-	if (v_mtype < 0.12) {
-		float t = clamp(1.0 - abs(ndl) * 2.5, 0.0, 1.0);
-		tint = mix(vec3(1.0), vec3(1.25, 0.82, 0.72), t * 0.6);
-	}
+	float t = clamp(1.0 - abs(ndl) * 2.5, 0.0, 1.0);
+	tint = mix(vec3(1.0), vec3(1.25, 0.82, 0.72), t * 0.6 * v_mat.x);
 	DIFFUSE_LIGHT += diff * ATTENUATION * LIGHT_COLOR * tint / 3.14159;
 	vec3 h = normalize(VIEW + LIGHT);
 	float sp = pow(clamp(dot(NORMAL, h), 0.0, 1.0), mix(80.0, 8.0, ROUGHNESS)) * (1.0 - ROUGHNESS) * 0.6;

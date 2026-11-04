@@ -69,6 +69,16 @@ func _init() -> void:
 	cam.fov = 30
 	cam.position = Vector3(0, 1.1, 3.6 + n * 1.2)
 	cam.look_at_from_position(cam.position, Vector3(0, 0.95, 0))
+	# PREVIEW_HEAD=1: 顔のアップ（1 体目、正面やや斜め）
+	if OS.get_environment("PREVIEW_HEAD") == "1":
+		var hy := lib.rig.height * 0.93
+		for c: Node in vp.get_children():
+			if c is CharacterModel:
+				(c as Node3D).rotation_degrees = Vector3(0, float(OS.get_environment("PREVIEW_YAW")) if OS.get_environment("PREVIEW_YAW") != "" else -20.0, 0)
+				(c as Node3D).position = Vector3.ZERO
+		cam.fov = 22
+		cam.position = Vector3(0, hy, 0.75)
+		cam.look_at_from_position(cam.position, Vector3(0, hy - 0.02, 0))
 	vp.add_child(cam)
 
 

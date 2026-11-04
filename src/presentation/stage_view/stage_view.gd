@@ -357,9 +357,15 @@ func _wall(node: Node3D, a: Vector3, b: Vector3, h: float) -> void:
 	w.set_meta("wall", true)
 	_fade_walls.append([node, mid, out_n.normalized()])
 	if stage_id == "temple":
-		var roof := _box(Vector3(0.75, 0.18, ln + 0.7), mid + out_n + Vector3(0, h + 0.08, 0), _mat(theme.get("roof_c", Color(0.2, 0.2, 0.2)), 0.5), node, yaw)
-		roof.rotation.z = 0.0
-		_box(Vector3(0.38, 0.22, ln + 0.4), mid + out_n + Vector3(0, 0.11, 0), _mat(wc.darkened(0.35)), node, yaw)
+		# 築地塀: 本体を低くし、筋（横線）と瓦の屋根を載せる
+		w.scale = Vector3(1, 1.55 / h, 1)
+		w.position.y = 1.55 * 0.5
+		var hh := 1.55
+		for li: int in range(3):
+			_box(Vector3(0.38, 0.035, ln + 0.37), mid + out_n + Vector3(0, hh - 0.32 - li * 0.14, 0), _mat(Color(0.92, 0.9, 0.84), 0.9), node, yaw)
+		_box(Vector3(0.42, 0.30, ln + 0.42), mid + out_n + Vector3(0, 0.15, 0), _mat(Color(0.42, 0.41, 0.4), 0.95), node, yaw)
+		var rc: Color = theme.get("roof_c", Color(0.2, 0.2, 0.2))
+		_gable(node, mid + out_n + Vector3(0, hh, 0), ln + 0.8, 0.95, 0.32, rc, yaw)
 	elif stage_id == "fort":
 		var n := int(ln / 0.9)
 		for k: int in range(n):
@@ -367,6 +373,66 @@ func _wall(node: Node3D, a: Vector3, b: Vector3, h: float) -> void:
 				var t := (k + 0.5) / float(n)
 				var p := a.lerp(b, t) + out_n + Vector3(0, h + 0.22, 0)
 				_box(Vector3(0.4, 0.44, 0.55), p, _mat(wc.darkened(0.1)), node, yaw)
+
+
+## 切妻屋根（棟が辺に沿う）: base は軒の中心、len は棟の長さ、wid は屋根の幅、h は高さ
+func _gable(parent: Node3D, base: Vector3, len: float, wid: float, h: float, col: Color, yaw: float) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hl := len * 0.5
+	var hw := wid * 0.5
+	# ローカル座標: 棟は z 方向、x が屋根の幅
+	var p0 := Vector3(-hw, 0, -hl)
+	var p1 := Vector3(-hw, 0, hl)
+	var p2 := Vector3(0, h, hl)
+	var p3 := Vector3(0, h, -hl)
+	var p4 := Vector3(hw, 0, -hl)
+	var p5 := Vector3(hw, 0, hl)
+	for tri: Array in [[p0, p1, p2], [p0, p2, p3], [p4, p3, p2], [p4, p2, p5], [p0, p3, p4], [p1, p5, p2]]:
+		var a: Vector3 = tri[0]
+		var b: Vector3 = tri[1]
+		var c: Vector3 = tri[2]
+		var nn := (b - a).cross(c - a).normalized()
+		st.set_normal(nn)
+		st.add_vertex(a)
+		st.add_vertex(b)
+		st.add_vertex(c)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = _mat(col, 0.55)
+	mi.position = base
+	mi.rotation.y = yaw
+	(parent if parent != null else self).add_child(mi)
+
+
+## 寄棟屋根: base は軒の中心、w×d の平面、h の高さ（棟は x 方向）
+func _hip(base: Vector3, w: float, d: float, h: float, col: Color, parent: Node3D = null, yaw: float = 0.0) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hw := w * 0.5
+	var hd := d * 0.5
+	var r := maxf(0.0, hw - hd)
+	var a := Vector3(-hw, 0, -hd)
+	var b := Vector3(hw, 0, -hd)
+	var c := Vector3(hw, 0, hd)
+	var dd := Vector3(-hw, 0, hd)
+	var r0 := Vector3(-r, h, 0)
+	var r1 := Vector3(r, h, 0)
+	for tri: Array in [[a, r0, r1], [a, r1, b], [b, r1, c], [c, r1, r0], [c, r0, dd], [dd, r0, a], [a, b, c], [a, c, dd]]:
+		var p: Vector3 = tri[0]
+		var q: Vector3 = tri[1]
+		var t: Vector3 = tri[2]
+		st.set_normal((q - p).cross(t - p).normalized())
+		st.add_vertex(p)
+		st.add_vertex(q)
+		st.add_vertex(t)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = _mat(col, 0.5)
+	mi.position = base
+	mi.rotation.y = yaw
+	(parent if parent != null else self).add_child(mi)
+	return mi
 
 
 func _outside(sdef: StageDef) -> void:
@@ -563,30 +629,7 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 				(lamp2.material_override as StandardMaterial3D).emission_enabled = true
 				(lamp2.material_override as StandardMaterial3D).emission = Color(0.2, 1.0, 0.3) * 2.0
 		"temple":
-			var lanterns := [Vector3(-3.8, 0, -3.8), Vector3(3.8, 0, -3.8), Vector3(-3.8, 0, 3.8), Vector3(3.8, 0, 3.8)]
-			for lp2: Vector3 in lanterns:
-				var lp3 := lp2 * 1.55
-				_cyl(0.15, 0.25, 1.2, lp3 + Vector3(0, 0.6, 0), _mat(Color(0.5, 0.48, 0.45)))
-				var top := _box(Vector3(0.5, 0.45, 0.5), lp3 + Vector3(0, 1.4, 0), _mat(Color(0.55, 0.52, 0.48)))
-				var lt := OmniLight3D.new()
-				lt.position = lp3 + Vector3(0, 1.4, 0)
-				lt.light_color = Color(1.0, 0.65, 0.3)
-				lt.light_energy = 1.2
-				lt.omni_range = 4.0
-				add_child(lt)
-				var _t := top
-			var txf: Array[Transform3D] = []
-			for k: int in range(int(40 * dens) + 6):
-				var ang9 := r.randf() * TAU
-				var d9 := r.randf_range(9, 25)
-				txf.append(Transform3D(Basis().scaled(Vector3.ONE * r.randf_range(2.0, 3.5)), Vector3(sin(ang9) * d9, r.randf_range(4, 6), cos(ang9) * d9)))
-			var sm2 := SphereMesh.new()
-			sm2.radial_segments = 8
-			sm2.rings = 4
-			_multimesh(sm2, txf, _mat(Color(0.85, 0.32, 0.12), 0.9))
-			_box(Vector3(14, 6, 6), Vector3(0, 3, -16), _mat(Color(0.35, 0.18, 0.12)))
-			var roof2 := _box(Vector3(17, 1.2, 9), Vector3(0, 6.6, -16), _mat(Color(0.15, 0.15, 0.17)))
-			var _r2 := roof2
+			_temple(r, dens)
 		"raft":
 			var txf2: Array[Transform3D] = []
 			for k: int in range(int(140 * dens) + 10):
@@ -626,6 +669,106 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 			rock.radial_segments = 6
 			rock.rings = 3
 			_multimesh(rock, rxf, _mat(Color(0.12, 0.13, 0.15), 0.95))
+
+
+## 古寺: 本堂・五重塔・山門・紅葉・石灯籠（塀の外）
+func _temple(r: RandomNumberGenerator, dens: float) -> void:
+	var wood := Color(0.42, 0.18, 0.1)
+	var plaster := Color(0.9, 0.86, 0.76)
+	var roof := Color(0.16, 0.17, 0.2)
+	var stone := Color(0.5, 0.49, 0.47)
+	# 本堂（北側）
+	var hz := -17.0
+	_box(Vector3(18, 1.0, 10), Vector3(0, -0.1, hz), _mat(stone, 0.95))
+	for ix: int in range(7):
+		for iz: int in [0, 1]:
+			_cyl(0.22, 0.24, 4.0, Vector3(-7.5 + ix * 2.5, 2.4, hz + 3.6 - iz * 7.2), _mat(wood, 0.7))
+	_box(Vector3(16, 3.6, 0.2), Vector3(0, 2.2, hz - 3.5), _mat(plaster, 0.9))
+	for ix2: int in range(6):
+		_box(Vector3(2.0, 3.0, 0.12), Vector3(-6.25 + ix2 * 2.5, 2.0, hz + 3.3), _mat(Color(0.55, 0.32, 0.18), 0.8))
+	_box(Vector3(17, 0.4, 9.2), Vector3(0, 4.55, hz), _mat(wood.darkened(0.2), 0.8))
+	_hip(Vector3(0, 4.7, hz), 22.0, 13.0, 4.2, roof)
+	_box(Vector3(9.5, 0.5, 0.5), Vector3(0, 8.95, hz), _mat(roof.darkened(0.3), 0.5))
+	# 五重塔（北西の奥）
+	var pz := Vector3(-16, 0, -27)
+	_box(Vector3(6, 1.0, 6), pz + Vector3(0, -0.1, 0), _mat(stone, 0.95))
+	for t: int in range(5):
+		var sc := 1.0 - t * 0.12
+		var y := 0.4 + t * 3.0
+		_box(Vector3(3.6 * sc, 2.2, 3.6 * sc), pz + Vector3(0, y + 1.1, 0), _mat(wood if t % 2 == 0 else wood.lightened(0.08), 0.8))
+		_hip(pz + Vector3(0, y + 2.2, 0), 6.4 * sc, 6.4 * sc, 1.0, roof)
+	_cyl(0.12, 0.18, 5.0, pz + Vector3(0, 17.2, 0), _mat(Color(0.75, 0.6, 0.3), 0.4, 0.6))
+	for k: int in range(6):
+		_cyl(0.32, 0.32, 0.08, pz + Vector3(0, 15.6 + k * 0.6, 0), _mat(Color(0.75, 0.6, 0.3), 0.4, 0.6))
+	# 山門（南側）
+	var gz := 14.0
+	for gx: float in [-2.6, 2.6]:
+		_cyl(0.32, 0.34, 5.0, Vector3(gx, 2.0, gz), _mat(Color(0.72, 0.18, 0.1), 0.6))
+	_box(Vector3(7.0, 0.5, 1.2), Vector3(0, 4.6, gz), _mat(Color(0.72, 0.18, 0.1), 0.6))
+	_hip(Vector3(0, 4.85, gz), 9.0, 4.0, 1.8, roof)
+	# 石灯籠（塀の外の四隅）
+	for lp: Vector3 in [Vector3(-6.3, 0, -6.3), Vector3(6.3, 0, -6.3), Vector3(-6.3, 0, 6.3), Vector3(6.3, 0, 6.3), Vector3(-3.5, 0, -11.5), Vector3(3.5, 0, -11.5)]:
+		_box(Vector3(0.7, 0.25, 0.7), lp + Vector3(0, 0.12, 0), _mat(stone))
+		_cyl(0.12, 0.14, 0.9, lp + Vector3(0, 0.7, 0), _mat(stone))
+		_box(Vector3(0.6, 0.12, 0.6), lp + Vector3(0, 1.2, 0), _mat(stone))
+		var fire := _box(Vector3(0.42, 0.38, 0.42), lp + Vector3(0, 1.45, 0), _mat(Color(1.0, 0.75, 0.45)))
+		(fire.material_override as StandardMaterial3D).emission_enabled = true
+		(fire.material_override as StandardMaterial3D).emission = Color(1.0, 0.55, 0.2) * 1.4
+		_hip(lp + Vector3(0, 1.64, 0), 0.9, 0.9, 0.35, stone.darkened(0.15))
+		var lt := OmniLight3D.new()
+		lt.position = lp + Vector3(0, 1.5, 0)
+		lt.light_color = Color(1.0, 0.62, 0.3)
+		lt.light_energy = 1.0
+		lt.omni_range = 4.5
+		add_child(lt)
+	# 紅葉（幹 + 色の違う葉の塊）
+	var trunk_xf: Array[Transform3D] = []
+	var leaf_xf: Array[Transform3D] = []
+	var leaf_c: Array[Color] = []
+	var palette: Array[Color] = [Color(0.85, 0.22, 0.08), Color(0.92, 0.42, 0.1), Color(0.95, 0.62, 0.15), Color(0.7, 0.12, 0.08), Color(0.55, 0.5, 0.18)]
+	for k2: int in range(int(34 * dens) + 8):
+		var ang := r.randf() * TAU
+		var dist := r.randf_range(8.0, 26.0)
+		var base := Vector3(sin(ang) * dist, 0, cos(ang) * dist)
+		if base.z < -11.0 and absf(base.x) < 11.0:
+			continue
+		var th := r.randf_range(2.5, 4.0)
+		trunk_xf.append(Transform3D(Basis().scaled(Vector3(1, th, 1)), base + Vector3(0, th * 0.5, 0)))
+		for c2: int in range(4):
+			var off := Vector3(r.randf_range(-1.2, 1.2), th + r.randf_range(-0.2, 1.0), r.randf_range(-1.2, 1.2))
+			leaf_xf.append(Transform3D(Basis().scaled(Vector3(1.0, 0.75, 1.0) * r.randf_range(1.0, 1.8)), base + off))
+			leaf_c.append(palette[r.randi() % palette.size()])
+	var tm := CylinderMesh.new()
+	tm.top_radius = 0.1
+	tm.bottom_radius = 0.16
+	tm.height = 1.0
+	tm.radial_segments = 6
+	_multimesh(tm, trunk_xf, _mat(Color(0.25, 0.16, 0.12), 0.9))
+	var lm := SphereMesh.new()
+	lm.radial_segments = 8
+	lm.rings = 5
+	var leaf_mat := _mat(Color.WHITE, 0.9)
+	leaf_mat.vertex_color_use_as_albedo = true
+	_multimesh(lm, leaf_xf, leaf_mat, leaf_c)
+	# 遠景の山
+	_mountains(r, Color(0.45, 0.35, 0.42), 9)
+
+
+## 遠景の山並み（霧で霞む）
+func _mountains(r: RandomNumberGenerator, col: Color, n: int) -> void:
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.0
+	cm.bottom_radius = 1.0
+	cm.height = 1.0
+	cm.radial_segments = 7
+	var xf: Array[Transform3D] = []
+	for k: int in range(n):
+		var ang := k * TAU / n + r.randf_range(-0.2, 0.2)
+		var d := r.randf_range(90, 130)
+		var hgt := r.randf_range(18, 40)
+		var rad := r.randf_range(30, 55)
+		xf.append(Transform3D(Basis().scaled(Vector3(rad, hgt, rad)), Vector3(sin(ang) * d, -2 + hgt * 0.5, cos(ang) * d)))
+	_multimesh(cm, xf, _mat(col, 1.0))
 
 
 func _weather(quality: int) -> void:

@@ -270,12 +270,17 @@ def eye_parts(B):
     hj = B.j("Head")
     c = hj + v3([0, 0.105 * s, -0.008 * s])
     parts = []
+    fem = B.female
     for sx in (-1, 1):
-        e = c + v3([sx * 0.032 * s, 0.006 * s, -0.080 * s])
-        parts.append(("sphere", e, 0.0125 * s, EYE_WHITE, MT_EYE))
-        parts.append(("sphere", e + v3([0, 0, -0.0085 * s]), 0.0065 * s, DARK, MT_EYE))
-        bpos = c + v3([sx * 0.034 * s, 0.030 * s, -0.093 * s])
-        parts.append(("box", bpos, v3([0.020 * s, 0.0035 * s, 0.006 * s]), sx * -0.18, B.m.get("brow_slot", DARK)))
+        # 白目は少し奥に置いた横長の楕円、黒目は大きめ、上まぶた（肌）で上を覆ってアーモンド形に
+        e = c + v3([sx * 0.032 * s, 0.006 * s, -0.075 * s])
+        parts.append(("ell", e, v3([0.0130 * s, 0.0085 * s, 0.0110 * s]), EYE_WHITE, MT_EYE))
+        parts.append(("ell", e + v3([0, 0.0003 * s, -0.0088 * s]), v3([0.0066 * s, 0.0066 * s, 0.0030 * s]), DARK, MT_EYE))
+        lid = e + v3([0, 0.0078 * s, -0.0012 * s])
+        parts.append(("ell", lid, v3([0.0150 * s, 0.0048 * s if fem else 0.0056 * s, 0.0118 * s]), SKIN, MT_SKIN))
+        bpos = c + v3([sx * 0.034 * s, 0.026 * s, -0.092 * s])
+        bw = 0.0028 * s if fem else 0.0040 * s
+        parts.append(("box", bpos, v3([0.019 * s, bw, 0.006 * s]), sx * (-0.10 if fem else -0.22), B.m.get("brow_slot", HAIR)))
     return parts
 
 
@@ -364,8 +369,9 @@ def explicit_mesh(parts, head_bone):
     verts, norms, faces, slots, mts = [], [], [], [], []
     base = 0
     for part in parts:
-        if part[0] == "sphere":
+        if part[0] in ("sphere", "ell"):
             _, c, r, slot, mt = part
+            r = np.array([r, r, r]) if part[0] == "sphere" else np.asarray(r)
             nu, nv = 10, 8
             for i in range(nv + 1):
                 th = math.pi * i / nv
@@ -373,7 +379,8 @@ def explicit_mesh(parts, head_bone):
                     ph = 2 * math.pi * j / nu
                     n = np.array([math.sin(th) * math.cos(ph), math.cos(th), math.sin(th) * math.sin(ph)])
                     verts.append(c + n * r)
-                    norms.append(n)
+                    nn = n / r
+                    norms.append(nn / np.linalg.norm(nn))
                     slots.append(slot)
                     mts.append(mt)
             for i in range(nv):
