@@ -1004,6 +1004,14 @@ func _punch(c: AnimClip, base: PoseData, an: Dictionary, S: int, A: int, R: int)
 			ant.chest += V(10, 0, 0)
 			hit.root += V(0, 0.03 * s, 0)
 			hit.chest += V(-8, 0, 0)
+			# しゃがみ・低い構えから出るアッパーは、打点で体ごと伸び上がる
+			if base.root.y < st.root.y - 0.05:
+				hit.root.y = lerpf(base.root.y, st.root.y + 0.03 * s, 0.85)
+				var stand := st.copy()
+				hit.foot_l = stand.foot_l + V(0, 0, hit.root.z)
+				hit.foot_r = stand.foot_r + V(0, 0, hit.root.z)
+				hit.knee_l = stand.knee_l
+				hit.knee_r = stand.knee_r
 		"back":
 			target = V(0.05 * side * s, h, reach * 0.88 + step)
 			elbow = V(0.0, -0.6, 1.0)
