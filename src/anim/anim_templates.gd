@@ -251,6 +251,49 @@ func make_down_face() -> PoseData:
 
 # ------------------------------------------------------------ 共通アニメ
 
+## メニュー用の自然な立ち姿: 背筋を伸ばし、腕を体の横に下ろして、ゆっくり呼吸する。
+## 試合では使わない（シミュレーションの姿勢一覧やベイクには入れない）
+func rest_clip() -> AnimClip:
+	var c := AnimClip.new()
+	c.name = "rest"
+	c.loop = true
+	c.length = 150
+	var r := st.copy()
+	r.root = V(0, -0.012 * s, 0)
+	r.hips = V(0, 0, 0)
+	r.spine = V(0, 0, 0)
+	r.chest = V(-2, 0, 0)
+	r.neck = V(0, 0, 0)
+	r.head = V(2, 0, 0)
+	r.shoulder_l = V(0, 0, 0)
+	r.shoulder_r = V(0, 0, 0)
+	r.foot_l = V(-0.13 * s, ank, 0.0)
+	r.foot_r = V(0.13 * s, ank, 0.0)
+	r.knee_l = V(0, 0, 1)
+	r.knee_r = V(0, 0, 1)
+	r.ankle_l = V(0, 0, 0)
+	r.ankle_r = V(0, 0, 0)
+	r.toes_l = 0.0
+	r.toes_r = 0.0
+	# 太い装甲の胴や腰に当たらないよう、腕は体から少し離して下ろす
+	r.hand_l = V(-0.31 * s, hip_h - 0.03, 0.03)
+	r.hand_r = V(0.31 * s, hip_h - 0.03, 0.03)
+	r.elbow_l = V(-0.4, 0, -1)
+	r.elbow_r = V(0.4, 0, -1)
+	r.wrist_l = V(0, 0, 0)
+	r.wrist_r = V(0, 0, 0)
+	r.fist_l = 0.6
+	r.fist_r = 0.6
+	r.face = 0
+	var b := r.copy()
+	b.root += V(0, -0.006 * s, 0)
+	b.chest += V(1.5, 0, 0)
+	b.hand_l += V(-0.004, -0.004, 0)
+	b.hand_r += V(0.004, -0.004, 0)
+	c.add(0, r).add(75, b, E.SMOOTH).add(150, r.copy(), E.SMOOTH)
+	return c
+
+
 func common(clip_name: String, info: Dictionary) -> AnimClip:
 	var c := AnimClip.new()
 	c.name = clip_name

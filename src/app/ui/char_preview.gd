@@ -21,6 +21,9 @@ var mirror := false
 ## 選択・紹介の画面では、姿勢（構えで上体がひねられていても）に関わらず胸を正面（カメラ）へ向ける
 var face_front := true
 var _front_ready := false
+## メニュー用の立ち姿（anim = "rest"）。キャラごとに作って使い回す
+var _rest: AnimClip = null
+var _rest_id := ""
 ## 機体の大きさに合わせてカメラを引く倍率（背の高さと体格）
 var _fit_k := 1.0
 var _blink_wait := randf_range(0.8, 3.0)
@@ -87,6 +90,11 @@ func _process(delta: float) -> void:
 		return
 	t += delta
 	var c: AnimClip = lib.clip(anim)
+	if anim == "rest":
+		if _rest == null or _rest_id != char_id:
+			_rest = lib.templates.rest_clip()
+			_rest_id = char_id
+		c = _rest
 	if c == null:
 		c = lib.clip("idle")
 	var f := t * 60.0

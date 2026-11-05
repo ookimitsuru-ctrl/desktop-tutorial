@@ -41,8 +41,13 @@ func build() -> void:
 	preview = CharPreview.new()
 	preview.position = Vector2(r.position.x + r.size.x * 0.45, r.position.y)
 	preview.size = Vector2(r.size.x * 0.55, r.size.y)
+	# メインメニューでは構えずに自然に立つ。足先まで入るよう少し引く
+	preview.cam_dist = 4.3
+	preview.cam_h = 0.6
+	preview.look_h = 0.55
 	content.add_child(preview)
 	preview.show_char(Game.p_char[0] if Game.p_char[0] != "" else "toma", Game.p_costume[0], Game.p_color[0])
+	preview.play("rest")
 	var rank := UITheme.outline(UITheme.label("%s  %s" % [DataDB.t("rank"), SaveData.rank_name()], 22, "bold", UITheme.GOLD), 5)
 	rank.position = Vector2(r.position.x + r.size.x - 340, r.position.y + r.size.y - 40)
 	content.add_child(rank)
