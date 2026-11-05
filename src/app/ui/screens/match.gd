@@ -131,7 +131,7 @@ func _ready() -> void:
 func _touch_visible() -> bool:
 	if not InputHub.uses_touch(0) or Game.p_cpu[0] > 0 or Game.mode == Game.Mode.REPLAY or Game.mode == Game.Mode.WATCH:
 		return false
-	return DisplayServer.is_touchscreen_available() or OS.has_feature("mobile")
+	return DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") or OS.get_environment("RB_FORCE_TOUCH") == "1"
 
 
 func _load_replay() -> void:

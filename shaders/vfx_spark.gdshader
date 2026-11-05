@@ -14,7 +14,7 @@ float hash(float n) { return fract(sin(n) * 43758.5453); }
 void fragment() {
 	vec2 p = (UV - 0.5) * 2.0;
 	float r = length(p);
-	float a = atan(p.y, p.x);
+	float a = r > 0.0001 ? atan(p.y, p.x) : 0.0;   // 中心での atan(0,0) は未定義（NaN で黒い点になる）
 	float t = life;
 	float fade = 1.0 - smoothstep(0.55, 1.0, t);
 	float v = 0.0;
@@ -23,6 +23,7 @@ void fragment() {
 		float ray = pow(abs(cos(a * rays * 0.5 + seed * 6.28)), 24.0);
 		float raylen = 0.35 + 0.65 * smoothstep(0.0, 0.35, t);
 		float rr = ray * smoothstep(raylen, raylen * 0.3, r) * smoothstep(0.0, 0.1, r);
+		rr = isnan(rr) ? 0.0 : rr;
 		v = core * 1.6 + rr * 1.3;
 	} else if (kind == 1) {
 		float rad = 0.2 + t * 0.8;

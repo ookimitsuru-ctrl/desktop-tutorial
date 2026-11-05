@@ -19,10 +19,12 @@ func _ready() -> void:
 		scr = "match"
 	var chars := OS.get_environment("SHOT_CHARS").split(",", false)
 	Game.mode = Game.Mode.WATCH if scr == "match" else Game.Mode.VERSUS
+	if OS.get_environment("SHOT_MODE") == "versus":
+		Game.mode = Game.Mode.VERSUS
 	Game.p_char = [chars[0] if chars.size() > 0 else "toma", chars[1] if chars.size() > 1 else "toma"]
 	Game.p_costume = ["a", "a"]
 	Game.p_color = [0, 1]
-	Game.p_cpu = [7, 7]
+	Game.p_cpu = [7, 7] if OS.get_environment("SHOT_MODE") != "versus" else [0, 7]
 	var st := OS.get_environment("SHOT_STAGE")
 	Game.stage = st if st != "" else "arena"
 	Game.setup_match_defaults()
