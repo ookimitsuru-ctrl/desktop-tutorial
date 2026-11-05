@@ -19,6 +19,9 @@ var particles: Array[CPUParticles3D] = []
 var _flash := 0.0
 var _flash_t := 0.0
 var _lighthouse_beam: Node3D = null
+## [材質, 位相]: 点滅する航空障害灯
+var _blinkers: Array = []
+var _blink_t := 0.0
 var ground_color := Color(0.7, 0.68, 0.62)
 ## [ノード, 辺の中点, 外向き法線]: カメラと選手の間に入る壁を透明にする
 var _fade_walls: Array = []
@@ -82,7 +85,7 @@ const THEMES := {
 	"raft": {
 		"sky": [Color(0.3, 0.55, 0.85), Color(0.75, 0.85, 0.95), Color(0.4, 0.5, 0.45)],
 		"sun_rot": Vector3(-55, 45, 0), "sun": Color(1.0, 0.97, 0.9), "sun_e": 1.7,
-		"amb": Color(0.55, 0.65, 0.8), "amb_e": 0.85, "fog": Color(0.7, 0.8, 0.9), "fog_d": 0.01,
+		"amb": Color(0.55, 0.65, 0.8), "amb_e": 0.85, "fog": Color(0.7, 0.8, 0.9), "fog_d": 0.007,
 		"floor": 7, "floor_c": Color(0.55, 0.4, 0.25), "line_c": Color(0.8, 0.8, 0.8), "alt_c": Color(0.18, 0.12, 0.08),
 		"outside": "water", "water": [Color(0.04, 0.15, 0.14), Color(0.12, 0.35, 0.32)], "rim": Color(1.0, 0.96, 0.85), "glow": 0.5,
 		"dust": Color(0.6, 0.75, 0.85), "trees": true,
@@ -460,7 +463,8 @@ func _outside(sdef: StageDef) -> void:
 			wm.set_shader_parameter("shallow", wc[1])
 			wm.set_shader_parameter("choppy", 2.0 if theme.has("storm") else 1.0)
 			mi.material_override = wm
-			y = -1.6
+			# 筏は丸太が半分沈む高さに水面を置く
+			y = -0.7 if stage_id == "raft" else -1.6
 		"void":
 			mi.material_override = _mat(Color(0.03, 0.03, 0.05))
 			y = -40.0
@@ -573,52 +577,13 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 		"fort":
 			_fort(r, dens)
 		"ruins":
-			for k: int in range(int(14 * dens) + 4):
-				var ang6 := (k / float(int(14 * dens) + 4)) * TAU + r.randf_range(-0.1, 0.1)
-				var d6 := r.randf_range(11, 18)
-				var h6 := r.randf_range(4, 11) if r.randf() > 0.3 else r.randf_range(1, 3)
-				var p6 := Vector3(sin(ang6) * d6, -1.5, cos(ang6) * d6)
-				_cyl(0.65, 0.75, h6, p6 + Vector3(0, h6 * 0.5, 0), _mat(Color(0.78, 0.62, 0.45), 0.9), null, 10)
-				if h6 > 5 and r.randf() > 0.5:
-					_box(Vector3(2.2, 0.6, 1.6), p6 + Vector3(0, h6 + 0.3, 0), _mat(Color(0.75, 0.6, 0.44), 0.9))
-			for k2: int in range(5):
-				var ang7 := r.randf() * TAU
-				_box(Vector3(30, r.randf_range(3, 8), 20), Vector3(sin(ang7) * 70, -1.5, cos(ang7) * 70), _mat(Color(0.7, 0.5, 0.35)), null, ang7)
+			_ruins(r, dens)
 		"skyline":
-			var bxf: Array[Transform3D] = []
-			for k: int in range(int(120 * dens) + 20):
-				var ang8 := r.randf() * TAU
-				var d8 := r.randf_range(25, 110)
-				var h8 := r.randf_range(10, 80)
-				var w8 := r.randf_range(5, 14)
-				bxf.append(Transform3D(Basis(Vector3.UP, r.randf() * PI).scaled(Vector3(w8, h8, w8)), Vector3(sin(ang8) * d8, -60 + h8 * 0.5, cos(ang8) * d8)))
-			var bmesh := BoxMesh.new()
-			var wm2 := ShaderMaterial.new()
-			wm2.shader = load("res://shaders/emissive_windows.gdshader")
-			_multimesh(bmesh, bxf, wm2)
-			_cyl(6.6, 6.8, 0.8, Vector3(0, -1.0, 0), _mat(Color(0.25, 0.26, 0.3), 0.7))
-			for k2: int in range(8):
-				var la := k2 * TAU / 8.0
-				var lamp2 := _cyl(0.06, 0.06, 0.15, Vector3(sin(la) * 6.3, 0.08, cos(la) * 6.3), _mat(Color(0.2, 1.0, 0.3)))
-				(lamp2.material_override as StandardMaterial3D).emission_enabled = true
-				(lamp2.material_override as StandardMaterial3D).emission = Color(0.2, 1.0, 0.3) * 2.0
+			_skyline(r, dens)
 		"temple":
 			_temple(r, dens)
 		"raft":
-			var txf2: Array[Transform3D] = []
-			for k: int in range(int(140 * dens) + 10):
-				var side3 := -1.0 if k % 2 == 0 else 1.0
-				var x3 := side3 * r.randf_range(16, 40)
-				var z3 := r.randf_range(-70, 70)
-				txf2.append(Transform3D(Basis().scaled(Vector3(1, r.randf_range(0.8, 1.4), 1) * r.randf_range(2.5, 4.5)), Vector3(x3, 1.0 + r.randf_range(0, 2), z3)))
-			var cone2 := CylinderMesh.new()
-			cone2.top_radius = 0.0
-			cone2.bottom_radius = 1.0
-			cone2.height = 2.5
-			cone2.radial_segments = 7
-			_multimesh(cone2, txf2, _mat(Color(0.15, 0.35, 0.18), 0.9))
-			for sgn: float in [-1.0, 1.0]:
-				_box(Vector3(18, 3, 160), Vector3(sgn * 26, -1.8, 0), _mat(Color(0.3, 0.42, 0.22)))
+			_raft(r, dens)
 		"lighthouse":
 			_cyl(2.4, 3.2, 26, Vector3(0, 11, -14), _mat(Color(0.88, 0.88, 0.85), 0.7))
 			for k: int in range(4):
@@ -920,6 +885,354 @@ func _fort(r: RandomNumberGenerator, dens: float) -> void:
 	_mountains(r, Color(0.78, 0.82, 0.9), 10)
 
 
+## 砂漠の遺跡: 二段の基壇、列柱と梁（一部は崩れている）、巨大な門、倒れた柱の胴、オアシスのヤシ、砂丘、遠くの階段状の神殿、かがり火
+func _ruins(r: RandomNumberGenerator, dens: float) -> void:
+	var stone := Color(0.8, 0.64, 0.46)
+	var dark := Color(0.6, 0.46, 0.33)
+	var sm := _mat(stone, 0.92)
+	var dm := _mat(dark, 0.95)
+	# リングの基壇（砂に埋もれた二段の石段）
+	_box(Vector3(15.0, 0.5, 15.0), Vector3(0, -0.85, 0), dm)
+	_box(Vector3(16.4, 0.45, 16.4), Vector3(0, -1.3, 0), sm)
+	# 東西の列柱（梁が残る区間と、折れた柱）
+	for side: float in [-1.0, 1.0]:
+		var prev_top := -1.0
+		for k: int in range(7):
+			var z := -13.5 + k * 4.5
+			var p := Vector3(side * 12.0, -1.5, z)
+			var broken := r.randf() < 0.35
+			var h := r.randf_range(1.2, 4.0) if broken else 7.0
+			_column(p, h, broken, sm, dm, r)
+			if not broken and prev_top > 0.0:
+				_box(Vector3(1.3, 0.9, 4.5), p + Vector3(0, 7.0 + 0.55 + 0.45, -2.25), sm)
+				_box(Vector3(1.34, 0.12, 4.52), p + Vector3(0, 7.0 + 0.55 + 0.75, -2.25), dm)
+			prev_top = -1.0 if broken else 7.0
+	# 南の奥: 柱の残る小さな祠
+	for k2: int in range(4):
+		var px := -4.5 + k2 * 3.0
+		_column(Vector3(px, -1.5, 15.5), 5.0 if k2 != 2 else 2.2, k2 == 2, sm, dm, r)
+	_box(Vector3(6.6, 0.8, 1.3), Vector3(-3.0, -1.5 + 5.0 + 0.55 + 0.4, 15.5), sm)
+	# 北の巨大な門（台形の塔門 2 基と梁、帯の彫り）
+	var gz := -26.0
+	for gx: float in [-6.0, 6.0]:
+		var py := _cyl(2.3, 3.4, 13.0, Vector3(gx, -1.5 + 6.5, gz), sm, null, 4)
+		py.rotation.y = PI * 0.25
+		for b: int in range(3):
+			var bt := _cyl(3.25 - b * 0.33, 3.3 - b * 0.33, 0.35, Vector3(gx, 1.0 + b * 3.6, gz), dm, null, 4)
+			bt.rotation.y = PI * 0.25
+	_box(Vector3(9.0, 1.6, 3.2), Vector3(0, 8.6, gz), sm)
+	_box(Vector3(9.4, 0.3, 3.4), Vector3(0, 9.5, gz), dm)
+	_box(Vector3(2.4, 1.0, 0.2), Vector3(0, 8.6, gz + 1.65), _mat(Color(0.55, 0.36, 0.22), 0.9))
+	# 倒れた柱の胴と石材
+	for k3: int in range(int(10 * dens) + 4):
+		var ang := r.randf() * TAU
+		var d := r.randf_range(9.5, 22.0)
+		var p3 := Vector3(sin(ang) * d, -1.5, cos(ang) * d)
+		if r.randf() < 0.6:
+			var ln := r.randf_range(1.2, 3.0)
+			var drum := _cyl(0.58, 0.58, ln, p3 + Vector3(0, 0.45, 0), sm, null, 14)
+			drum.rotation = Vector3(0, r.randf() * TAU, PI * 0.5)
+		else:
+			var sz := Vector3(r.randf_range(0.8, 1.8), r.randf_range(0.4, 0.9), r.randf_range(0.6, 1.2))
+			_box(sz, p3 + Vector3(0, sz.y * 0.4, 0), dm, null, r.randf() * TAU).rotation.x = r.randf_range(-0.2, 0.2)
+	# かがり火（基壇の四隅の外）
+	for bp: Vector3 in [Vector3(-8.7, -1.5, -8.7), Vector3(8.7, -1.5, -8.7), Vector3(-8.7, -1.5, 8.7), Vector3(8.7, -1.5, 8.7)]:
+		_box(Vector3(0.7, 0.4, 0.7), bp + Vector3(0, 0.2, 0), dm)
+		_cyl(0.12, 0.16, 2.0, bp + Vector3(0, 1.4, 0), _mat(Color(0.3, 0.22, 0.14), 0.6, 0.5))
+		_cyl(0.5, 0.28, 0.35, bp + Vector3(0, 2.5, 0), _mat(Color(0.35, 0.25, 0.15), 0.5, 0.6))
+		var fire := _cyl(0.0, 0.38, 0.75, bp + Vector3(0, 3.0, 0), _mat(Color(1.0, 0.6, 0.2)))
+		(fire.material_override as StandardMaterial3D).emission_enabled = true
+		(fire.material_override as StandardMaterial3D).emission = Color(1.0, 0.5, 0.12) * 3.0
+		var fl := _omni()
+		fl.position = bp + Vector3(0, 3.1, 0)
+		fl.light_color = Color(1.0, 0.6, 0.3)
+		fl.light_energy = 1.2
+		fl.omni_range = 6.5
+		add_child(fl)
+	# オアシス（南西）: 水たまりとヤシ
+	var oasis := Vector3(-22, -1.5, 18)
+	var pond := _cyl(6.0, 6.0, 0.06, oasis + Vector3(0, 0.03, 0), _mat(Color(0.1, 0.32, 0.36), 0.15, 0.2), null, 24)
+	pond.scale = Vector3(1.0, 1.0, 0.65)
+	_palms(r, oasis, 7.5, int(6 * dens) + 4)
+	_palms(r, Vector3(24, -1.5, -6), 5.0, int(3 * dens) + 2)
+	# 砂丘
+	var dune: Array[Transform3D] = []
+	for k4: int in range(int(18 * dens) + 6):
+		var ang4 := r.randf() * TAU
+		var d4 := r.randf_range(38, 95)
+		dune.append(Transform3D(Basis(Vector3.UP, r.randf() * PI) * Basis.from_scale(Vector3(r.randf_range(14, 30), r.randf_range(2.5, 7.0), r.randf_range(8, 18))), Vector3(sin(ang4) * d4, -1.6, cos(ang4) * d4)))
+	var dm2 := SphereMesh.new()
+	dm2.radial_segments = 12
+	dm2.rings = 6
+	_multimesh(dm2, dune, _mat(Color(0.8, 0.6, 0.4), 1.0))
+	# 遠くの階段状の神殿
+	var zp := Vector3(48, -1.5, -70)
+	for t: int in range(6):
+		var w := 34.0 - t * 5.0
+		_box(Vector3(w, 3.2, w), zp + Vector3(0, 1.6 + t * 3.2, 0), _mat(stone.darkened(0.08 + t * 0.02), 0.95))
+	_box(Vector3(4.0, 0.6, 26.0), zp + Vector3(0, 9.0, 13.0), dm).rotation.x = -0.72
+	_box(Vector3(6.0, 4.0, 6.0), zp + Vector3(0, 21.2, 0), dm)
+
+
+## 列柱 1 本: 礎石・柱身（溝の帯）・柱頭。broken なら柱頭なしで斜めに欠けた上端
+func _column(p: Vector3, h: float, broken: bool, sm: Material, dm: Material, r: RandomNumberGenerator) -> void:
+	_box(Vector3(1.5, 0.45, 1.5), p + Vector3(0, 0.22, 0), dm)
+	_cyl(0.52, 0.6, h, p + Vector3(0, 0.45 + h * 0.5, 0), sm, null, 16)
+	for b: int in range(int(h / 2.4)):
+		_cyl(0.6, 0.6, 0.08, p + Vector3(0, 1.2 + b * 2.4, 0), dm, null, 16)
+	if broken:
+		var chip := _box(Vector3(1.1, 0.5, 1.1), p + Vector3(0, 0.45 + h + 0.05, 0), sm, null, r.randf() * TAU)
+		chip.rotation.x = r.randf_range(0.35, 0.6)
+		return
+	_cyl(0.78, 0.55, 0.35, p + Vector3(0, 0.45 + h + 0.17, 0), sm, null, 16)
+	_box(Vector3(1.5, 0.22, 1.5), p + Vector3(0, 0.45 + h + 0.45, 0), dm)
+
+
+## ヤシの群れ: 曲がった幹（3 節）と垂れた葉
+func _palms(r: RandomNumberGenerator, center: Vector3, spread: float, n: int) -> void:
+	var trunk: Array[Transform3D] = []
+	var frond: Array[Transform3D] = []
+	for k: int in range(n):
+		var base := center + Vector3(r.randf_range(-spread, spread), 0, r.randf_range(-spread, spread) * 0.7)
+		var lean := Vector3(r.randf_range(-1, 1), 0, r.randf_range(-1, 1)).normalized()
+		var hgt := r.randf_range(5.0, 8.5)
+		var top := base
+		for s2: int in range(3):
+			var seg_h := hgt / 3.0
+			var dir := (Vector3.UP + lean * (0.12 + s2 * 0.14)).normalized()
+			var mid := top + dir * seg_h * 0.5
+			var axis := Vector3.UP.cross(dir)
+			var bas := Basis() if axis.length() < 1e-4 else Basis(axis.normalized(), Vector3.UP.angle_to(dir))
+			trunk.append(Transform3D(bas * Basis.from_scale(Vector3(1, seg_h, 1)), mid))
+			top += dir * seg_h
+		var nf := 8
+		for f: int in range(nf):
+			var yaw := f * TAU / nf + r.randf_range(-0.2, 0.2)
+			var droop := r.randf_range(0.35, 0.65)
+			var bas2 := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, droop)
+			frond.append(Transform3D(bas2 * Basis.from_scale(Vector3(0.55, 0.05, 2.6)), top + bas2 * Vector3(0, 0, 1.25)))
+	var tm := CylinderMesh.new()
+	tm.top_radius = 0.16
+	tm.bottom_radius = 0.22
+	tm.height = 1.0
+	tm.radial_segments = 7
+	_multimesh(tm, trunk, _mat(Color(0.42, 0.32, 0.22), 0.95))
+	var fm := BoxMesh.new()
+	_multimesh(fm, frond, _mat(Color(0.25, 0.42, 0.18), 0.85))
+
+
+## 夜景の屋上: ヘリポートを載せた塔、屋上の設備、隣のビルの屋上（給水塔・アンテナ）、ネオン看板、点滅する航空障害灯、月
+func _skyline(r: RandomNumberGenerator, dens: float) -> void:
+	var win := ShaderMaterial.new()
+	win.shader = load("res://shaders/emissive_windows.gdshader")
+	# 遠くのビル群
+	var bxf: Array[Transform3D] = []
+	for k: int in range(int(120 * dens) + 20):
+		var ang := r.randf() * TAU
+		var d := r.randf_range(32, 110)
+		var h := r.randf_range(10, 80)
+		var w := r.randf_range(5, 14)
+		bxf.append(Transform3D(Basis(Vector3.UP, r.randf() * PI).scaled(Vector3(w, h, w)), Vector3(sin(ang) * d, -60 + h * 0.5, cos(ang) * d)))
+	_multimesh(BoxMesh.new(), bxf, win)
+	# 自分の塔（屋上の床・パラペット・窓）
+	var concrete := Color(0.2, 0.21, 0.24)
+	var tower := MeshInstance3D.new()
+	tower.mesh = BoxMesh.new()
+	tower.material_override = win
+	tower.scale = Vector3(18, 60, 18)
+	tower.position = Vector3(0, -1.9 - 30, 0)
+	add_child(tower)
+	_box(Vector3(18.2, 0.5, 18.2), Vector3(0, -1.65, 0), _mat(concrete, 0.85))
+	for sgn: float in [-1.0, 1.0]:
+		_box(Vector3(18.2, 1.0, 0.3), Vector3(0, -0.9, sgn * 9.0), _mat(concrete.lightened(0.1), 0.8))
+		_box(Vector3(0.3, 1.0, 18.2), Vector3(sgn * 9.0, -0.9, 0), _mat(concrete.lightened(0.1), 0.8))
+	# ヘリポートの台座と脚、外周灯（緑と白を交互）
+	_cyl(6.6, 6.8, 0.8, Vector3(0, -1.0, 0), _mat(Color(0.25, 0.26, 0.3), 0.7))
+	for k2: int in range(12):
+		var la := k2 * TAU / 12.0
+		var lc := Color(0.2, 1.0, 0.3) if k2 % 2 == 0 else Color(1.0, 1.0, 0.9)
+		var lamp := _cyl(0.06, 0.06, 0.15, Vector3(sin(la) * 6.3, 0.08, cos(la) * 6.3), _mat(lc))
+		(lamp.material_override as StandardMaterial3D).emission_enabled = true
+		(lamp.material_override as StandardMaterial3D).emission = lc * 2.0
+	# 屋上の設備: 空調機（ファン付き）、階段室、アンテナ
+	for ap: Vector3 in [Vector3(-7.4, -1.4, -7.4), Vector3(-7.4, -1.4, -5.2), Vector3(7.6, -1.4, 6.0)]:
+		_box(Vector3(1.6, 1.0, 1.6), ap + Vector3(0, 0.5, 0), _mat(Color(0.55, 0.56, 0.58), 0.5, 0.4))
+		_cyl(0.6, 0.6, 0.06, ap + Vector3(0, 1.02, 0), _mat(Color(0.12, 0.12, 0.13), 0.5, 0.5), null, 16)
+	_box(Vector3(3.2, 2.6, 2.4), Vector3(7.2, -0.1, -7.4), _mat(concrete.lightened(0.05), 0.85))
+	var door := _box(Vector3(0.9, 1.8, 0.05), Vector3(7.2, -0.5, -6.17), _mat(Color(0.9, 0.85, 0.6)))
+	(door.material_override as StandardMaterial3D).emission_enabled = true
+	(door.material_override as StandardMaterial3D).emission = Color(1.0, 0.85, 0.55) * 0.9
+	_cyl(0.06, 0.1, 9.0, Vector3(-7.6, 3.1, 7.6), _mat(Color(0.5, 0.5, 0.52), 0.4, 0.7))
+	for k3: int in range(3):
+		_box(Vector3(1.2 - k3 * 0.3, 0.04, 0.04), Vector3(-7.6, 1.5 + k3 * 2.0, 7.6), _mat(Color(0.5, 0.5, 0.52), 0.4, 0.7))
+	_blinker(Vector3(-7.6, 7.7, 7.6), 0.25, 0.0)
+	# 隣のビルの屋上（リングより低い位置）
+	for k4: int in range(int(5 * dens) + 3):
+		var ang4 := k4 * TAU / (int(5 * dens) + 3) + r.randf_range(-0.25, 0.25)
+		var d4 := r.randf_range(20, 30)
+		var top := r.randf_range(-12.0, -3.0)
+		var bw := r.randf_range(9, 14)
+		var bc := Vector3(sin(ang4) * d4, top, cos(ang4) * d4)
+		var b := MeshInstance3D.new()
+		b.mesh = BoxMesh.new()
+		b.material_override = win
+		b.scale = Vector3(bw, 60, bw)
+		b.position = bc - Vector3(0, 30, 0)
+		b.rotation.y = ang4
+		add_child(b)
+		_box(Vector3(bw + 0.2, 0.3, bw + 0.2), bc + Vector3(0, 0.15, 0), _mat(concrete.darkened(0.1), 0.9), null, ang4)
+		var bas := Basis(Vector3.UP, ang4)
+		# 給水塔（脚付きの円筒と円錐の屋根）
+		var tp := bc + bas * Vector3(bw * 0.25, 0, bw * 0.2)
+		for lx: float in [-0.7, 0.7]:
+			for lz: float in [-0.7, 0.7]:
+				_box(Vector3(0.12, 2.0, 0.12), tp + Vector3(lx, 1.2, lz), _mat(Color(0.2, 0.18, 0.16), 0.7))
+		_cyl(1.2, 1.2, 2.2, tp + Vector3(0, 3.3, 0), _mat(Color(0.42, 0.3, 0.22), 0.85), null, 14)
+		_cyl(0.0, 1.3, 0.8, tp + Vector3(0, 4.8, 0), _mat(Color(0.25, 0.2, 0.18), 0.8), null, 14)
+		# 屋上のアンテナと障害灯
+		var mp := bc + bas * Vector3(-bw * 0.3, 0, -bw * 0.3)
+		_cyl(0.05, 0.08, 6.0, mp + Vector3(0, 3.0, 0), _mat(Color(0.45, 0.45, 0.48), 0.4, 0.7))
+		_blinker(mp + Vector3(0, 6.1, 0), 0.16, k4 * 0.37)
+		# ネオン看板（リング側の面）
+		if k4 % 2 == 0:
+			var neon_c: Color = [Color(1.0, 0.2, 0.6), Color(0.2, 0.85, 1.0), Color(1.0, 0.65, 0.15)][(k4 / 2) % 3]
+			var face := bc - Vector3(sin(ang4), 0, cos(ang4)) * (bw * 0.5 + 0.15)
+			_box(Vector3(5.2, 2.4, 0.2), face + Vector3(0, -2.5, 0), _mat(Color(0.05, 0.05, 0.06), 0.6), null, ang4)
+			var sign := _box(Vector3(4.6, 1.8, 0.05), face + Vector3(0, -2.5, 0) - Vector3(sin(ang4), 0, cos(ang4)) * 0.12, _mat(neon_c), null, ang4)
+			(sign.material_override as StandardMaterial3D).emission_enabled = true
+			(sign.material_override as StandardMaterial3D).emission = neon_c * 2.2
+			var nl := _omni()
+			nl.position = face + Vector3(0, -2.5, 0) - Vector3(sin(ang4), 0, cos(ang4)) * 1.5
+			nl.light_color = neon_c
+			nl.light_energy = 1.5
+			nl.omni_range = 9.0
+			add_child(nl)
+	# 月
+	var moon := MeshInstance3D.new()
+	var mm := SphereMesh.new()
+	mm.radius = 7.0
+	mm.height = 14.0
+	moon.mesh = mm
+	var mmat := _mat(Color(0.95, 0.93, 0.85))
+	mmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mmat.disable_fog = true
+	moon.material_override = mmat
+	moon.position = Vector3(-90, 75, -150)
+	add_child(moon)
+
+
+## 点滅する赤い航空障害灯
+func _blinker(p: Vector3, size: float, phase: float) -> void:
+	var m := _mat(Color(1.0, 0.1, 0.05))
+	m.emission_enabled = true
+	m.emission = Color(1.0, 0.08, 0.04) * 1.8
+	var b := _box(Vector3(size, size, size), p, m)
+	var _b := b
+	_blinkers.append([m, phase])
+
+
+## 川下りの筏: 丸太を並べた筏（縄の結束・舵・灯籠）、両岸（斜面・岩・葦・三段の葉の木）、小屋と桟橋、遠くの山
+func _raft(r: RandomNumberGenerator, dens: float) -> void:
+	var log_c := Color(0.42, 0.3, 0.18)
+	# 丸太（甲板の下。z 方向の両端が少し出る）
+	var logs: Array[Transform3D] = []
+	var lr := 0.31
+	var n := 15
+	for k: int in range(n):
+		var x := -4.5 + lr + k * (9.0 - lr * 2.0) / (n - 1)
+		var ln := 9.6 + r.randf_range(-0.15, 0.25)
+		logs.append(Transform3D(Basis(Vector3.RIGHT, PI * 0.5) * Basis.from_scale(Vector3(1, ln, 1)), Vector3(x, -0.42, r.randf_range(-0.08, 0.08))))
+	var lm := CylinderMesh.new()
+	lm.top_radius = lr
+	lm.bottom_radius = lr
+	lm.height = 1.0
+	lm.radial_segments = 10
+	_multimesh(lm, logs, _mat(log_c, 0.9))
+	# 縄の結束（両側の丸太の上を横切る）
+	for z: float in [-4.15, 4.15]:
+		for sgn: float in [-1.0, 1.0]:
+			_box(Vector3(0.1, 0.62, 0.12), Vector3(sgn * 4.55, -0.35, z), _mat(Color(0.72, 0.6, 0.38), 0.95))
+	# 舵（後ろの長い櫂）と灯籠の竿
+	var oar := _cyl(0.05, 0.05, 6.0, Vector3(0.6, -0.1, -6.6), _mat(Color(0.55, 0.42, 0.28), 0.85))
+	oar.rotation = Vector3(-1.2, 0, 0)
+	_box(Vector3(0.45, 0.04, 1.4), Vector3(0.6, -0.95, -9.2), _mat(Color(0.5, 0.38, 0.25), 0.85)).rotation.x = 0.35
+	var pole_p := Vector3(-4.2, 0.0, 4.9)
+	_cyl(0.05, 0.06, 2.6, pole_p + Vector3(0, 1.0, 0), _mat(Color(0.38, 0.28, 0.18), 0.85))
+	var lantern := _box(Vector3(0.28, 0.36, 0.28), pole_p + Vector3(0, 2.1, 0), _mat(Color(1.0, 0.85, 0.55)))
+	(lantern.material_override as StandardMaterial3D).emission_enabled = true
+	(lantern.material_override as StandardMaterial3D).emission = Color(1.0, 0.7, 0.35) * 1.2
+	# 両岸: 水際の斜面と土手
+	var bank_c := Color(0.3, 0.42, 0.22)
+	for sgn2: float in [-1.0, 1.0]:
+		_box(Vector3(40, 2.0, 200), Vector3(sgn2 * 38, -0.6, 0), _mat(bank_c, 0.95))
+		var slope := _box(Vector3(6.0, 0.5, 200), Vector3(sgn2 * 16.4, -0.55, 0), _mat(Color(0.42, 0.38, 0.28), 0.95))
+		slope.rotation.z = sgn2 * 0.18
+	# 水際の岩
+	var rocks: Array[Transform3D] = []
+	for k2: int in range(int(60 * dens) + 10):
+		var side := -1.0 if k2 % 2 == 0 else 1.0
+		var x2 := side * r.randf_range(13.0, 16.5)
+		var z2 := r.randf_range(-80, 80)
+		rocks.append(Transform3D(Basis(Vector3(r.randf(), r.randf(), r.randf()).normalized(), r.randf() * 3.0).scaled(Vector3(r.randf_range(0.5, 1.6), r.randf_range(0.4, 1.0), r.randf_range(0.5, 1.6))), Vector3(x2, -0.75, z2)))
+	var rock := SphereMesh.new()
+	rock.radial_segments = 6
+	rock.rings = 3
+	_multimesh(rock, rocks, _mat(Color(0.4, 0.4, 0.38), 0.95))
+	# 葦
+	var reeds: Array[Transform3D] = []
+	for k3: int in range(int(260 * dens) + 40):
+		var side3 := -1.0 if k3 % 2 == 0 else 1.0
+		var x3 := side3 * r.randf_range(12.5, 15.5)
+		var z3 := r.randf_range(-70, 70)
+		var hh := r.randf_range(0.8, 1.8)
+		reeds.append(Transform3D(Basis(Vector3(r.randf_range(-1, 1), 0, r.randf_range(-1, 1)).normalized(), r.randf_range(0.0, 0.25)).scaled(Vector3(1, hh, 1)), Vector3(x3, -0.7 + hh * 0.5, z3)))
+	var rm := CylinderMesh.new()
+	rm.top_radius = 0.0
+	rm.bottom_radius = 0.035
+	rm.height = 1.0
+	rm.radial_segments = 4
+	_multimesh(rm, reeds, _mat(Color(0.55, 0.6, 0.3), 0.9))
+	# 木（幹＋三段の葉。色に幅を持たせる）
+	var trunk: Array[Transform3D] = []
+	var leaf: Array[Transform3D] = []
+	var leaf_c: Array[Color] = []
+	for k4: int in range(int(150 * dens) + 20):
+		var side4 := -1.0 if k4 % 2 == 0 else 1.0
+		var base := Vector3(side4 * r.randf_range(19, 46), 0.4, r.randf_range(-80, 80))
+		var hgt := r.randf_range(6.0, 12.0)
+		trunk.append(Transform3D(Basis().scaled(Vector3(1, hgt * 0.35, 1)), base + Vector3(0, hgt * 0.175, 0)))
+		var tint := Color.from_hsv(r.randf_range(0.26, 0.36), r.randf_range(0.5, 0.7), r.randf_range(0.26, 0.42))
+		for t: int in range(3):
+			var sc := (1.0 - t * 0.26) * hgt * 0.26
+			leaf.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(sc, sc * 1.25, sc)), base + Vector3(0, hgt * (0.32 + t * 0.2), 0)))
+			leaf_c.append(tint.lightened(t * 0.06))
+	var tm := CylinderMesh.new()
+	tm.top_radius = 0.12
+	tm.bottom_radius = 0.2
+	tm.height = 1.0
+	tm.radial_segments = 6
+	_multimesh(tm, trunk, _mat(Color(0.3, 0.22, 0.15), 0.9))
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 1.0
+	cone.height = 1.0
+	cone.radial_segments = 8
+	var leaf_mat := _mat(Color.WHITE, 0.9)
+	leaf_mat.vertex_color_use_as_albedo = true
+	leaf_mat.vertex_color_is_srgb = true
+	_multimesh(cone, leaf, leaf_mat, leaf_c)
+	# 小屋と桟橋（左岸）
+	var hp := Vector3(-21, 0.4, -14)
+	_box(Vector3(4.0, 2.6, 3.4), hp + Vector3(0, 1.3, 0), _mat(Color(0.5, 0.36, 0.22), 0.9))
+	_gable(self, hp + Vector3(0, 2.6, 0), 4.6, 4.2, 1.5, Color(0.3, 0.24, 0.16), 0.0)
+	_box(Vector3(9.0, 0.15, 1.6), Vector3(-15.0, -0.35, -14), _mat(Color(0.45, 0.33, 0.22), 0.9))
+	for px: float in [-18.5, -15.5, -12.5, -10.8]:
+		for pz: float in [-14.7, -13.3]:
+			_cyl(0.09, 0.09, 1.4, Vector3(px, -0.9, pz), _mat(Color(0.32, 0.24, 0.16), 0.9))
+	# 遠くの山
+	_mountains(r, Color(0.42, 0.55, 0.6), 10)
+
+
 ## 小道具の点光源。低画質では作らない（呼び出し側は null を受け取っても add_child しない）
 func _omni() -> OmniLight3D:
 	var l := OmniLight3D.new()
@@ -1014,6 +1327,13 @@ func fade_for_camera(cam_pos: Vector3) -> void:
 func update(delta: float, photosensitive: bool) -> void:
 	if _lighthouse_beam != null:
 		_lighthouse_beam.rotate_y(delta * 0.9)
+	if not _blinkers.is_empty():
+		# 航空障害灯: 1.5 秒周期でゆっくり明滅する（点滅ではなく明るさの変化なので光過敏の設定でもそのまま）
+		_blink_t += delta
+		for bl: Array in _blinkers:
+			var ph := fmod(_blink_t / 1.5 + float(bl[1]), 1.0)
+			var on := clampf(1.0 - absf(ph - 0.25) * 4.0, 0.08, 1.0)
+			(bl[0] as StandardMaterial3D).emission = Color(1.0, 0.08, 0.04) * 1.8 * on
 	if theme.get("storm", false):
 		_flash_t -= delta
 		if _flash_t <= 0.0:
