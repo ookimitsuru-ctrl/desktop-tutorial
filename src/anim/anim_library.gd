@@ -25,6 +25,8 @@ static func build(char_json: Dictionary, moves: Array) -> AnimLibrary:
 			info["frames"] = int(dash_f[0])
 		elif n == "dash_b":
 			info["frames"] = int(dash_b[0])
+		elif n == "win":
+			info["variant"] = int(char_json.get("win_pose", 0))
 		lib._add(lib.templates.common(n, info))
 	for sdef2: Dictionary in char_json.get("stances", []):
 		lib._add(lib.templates.stance_clip(String(sdef2["id"])))

@@ -65,10 +65,11 @@ func update_cam(w: SimWorld, delta: float) -> void:
 		"win":
 			mode_t += delta
 			var wp := a if focus_player == 0 else b
-			var wt := Vector3(wp.x, 1.1, wp.z)
-			var orbit := (cam_dir * 2.6).rotated(Vector3.UP, 0.6 - mode_t * 0.15)
+			# ガッツポーズで突き上げた拳まで入るよう、高めを見て少し引く
+			var wt := Vector3(wp.x, 1.28, wp.z)
+			var orbit := (cam_dir * 3.3).rotated(Vector3.UP, 0.6 - mode_t * 0.15)
 			tgt = wt
-			desired = wt + orbit + Vector3(0, 0.35, 0)
+			desired = wt + orbit + Vector3(0, 0.25, 0)
 		"free":
 			tgt = mid + Vector3(0, 1.0, 0)
 			var base := Vector3(0, 0, free_dist).rotated(Vector3.RIGHT, -deg_to_rad(free_pitch)).rotated(Vector3.UP, free_yaw)

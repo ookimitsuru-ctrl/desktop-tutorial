@@ -138,7 +138,10 @@ func build() -> void:
 
 
 func _hover(id: String) -> void:
+	var changed: bool = previews[slot].char_id != id
 	previews[slot].show_char(id, Game.p_costume[slot], Game.p_color[slot])
+	if changed:
+		previews[slot].play("win")
 	_info(slot, id)
 
 
@@ -219,7 +222,10 @@ func _refresh() -> void:
 		info_labels[i].visible = previews[i].visible
 		machine_labels[i].visible = previews[i].visible
 		if previews[i].visible:
+			var changed: bool = previews[i].char_id != Game.p_char[i]
 			previews[i].show_char(Game.p_char[i], Game.p_costume[i], Game.p_color[i])
+			if changed:
+				previews[i].play("win")
 			_info(i, Game.p_char[i])
 	var who := ""
 	match mode:

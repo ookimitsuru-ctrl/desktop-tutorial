@@ -13,8 +13,10 @@ var char_id := ""
 var costume := "a"
 var color := 0
 var yaw := -25.0
-var cam_dist := 3.3
+var cam_dist := 3.8
 var mirror := false
+## 機体の大きさに合わせてカメラを引く倍率（背の高さと体格）
+var _fit_k := 1.0
 var _blink_wait := randf_range(0.8, 3.0)
 var _blink_t := -1.0
 
@@ -64,6 +66,8 @@ func show_char(id: String, p_costume: String = "a", p_color: int = 0) -> void:
 		model.queue_free()
 	lib = DataDB.anim_lib(id)
 	pe = PoseEval.new(lib.rig)
+	var build := String((DataDB.char_json(id).get("model", {}) as Dictionary).get("build", ""))
+	_fit_k = lib.rig.height / 1.78 * (1.18 if build == "heavy" else 1.0)
 	model = CharacterModel.new()
 	vp.add_child(model)
 	model.build(id, p_costume, DataDB.char_json(id), p_color, lib.rig)
@@ -97,8 +101,9 @@ func _process(delta: float) -> void:
 			_blink_wait = randf_range(2.0, 5.0)
 	model.set_face(blink, 0.0)
 	var h := lib.rig.height
-	cam.position = Vector3(0, h * 0.58, cam_dist)
-	cam.look_at(Vector3(0, h * 0.55, 0))
+	# 勝利のガッツポーズで頭上に突き上げた拳まで入るよう、少し引いて高めを見る
+	cam.position = Vector3(0, h * 0.64, cam_dist * _fit_k)
+	cam.look_at(Vector3(0, h * 0.60, 0))
 
 
 func play(a: String) -> void:

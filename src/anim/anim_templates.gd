@@ -806,33 +806,68 @@ func _backturn_pose() -> PoseData:
 	return p
 
 
+## 勝利: ガッツポーズ（握った拳を突き上げる）。溜めてから突き上げ、一度弾ませて止める。
+## variant 0: 右の拳を高く / 1: 両の拳を高く / 2: 肘を下げて拳を握り込む
 func _win(c: AnimClip, variant: int) -> void:
 	c.length = 150
-	var a := st.copy()
-	a.root = V(0, 0, 0)
-	a.hips = V(0, -10, 0)
-	a.chest = V(-4, 0, 0)
-	a.head = V(-6, 10, 0)
-	a.foot_l = V(-0.13 * s, ank, 0.05)
-	a.foot_r = V(0.13 * s, ank, -0.05)
-	a.face = 5
+	var base := st.copy()
+	base.root = V(0, 0, 0)
+	base.hips = V(0, -8, 0)
+	base.chest = V(0, 0, 0)
+	base.head = V(0, 0, 0)
+	base.foot_l = V(-0.15 * s, ank, 0.04)
+	base.foot_r = V(0.15 * s, ank, -0.04)
+	base.fist_l = 1.0
+	base.fist_r = 1.0
+	base.face = 5
+	# 溜め: 少し沈み、拳を腰へ引く
+	var ant := base.copy()
+	ant.root = V(0, -0.07 * s, 0)
+	ant.chest = V(14, 0, 0)
+	ant.head = V(12, 0, 0)
+	ant.hand_l = V(-0.20 * s, hip_h + 0.04, 0.12)
+	ant.hand_r = V(0.20 * s, hip_h + 0.04, 0.12)
+	ant.elbow_l = V(-0.4, -1, -0.3)
+	ant.elbow_r = V(0.4, -1, -0.3)
+	var up := base.copy()
+	up.chest = V(-10, 0, 0)
+	up.head = V(-16, 0, 0)
 	match variant % 3:
 		0:
-			a.hand_r = V(0.10 * s, chin_h + 0.25 * s, 0.10)
-			a.hand_l = V(-0.22 * s, hip_h, 0.05)
-			a.elbow_r = V(1, 0, 0)
+			up.hand_r = V(0.15 * s, sh_h + 0.48 * s, 0.06)
+			up.elbow_r = V(1, 0.2, 0)
+			up.hand_l = V(-0.21 * s, hip_h + 0.08, 0.14)
+			up.elbow_l = V(-0.5, -1, -0.2)
+			up.chest = V(-10, -8, 4)
+			up.head = V(-20, -6, 0)
 		1:
-			a.hand_l = V(-0.08 * s, sh_h - 0.12, 0.25)
-			a.hand_r = V(0.08 * s, sh_h - 0.10, 0.25)
-			a.spine = V(18, 0, 0)
-			a.chest = V(10, 0, 0)
-			a.head = V(10, 0, 0)
+			up.hand_r = V(0.24 * s, sh_h + 0.44 * s, 0.04)
+			up.hand_l = V(-0.24 * s, sh_h + 0.44 * s, 0.04)
+			up.elbow_r = V(1, 0.2, 0)
+			up.elbow_l = V(-1, 0.2, 0)
+			up.chest = V(-14, 0, 0)
+			up.head = V(-26, 0, 0)
 		_:
-			a.hand_l = V(-0.06 * s, chin_h - 0.15, 0.30)
-			a.hand_r = V(0.12 * s, hip_h + 0.05, -0.05)
-			a.hips = V(0, -35, 0)
-			a.head = V(0, 35, 0)
-	c.add(0, st.copy()).add(30, a, E.OUT_BACK).add(150, a.copy())
+			up.hand_r = V(0.21 * s, chin_h + 0.10, 0.12)
+			up.elbow_r = V(0.6, -1, 0.15)
+			up.hand_l = V(-0.20 * s, hip_h + 0.05, 0.18)
+			up.elbow_l = V(-0.5, -1, -0.2)
+			up.root = V(0, -0.05 * s, 0)
+			up.chest = V(8, -14, 0)
+			up.head = V(-6, -16, 0)
+			up.foot_l = V(-0.17 * s, ank, 0.10)
+			up.foot_r = V(0.17 * s, ank, -0.08)
+	# 拳を一度弾ませる（上げた拳を少し下げ、体を沈める）
+	var pump := up.copy()
+	pump.root += V(0, -0.03 * s, 0)
+	if up.hand_r.y > sh_h:
+		pump.hand_r += V(0, -0.09, 0)
+	else:
+		pump.hand_r += V(0, -0.05, -0.03)
+	if up.hand_l.y > sh_h:
+		pump.hand_l += V(0, -0.09, 0)
+	c.add(0, st.copy()).add(16, ant, E.SMOOTH).add(30, up, E.OUT_BACK).add(70, up.copy()) \
+		.add(80, pump, E.SMOOTH).add(92, up.copy(), E.OUT_BACK).add(150, up.copy())
 
 
 # ------------------------------------------------------------ 技
