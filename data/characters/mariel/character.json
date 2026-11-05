@@ -69,12 +69,17 @@
       "forearm": "blade",
       "shin": "roller",
       "antenna": "rod",
-      "hose": true
+      "hose": true,
+      "features": [
+        "sheaths",
+        "pouches",
+        "hazard"
+      ]
     }
   },
   "colors": [
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#B3262B",
       "secondary": "#2A2A2E",
@@ -88,7 +93,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#E8D23A",
       "secondary": "#2A2A2E",
@@ -102,7 +107,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#4E5832",
       "secondary": "#3A3D40",
@@ -116,7 +121,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#1F2A4D",
       "secondary": "#3A4458",

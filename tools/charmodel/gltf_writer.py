@@ -11,7 +11,7 @@ def _pad4(b, fill=b"\x00"):
     return b
 
 
-def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=()):
+def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=(), compact=False):
     """morphs: [(名前, 頂点ごとの位置の差分)]。差分のある頂点だけを疎なアクセサで書く"""
     bones = rig["bones"]
     nb = len(bones)
@@ -39,9 +39,15 @@ def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=
 
     a_pos = add(verts.astype(np.float32), 34962, 5126, "VEC3", minmax=True)
     a_nrm = add(normals.astype(np.float32), 34962, 5126, "VEC3")
-    a_col = add(colors.astype(np.float32), 34962, 5126, "VEC4")
-    a_jnt = add(joints.astype(np.uint8), 34962, 5121, "VEC4")
-    a_wgt = add(weights.astype(np.float32), 34962, 5126, "VEC4")
+    if compact:
+        # 頂点色と重みを 1 バイトの正規化整数で（ファイルを小さく）
+        a_col = add(np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8), 34962, 5121, "VEC4", normalized=True)
+        a_jnt = add(joints.astype(np.uint8), 34962, 5121, "VEC4")
+        a_wgt = add(np.clip(np.round(weights * 255.0), 0, 255).astype(np.uint8), 34962, 5121, "VEC4", normalized=True)
+    else:
+        a_col = add(colors.astype(np.float32), 34962, 5126, "VEC4")
+        a_jnt = add(joints.astype(np.uint8), 34962, 5121, "VEC4")
+        a_wgt = add(weights.astype(np.float32), 34962, 5126, "VEC4")
     a_idx = add(faces.astype(np.uint32).reshape(-1), 34963, 5125, "SCALAR")
     targets = []
     for _name, disp in morphs:

@@ -66,12 +66,17 @@
       "back": "pack",
       "forearm": "block",
       "shin": "roller",
-      "antenna": "rod"
+      "antenna": "rod",
+      "features": [
+        "searchlight",
+        "belt",
+        "knuckles"
+      ]
     }
   },
   "colors": [
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#4E5832",
       "secondary": "#424A2B",
@@ -85,7 +90,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#9C8A62",
       "secondary": "#7D6E4E",
@@ -99,7 +104,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#4A5560",
       "secondary": "#3A434C",
@@ -113,7 +118,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#D8D4C8",
       "secondary": "#B3262B",

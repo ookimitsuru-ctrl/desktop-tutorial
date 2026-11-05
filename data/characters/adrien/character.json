@@ -104,12 +104,17 @@
       "forearm": "slim",
       "shin": "slim",
       "antenna": "twin",
-      "skirt": "none"
+      "skirt": "none",
+      "features": [
+        "plume",
+        "spurs",
+        "shinguards"
+      ]
     }
   },
   "colors": [
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#1F2A4D",
       "secondary": "#E6E6EA",
@@ -123,7 +128,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#8A9096",
       "secondary": "#5A6068",
@@ -137,7 +142,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#5A1A24",
       "secondary": "#2A2A2E",
@@ -151,7 +156,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#E6E6EA",
       "secondary": "#1F2A4D",

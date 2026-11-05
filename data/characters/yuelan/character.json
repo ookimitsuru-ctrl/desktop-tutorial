@@ -70,12 +70,16 @@
       "shin": "slim",
       "antenna": "twin",
       "hose": true,
-      "skirt": "none"
+      "skirt": "none",
+      "features": [
+        "tassets",
+        "trim"
+      ]
     }
   },
   "colors": [
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#2F7F86",
       "secondary": "#E3E6E8",
@@ -89,7 +93,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#B3262B",
       "secondary": "#D9B23A",
@@ -103,7 +107,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#2A2C30",
       "secondary": "#9AA0A8",
@@ -117,7 +121,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#8FB8D8",
       "secondary": "#E3E6E8",

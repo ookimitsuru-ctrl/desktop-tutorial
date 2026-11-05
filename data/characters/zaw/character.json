@@ -66,12 +66,17 @@
       "forearm": "block",
       "shin": "roller",
       "antenna": "none",
-      "wraps": true
+      "wraps": true,
+      "features": [
+        "knuckles",
+        "spikes",
+        "shinguards"
+      ]
     }
   },
   "colors": [
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#A08A5A",
       "secondary": "#7E6B44",
@@ -85,7 +90,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#B3262B",
       "secondary": "#3A2A22",
@@ -99,7 +104,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#3E5A3A",
       "secondary": "#2F4430",
@@ -113,7 +118,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#2B2B2E",
       "secondary": "#4A4A50",

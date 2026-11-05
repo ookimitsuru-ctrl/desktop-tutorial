@@ -67,12 +67,17 @@
       "forearm": "block",
       "shin": "heavy",
       "antenna": "none",
-      "skirt": "long"
+      "skirt": "long",
+      "features": [
+        "kusazuri",
+        "katana",
+        "trim"
+      ]
     }
   },
   "colors": [
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#1C1C1E",
       "secondary": "#2E2E32",
@@ -86,7 +91,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#E3E0D6",
       "secondary": "#1E2A4D",
@@ -100,7 +105,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#5A1418",
       "secondary": "#1C1C1E",
@@ -114,7 +119,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#4A3A2A",
       "secondary": "#2A2420",

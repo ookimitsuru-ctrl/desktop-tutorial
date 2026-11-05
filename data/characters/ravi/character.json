@@ -191,12 +191,17 @@
       "forearm": "block",
       "shin": "roller",
       "antenna": "twin",
-      "flap": true
+      "flap": true,
+      "features": [
+        "wings",
+        "beak",
+        "scales"
+      ]
     }
   },
   "colors": [
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#C27A22",
       "secondary": "#7A2A22",
@@ -210,7 +215,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#E6DCC4",
       "secondary": "#7A2A22",
@@ -224,7 +229,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#4E5832",
       "secondary": "#7A2A22",
@@ -238,7 +243,7 @@
       "tertiary": "#34383B"
     },
     {
-      "skin": "#3A3D40",
+      "skin": "#FFF1CC",
       "hair": "#202224",
       "primary": "#2A2A2E",
       "secondary": "#C27A22",
