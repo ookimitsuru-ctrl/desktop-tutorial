@@ -11,24 +11,25 @@ func build() -> void:
 	var chars := DataDB.characters()
 	var vs := get_viewport_rect().size
 	prev0 = CharPreview.new()
-	prev0.position = Vector2(vs.x * 0.02, vs.y * 0.18)
-	prev0.size = Vector2(vs.x * 0.36, vs.y * 0.82)
+	# 選手の頭がロゴに隠れないよう、ロゴを上・選手を下に寄せる
+	prev0.position = Vector2(vs.x * 0.02, vs.y * 0.27)
+	prev0.size = Vector2(vs.x * 0.36, vs.y * 0.73)
 	content.add_child(prev0)
 	prev0.show_char(chars[randi() % chars.size()], "a", 0)
 	prev1 = CharPreview.new()
 	prev1.mirror = true
-	prev1.position = Vector2(vs.x * 0.62, vs.y * 0.18)
-	prev1.size = Vector2(vs.x * 0.36, vs.y * 0.82)
+	prev1.position = Vector2(vs.x * 0.62, vs.y * 0.27)
+	prev1.size = Vector2(vs.x * 0.36, vs.y * 0.73)
 	content.add_child(prev1)
 	prev1.show_char(chars[randi() % chars.size()], "a", 1)
 	var logo := UITheme.outline(UITheme.label("RINGBOUND", 112, "display"), 12)
 	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	logo.position = Vector2(0, vs.y * 0.16)
+	logo.position = Vector2(0, vs.y * 0.04)
 	logo.size = Vector2(vs.x, 140)
 	content.add_child(logo)
 	var sub := UITheme.outline(UITheme.label("闘 環", 44, "display", UITheme.ACCENT), 8)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.position = Vector2(0, vs.y * 0.16 + 136)
+	sub.position = Vector2(0, vs.y * 0.04 + 136)
 	sub.size = Vector2(vs.x, 60)
 	content.add_child(sub)
 	press = UITheme.outline(UITheme.label(DataDB.t("press_start"), 28, "bold"), 6)
