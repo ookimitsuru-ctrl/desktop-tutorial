@@ -96,6 +96,14 @@ jobs:
           grep -q "ui_smoke: [0-9]* screen(s) visited" ui_smoke.log
           if grep -E "SCRIPT ERROR|^ERROR:|^WARNING:" ui_smoke.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::UI smoke でエラーが出ました"; exit 1; fi
 
+      - name: Render smoke (all shaders compiled on a software Vulkan device)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb mesa-vulkan-drivers > /dev/null
+          xvfb-run -a -s "-screen 0 640x360x24" ~/godot/godot --path . --rendering-driver vulkan --resolution 640x360 res://tools/validate/render_smoke.tscn 2>&1 | tee render_smoke.log
+          grep -q "render_smoke: [0-9]* stage(s) rendered" render_smoke.log
+          if grep -E "SHADER ERROR|SCRIPT ERROR|^ERROR:" render_smoke.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::描画の実行確認でエラーが出ました"; exit 1; fi
+
       - name: Soak (36 CPU matches, leak check)
         run: |
           ~/godot/godot --headless --path . --fixed-fps 60 res://tools/validate/soak.tscn -- --matches 36 --frames 2400 2>&1 | tee soak.log
