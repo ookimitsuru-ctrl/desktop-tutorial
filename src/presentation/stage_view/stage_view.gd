@@ -98,7 +98,11 @@ const THEMES := {
 }
 
 
+var _quality := 2
+
+
 func build(sid: String, sdef: StageDef, quality: int) -> void:
+	_quality = quality
 	stage_id = sid
 	theme = THEMES.get(sid, THEMES["arena"])
 	var col_rim: Color = theme.get("rim", Color.WHITE)
@@ -635,7 +639,7 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 			var win := _box(Vector3(1.0, 0.8, 0.05), Vector3(-6.5, 0.7, -12.97), _mat(Color(1.0, 0.8, 0.45)))
 			(win.material_override as StandardMaterial3D).emission_enabled = true
 			(win.material_override as StandardMaterial3D).emission = Color(1.0, 0.7, 0.35) * 2.0
-			var wl := OmniLight3D.new()
+			var wl := _omni()
 			wl.position = Vector3(-6.5, 0.8, -12.4)
 			wl.light_color = Color(1.0, 0.7, 0.4)
 			wl.light_energy = 1.2
@@ -711,7 +715,7 @@ func _temple(r: RandomNumberGenerator, dens: float) -> void:
 		(fire.material_override as StandardMaterial3D).emission_enabled = true
 		(fire.material_override as StandardMaterial3D).emission = Color(1.0, 0.55, 0.2) * 1.4
 		_hip(lp + Vector3(0, 1.64, 0), 0.9, 0.9, 0.35, stone.darkened(0.15))
-		var lt := OmniLight3D.new()
+		var lt := _omni()
 		lt.position = lp + Vector3(0, 1.5, 0)
 		lt.light_color = Color(1.0, 0.62, 0.3)
 		lt.light_energy = 1.0
@@ -785,7 +789,7 @@ func _harbor(r: RandomNumberGenerator, dens: float) -> void:
 		var warn := _box(Vector3(0.4, 0.4, 0.4), Vector3(cx, 21.2, cz + 25.5), _mat(Color(1, 0.1, 0.05)))
 		(warn.material_override as StandardMaterial3D).emission_enabled = true
 		(warn.material_override as StandardMaterial3D).emission = Color(1.0, 0.1, 0.05) * 3.0
-		var lamp := OmniLight3D.new()
+		var lamp := _omni()
 		lamp.position = Vector3(cx, 17.0, cz + 6)
 		lamp.light_color = Color(1.0, 0.72, 0.42)
 		lamp.light_energy = 3.0
@@ -809,7 +813,7 @@ func _harbor(r: RandomNumberGenerator, dens: float) -> void:
 		var bulb := _box(Vector3(0.8, 0.2, 0.4), Vector3(lx2, 6.4, -8.1), _mat(Color(1.0, 0.8, 0.5)))
 		(bulb.material_override as StandardMaterial3D).emission_enabled = true
 		(bulb.material_override as StandardMaterial3D).emission = Color(1.0, 0.65, 0.3) * 2.5
-		var sl := OmniLight3D.new()
+		var sl := _omni()
 		sl.position = Vector3(lx2, 6.0, -7.5)
 		sl.light_color = Color(1.0, 0.68, 0.38)
 		sl.light_energy = 1.6
@@ -877,7 +881,7 @@ func _fort(r: RandomNumberGenerator, dens: float) -> void:
 		var fire := _cyl(0.0, 0.32, 0.6, bp + Vector3(0, 2.1, 0), _mat(Color(1.0, 0.55, 0.15)))
 		(fire.material_override as StandardMaterial3D).emission_enabled = true
 		(fire.material_override as StandardMaterial3D).emission = Color(1.0, 0.45, 0.1) * 3.0
-		var fl := OmniLight3D.new()
+		var fl := _omni()
 		fl.position = bp + Vector3(0, 2.2, 0)
 		fl.light_color = Color(1.0, 0.55, 0.25)
 		fl.light_energy = 1.4
@@ -914,6 +918,15 @@ func _fort(r: RandomNumberGenerator, dens: float) -> void:
 	_multimesh(cone, leaf, _mat(Color(0.14, 0.26, 0.2), 0.9))
 	_multimesh(cone, cap, _mat(snow, 0.85))
 	_mountains(r, Color(0.78, 0.82, 0.9), 10)
+
+
+## 小道具の点光源。低画質では作らない（呼び出し側は null を受け取っても add_child しない）
+func _omni() -> OmniLight3D:
+	var l := OmniLight3D.new()
+	if _quality <= 0:
+		l.visible = false
+	l.shadow_enabled = false
+	return l
 
 
 ## 遠景の山並み（霧で霞む）
