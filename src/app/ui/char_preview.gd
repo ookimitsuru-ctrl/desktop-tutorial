@@ -18,6 +18,9 @@ var cam_dist := 3.8
 var cam_h := 0.64
 var look_h := 0.60
 var mirror := false
+## 選択・紹介の画面では、姿勢（構えで上体がひねられていても）に関わらず胸を正面（カメラ）へ向ける
+var face_front := true
+var _front_ready := false
 ## 機体の大きさに合わせてカメラを引く倍率（背の高さと体格）
 var _fit_k := 1.0
 var _blink_wait := randf_range(0.8, 3.0)
@@ -76,6 +79,7 @@ func show_char(id: String, p_costume: String = "a", p_color: int = 0) -> void:
 	model.build(id, p_costume, DataDB.char_json(id), p_color, lib.rig)
 	# モデルの正面は -Z。カメラは +Z 側にあるので 180° 回して正面を向け、yaw だけ斜めにする（左右で向きを鏡写し）
 	model.rotation_degrees = Vector3(0, (180.0 - yaw) if mirror else (180.0 + yaw), 0)
+	_front_ready = false
 
 
 func _process(delta: float) -> void:
@@ -90,6 +94,15 @@ func _process(delta: float) -> void:
 		f = minf(f, float(c.length))
 	pe.evaluate(c.sample(f))
 	model.apply_pose(pe)
+	if face_front:
+		# 胸の向き（モデル空間の -Z が正面）がカメラ（+Z）を向くように体ごと回す
+		var fw := pe.global[Rig.B.CHEST].basis * Vector3(0, 0, -1)
+		var target := -atan2(fw.x, fw.z)
+		if _front_ready:
+			model.rotation.y = lerp_angle(model.rotation.y, target, minf(1.0, delta * 8.0))
+		else:
+			model.rotation.y = target
+			_front_ready = true
 	# ときどき瞬きする
 	var blink := 0.0
 	if _blink_t >= 0.0:
