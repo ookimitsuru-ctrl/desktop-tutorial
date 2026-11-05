@@ -4,7 +4,7 @@
 // 深度を書かずに描かれるため、本体では自分自身の前後関係が崩れる（後ろ髪の上に目が描かれる等）。
 uniform vec4 palette[12];
 uniform vec3 rim_color = vec3(1.0, 0.92, 0.85);
-uniform float rim_intensity = 0.32;
+uniform float rim_intensity = 0.22;
 uniform vec3 rim_dir = vec3(-0.4, 0.5, 0.7);
 uniform float hit_flash = 0.0;
 uniform float wetness = 0.0;
@@ -15,6 +15,7 @@ varying vec3 v_base;
 varying vec4 v_mat;   // 肌, 布, 髪, 革・金属 の重み（残りは光沢）
 varying float v_ao;
 varying vec3 v_local;
+varying float v_spec_k;   // 直接光のハイライトの強さ（材質ごと）
 
 float hash3(vec3 p) {
 	p = fract(p * 0.3183099 + 0.1);
@@ -40,6 +41,8 @@ void vertex() {
 	float m = COLOR.g;
 	v_mat = vec4(m < 0.12 ? 1.0 : 0.0, (m >= 0.12 && m < 0.37) ? 1.0 : 0.0, (m >= 0.37 && m < 0.62) ? 1.0 : 0.0, (m >= 0.62 && m < 0.87) ? 1.0 : 0.0);
 	v_ao = COLOR.b;
+	float gl = clamp(1.0 - (v_mat.x + v_mat.y + v_mat.z + v_mat.w), 0.0, 1.0);
+	v_spec_k = v_mat.x * 0.30 + v_mat.y * 0.08 + v_mat.z * 0.25 + v_mat.w * 0.50 + gl * 0.80;
 	v_local = VERTEX;
 }
 
@@ -55,15 +58,17 @@ void fragment() {
 	// 材質ごとの色ムラ（肌: わずかなムラ、布: 織り目、髪: 筋）
 	float tex = v_mat.x * (0.94 + 0.08 * n2) + v_mat.y * (0.90 + 0.12 * n) + v_mat.z * (0.85 + 0.25 * nh) + v_mat.w + glossy;
 	base *= tex;
-	float rough = v_mat.x * 0.55 + v_mat.y * 0.88 + v_mat.z * 0.58 + v_mat.w * 0.35 + glossy * 0.15;
-	float spec = v_mat.x * 0.35 + v_mat.y * 0.2 + v_mat.z * 0.35 + v_mat.w * 0.6 + glossy * 0.7;
+	// テカりを抑える: 布はほぼ艶なし、肌と髪はわずか、革は控えめ、光沢（目など）だけ艶を残す
+	float rough = v_mat.x * 0.70 + v_mat.y * 0.94 + v_mat.z * 0.66 + v_mat.w * 0.60 + glossy * 0.45;
+	float spec = v_mat.x * 0.15 + v_mat.y * 0.05 + v_mat.z * 0.12 + v_mat.w * 0.25 + glossy * 0.5;
 	float ao = mix(0.45, 1.0, v_ao);
 	ALBEDO = base * ao;
 	// 粗さが低い画素が混ざると、エンジン側の鏡面計算で極端な値（白い光の玉）が出る端末があるため下限を設ける
-	ROUGHNESS = clamp(mix(rough, 0.2, wetness), 0.45, 1.0);
+	// 雨のステージでは少しだけ濡れた艶を足す（強すぎると油を塗ったように見える）
+	ROUGHNESS = clamp(mix(rough, 0.45, wetness * 0.5), 0.45, 1.0);
 	SPECULAR = spec;
 	// リム（ステージのリム光方向寄りを強く）
-	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
 	vec3 rd = normalize((VIEW_MATRIX * vec4(rim_dir, 0.0)).xyz);
 	float side = clamp(dot(NORMAL, rd) * 0.5 + 0.6, 0.0, 1.0);
 	EMISSION = rim_color * rim_intensity * fres * side * ao * (0.35 + 0.65 * dot(base, vec3(0.33))) + vec3(hit_flash);
@@ -83,7 +88,8 @@ void light() {
 	DIFFUSE_LIGHT += diff * ATTENUATION * LIGHT_COLOR * tint / 3.14159;
 	vec3 hv = VIEW + LIGHT;
 	vec3 h = dot(hv, hv) > 1e-8 ? normalize(hv) : NORMAL;
-	// 髪は房の向きで法線が細かく変わるため、ハイライトを弱めにして白い三角が目立たないようにする
-	float sp = pow(clamp(dot(NORMAL, h), 0.0, 1.0), mix(80.0, 8.0, ROUGHNESS)) * (1.0 - ROUGHNESS) * 0.6 * mix(1.0, 0.5, v_mat.z);
+	// ハイライトは粗さの 2 乗で弱め、材質ごとの係数を掛ける（暗い布地に白い艶が乗ってテカテカに見えないように）
+	float rr = 1.0 - ROUGHNESS;
+	float sp = pow(clamp(dot(NORMAL, h), 0.0, 1.0), mix(60.0, 6.0, ROUGHNESS)) * rr * rr * v_spec_k * (1.0 + wetness * 0.6);
 	SPECULAR_LIGHT += sp * ATTENUATION * LIGHT_COLOR;
 }
