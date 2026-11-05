@@ -14,6 +14,8 @@ var rig: Rig
 ## 表情のブレンドシェイプ番号（モデルに無ければ -1）
 var _bs_blink := -1
 var _bs_frown := -1
+## 機甲兵（ロボット）のモデルか。表情の代わりにカメラのレンズの明るさを変える
+var is_mech := false
 
 
 static func load_glb(path: String) -> Node:
@@ -42,6 +44,8 @@ func build(char_id: String, costume: String, char_json: Dictionary, color_idx: i
 	mesh = _find_mesh(scene)
 	material = ShaderMaterial.new()
 	material.shader = GHOST_SHADER if ghost else SHADER
+	is_mech = String((char_json.get("model", {}) as Dictionary).get("kind", "")) == "mech"
+	material.set_shader_parameter("mech", is_mech)
 	set_colors(char_json, color_idx)
 	if mesh != null:
 		_bs_blink = mesh.find_blend_shape_by_name(&"blink")
@@ -110,6 +114,10 @@ func apply_pose(pe: PoseEval, extra_rot: Dictionary = {}) -> void:
 ## 表情: blink は目の閉じ具合、frown は眉の寄せ具合（どちらも 0〜1）
 func set_face(blink: float, frown: float) -> void:
 	if mesh == null:
+		return
+	if is_mech:
+		# 瞬き → レンズの明滅、被弾 → 暗くなる、KO → 消灯
+		material.set_shader_parameter("lens_glow", clampf(1.0 - blink * 0.92, 0.0, 1.0))
 		return
 	if _bs_blink >= 0:
 		mesh.set_blend_shape_value(_bs_blink, clampf(blink, 0.0, 1.0))

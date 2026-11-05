@@ -56,48 +56,75 @@
       "jaw": "0.65",
       "brow": "0.7",
       "nose": "0.55"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "twin",
+      "shoulder": "slim",
+      "chest": "slim",
+      "back": "flat",
+      "forearm": "block",
+      "shin": "roller",
+      "antenna": "none",
+      "wraps": true
     }
   },
   "colors": [
     {
-      "skin": "#B9855E",
-      "hair": "#141210",
-      "primary": "#7A1F24",
-      "secondary": "#3A1012",
-      "accent": "#D4AF37",
-      "gloves": "#E8E2D2",
-      "shoes": "#2A2A2A",
-      "tertiary": "#1E2A4D"
-    },
-    {
-      "skin": "#B9855E",
-      "hair": "#141210",
-      "primary": "#1F4FA8",
-      "secondary": "#F0F0F0",
-      "accent": "#E8E8E8",
-      "gloves": "#F0EEE8",
-      "shoes": "#2A2A2A",
-      "tertiary": "#F0F0F0"
-    },
-    {
-      "skin": "#B9855E",
-      "hair": "#141210",
-      "primary": "#151515",
-      "secondary": "#1F6B3A",
-      "accent": "#2FA05A",
-      "gloves": "#D8D2C2",
-      "shoes": "#2A2A2A",
-      "tertiary": "#1F6B3A"
-    },
-    {
-      "skin": "#B9855E",
-      "hair": "#141210",
-      "primary": "#EDEDED",
-      "secondary": "#B3262B",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#A08A5A",
+      "secondary": "#7E6B44",
       "accent": "#B3262B",
-      "gloves": "#E8E2D2",
-      "shoes": "#2A2A2A",
-      "tertiary": "#B3262B"
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A2A",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#B3262B",
+      "secondary": "#3A2A22",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFD23A",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#3E5A3A",
+      "secondary": "#2F4430",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A2A",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#2B2B2E",
+      "secondary": "#4A4A50",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A2A",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     }
   ],
   "home_stage": "temple",
@@ -113,8 +140,8 @@
     {
       "id": "a",
       "name": [
-        "ファイトショーツ",
-        "Fight Shorts"
+        "軽格闘型",
+        "Striker"
       ],
       "model": {
         "outfit": [
@@ -126,8 +153,8 @@
     {
       "id": "b",
       "name": [
-        "トラックジャケット",
-        "Track Jacket"
+        "長距離型",
+        "Long Range"
       ],
       "model": {
         "outfit": [
@@ -139,8 +166,17 @@
           "jacket_short": {
             "primary": "tertiary"
           }
+        },
+        "mech": {
+          "shoulder": "asym",
+          "head": "array",
+          "back": "pack"
         }
       }
     }
+  ],
+  "machine": [
+    "RF-22 ナーガ",
+    "RF-22 NAGA"
   ]
 }

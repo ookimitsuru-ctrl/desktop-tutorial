@@ -7,6 +7,7 @@ var need_two := true
 var previews: Array[CharPreview] = []
 var name_labels: Array[Label] = []
 var info_labels: Array[Label] = []
+var machine_labels: Array[Label] = []
 var tiles: Array[Button] = []
 var chars: PackedStringArray
 var vs_cpu := true
@@ -37,6 +38,13 @@ func build() -> void:
 		pv.size = Vector2(pw, r.size.y - 170)
 		content.add_child(pv)
 		previews.append(pv)
+		# 機体名（パイロット名の上）
+		var ml := UITheme.outline(UITheme.label("", 18, "bold", UITheme.ACCENT), 4)
+		ml.position = Vector2(pv.position.x + 10, r.position.y + r.size.y - 128)
+		ml.size = Vector2(pw - 20, 26)
+		ml.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT
+		content.add_child(ml)
+		machine_labels.append(ml)
 		var nl := UITheme.outline(UITheme.label("", 30, "display"), 6)
 		nl.position = Vector2(pv.position.x + 10, r.position.y + r.size.y - 100)
 		nl.size = Vector2(pw - 20, 40)
@@ -126,6 +134,7 @@ func _hover(id: String) -> void:
 func _info(i: int, id: String) -> void:
 	var cj := DataDB.char_json(id)
 	name_labels[i].text = DataDB.char_name(id)
+	machine_labels[i].text = DataDB.machine_name(id)
 	var stars := "★".repeat(int(cj.get("difficulty", 2))) + "☆".repeat(5 - int(cj.get("difficulty", 2)))
 	info_labels[i].text = "%s  %s" % [DataDB.pick(cj.get("style", ["", ""])), stars]
 
@@ -187,6 +196,7 @@ func _refresh() -> void:
 		previews[i].visible = i == 0 or need_two
 		name_labels[i].visible = previews[i].visible
 		info_labels[i].visible = previews[i].visible
+		machine_labels[i].visible = previews[i].visible
 		if previews[i].visible:
 			previews[i].show_char(Game.p_char[i], Game.p_costume[i], Game.p_color[i])
 			_info(i, Game.p_char[i])

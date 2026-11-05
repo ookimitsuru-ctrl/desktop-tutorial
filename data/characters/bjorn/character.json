@@ -57,48 +57,76 @@
       "jaw": "0.85",
       "brow": "0.75",
       "nose": "0.65"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "mono",
+      "shoulder": "heavy",
+      "chest": "heavy",
+      "back": "tanks",
+      "forearm": "heavy",
+      "shin": "heavy",
+      "antenna": "none",
+      "hands": 1.3,
+      "skirt": "long"
     }
   },
   "colors": [
     {
-      "skin": "#E8C2A8",
-      "hair": "#A8452A",
-      "primary": "#1F4D33",
-      "secondary": "#E6DCC4",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#3F5A3C",
+      "secondary": "#6B4A2E",
       "accent": "#E6DCC4",
-      "gloves": "#2A2A2A",
-      "shoes": "#1E1E1E",
-      "tertiary": "#3B4A2A"
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#E8C2A8",
-      "hair": "#A8452A",
-      "primary": "#1E2A4D",
-      "secondary": "#F0F0F0",
-      "accent": "#F0F0F0",
-      "gloves": "#2A2A2A",
-      "shoes": "#151515",
-      "tertiary": "#1E2A4D"
-    },
-    {
-      "skin": "#E8C2A8",
-      "hair": "#A8452A",
-      "primary": "#E0B020",
-      "secondary": "#1A1A1A",
-      "accent": "#1A1A1A",
-      "gloves": "#2A2A2A",
-      "shoes": "#222222",
-      "tertiary": "#E0B020"
-    },
-    {
-      "skin": "#E8C2A8",
-      "hair": "#A8452A",
-      "primary": "#5A3A22",
-      "secondary": "#B3262B",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#D6D9DC",
+      "secondary": "#8A9096",
       "accent": "#B3262B",
-      "gloves": "#2A2A2A",
-      "shoes": "#2A1E14",
-      "tertiary": "#5A3A22"
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#24304A",
+      "secondary": "#3A4458",
+      "accent": "#E0E0E0",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#E0E0E0",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#7A2A22",
+      "secondary": "#3A3D40",
+      "accent": "#E6DCC4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     }
   ],
   "home_stage": "harbor",
@@ -114,8 +142,8 @@
     {
       "id": "a",
       "name": [
-        "シングレット",
-        "Singlet"
+        "重作業型",
+        "Heavy Duty"
       ],
       "model": {
         "outfit": [
@@ -127,8 +155,8 @@
     {
       "id": "b",
       "name": [
-        "漁師",
-        "Fisherman"
+        "寒冷地型",
+        "Arctic"
       ],
       "model": {
         "outfit": [
@@ -139,8 +167,16 @@
           "overalls": {
             "secondary": "tertiary"
           }
+        },
+        "mech": {
+          "shoulder": "layered",
+          "head": "twin"
         }
       }
     }
+  ],
+  "machine": [
+    "RF-12 イスビョルン",
+    "RF-12 ISBJORN"
   ]
 }

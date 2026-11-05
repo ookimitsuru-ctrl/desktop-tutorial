@@ -57,48 +57,75 @@
       "jaw": "0.5",
       "brow": "0.8",
       "nose": "0.6"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "crest",
+      "shoulder": "layered",
+      "chest": "heavy",
+      "back": "mantle",
+      "forearm": "block",
+      "shin": "heavy",
+      "antenna": "none",
+      "skirt": "long"
     }
   },
   "colors": [
     {
-      "skin": "#E3C2A6",
-      "hair": "#D8D8D4",
-      "primary": "#151515",
-      "secondary": "#4A4A4E",
-      "accent": "#B8B8BC",
-      "gloves": "#1B1B1B",
-      "shoes": "#F2F2F2",
-      "tertiary": "#E8E6DE"
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#1C1C1E",
+      "secondary": "#2E2E32",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#E3C2A6",
-      "hair": "#D8D8D4",
-      "primary": "#F2F0EA",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#E3E0D6",
       "secondary": "#1E2A4D",
-      "accent": "#1E2A4D",
-      "gloves": "#1B1B1B",
-      "shoes": "#F2F2F2",
-      "tertiary": "#9AA4B8"
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#E3C2A6",
-      "hair": "#D8D8D4",
-      "primary": "#5A3A22",
-      "secondary": "#C9A548",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#5A1418",
+      "secondary": "#1C1C1E",
       "accent": "#C9A548",
-      "gloves": "#1B1B1B",
-      "shoes": "#F2F2F2",
-      "tertiary": "#E6DCC4"
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#E3C2A6",
-      "hair": "#D8D8D4",
-      "primary": "#7A1018",
-      "secondary": "#151515",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#4A3A2A",
+      "secondary": "#2A2420",
       "accent": "#C9A548",
-      "gloves": "#1B1B1B",
-      "shoes": "#F2F2F2",
-      "tertiary": "#E8E6DE"
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     }
   ],
   "home_stage": "lighthouse",
@@ -114,8 +141,8 @@
     {
       "id": "a",
       "name": [
-        "羽織袴",
-        "Haori & Hakama"
+        "大鎧型",
+        "Great Armor"
       ],
       "model": {
         "outfit": [
@@ -134,8 +161,8 @@
     {
       "id": "b",
       "name": [
-        "稽古着",
-        "Practice Gi"
+        "稽古型",
+        "Practice"
       ],
       "model": {
         "outfit": [
@@ -147,8 +174,16 @@
           "gi_top": {
             "primary": "tertiary"
           }
+        },
+        "mech": {
+          "back": "flat",
+          "shoulder": "box"
         }
       }
     }
+  ],
+  "machine": [
+    "RF-00 コガラス",
+    "RF-00 KOGARASU"
   ]
 }

@@ -181,52 +181,75 @@
       "jaw": "0.55",
       "brow": "0.55",
       "nose": "0.6"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "array",
+      "shoulder": "round",
+      "chest": "round",
+      "back": "tanks",
+      "forearm": "block",
+      "shin": "roller",
+      "antenna": "twin",
+      "flap": true
     }
   },
   "colors": [
     {
-      "skin": "#9C6B47",
-      "hair": "#16120F",
-      "primary": "#F0ECE2",
-      "secondary": "#F0ECE2",
-      "accent": "#D2452A",
-      "gloves": "#1B1B1B",
-      "shoes": "#2A2A2A",
-      "tertiary": "#333333",
-      "metal": "#C9A548"
-    },
-    {
-      "skin": "#9C6B47",
-      "hair": "#16120F",
-      "primary": "#151515",
-      "secondary": "#151515",
-      "accent": "#C9A548",
-      "gloves": "#1B1B1B",
-      "shoes": "#2A2A2A",
-      "tertiary": "#333333",
-      "metal": "#C9A548"
-    },
-    {
-      "skin": "#9C6B47",
-      "hair": "#16120F",
-      "primary": "#1E3A6B",
-      "secondary": "#F2F2F2",
-      "accent": "#F2F2F2",
-      "gloves": "#1B1B1B",
-      "shoes": "#2A2A2A",
-      "tertiary": "#333333",
-      "metal": "#B0B0B0"
-    },
-    {
-      "skin": "#9C6B47",
-      "hair": "#16120F",
-      "primary": "#9AC46A",
-      "secondary": "#E6DCC4",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#C27A22",
+      "secondary": "#7A2A22",
       "accent": "#E6DCC4",
-      "gloves": "#1B1B1B",
-      "shoes": "#2A2A2A",
-      "tertiary": "#333333",
-      "metal": "#C9A548"
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#E6DCC4",
+      "secondary": "#7A2A22",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#4E5832",
+      "secondary": "#7A2A22",
+      "accent": "#C27A22",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#C27A22",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#2A2A2E",
+      "secondary": "#C27A22",
+      "accent": "#E6DCC4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     }
   ],
   "home_stage": "ruins",
@@ -242,8 +265,8 @@
     {
       "id": "a",
       "name": [
-        "腰布",
-        "Training Wrap"
+        "汎用型",
+        "General"
       ],
       "model": {
         "outfit": [
@@ -256,16 +279,25 @@
     {
       "id": "b",
       "name": [
-        "クルタ",
-        "Kurta"
+        "軽量型",
+        "Light"
       ],
       "model": {
         "outfit": [
           "kurta",
           "pants_loose",
           "sash"
-        ]
+        ],
+        "mech": {
+          "shoulder": "slim",
+          "back": "flat",
+          "head": "twin"
+        }
       }
     }
+  ],
+  "machine": [
+    "RF-14 ガルダ",
+    "RF-14 GARUDA"
   ]
 }

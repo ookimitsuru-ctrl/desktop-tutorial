@@ -1,8 +1,8 @@
 # RINGBOUND（闘環）
 
-Android 向けのオリジナル 3D 対戦格闘ゲーム。P・K・G の 3 ボタン、上中下段、投げ、横移動（回避）、リングアウト、フレーム単位の有利不利で戦う、正統派の 3D 格闘ゲーム。
+Android 向けのオリジナル 3D 対戦格闘ゲーム。武術家が操縦する人型の機甲兵（RF）どうしが、P・K・G の 3 ボタン、上中下段、投げ、横移動（回避）、リングアウト、フレーム単位の有利不利で戦う、正統派の 3D 格闘ゲーム。
 
-- 9 人のファイター（空手・システマ・グレコローマン・ラウェイ・形意拳・カリ・サバット・カラリパヤット・古流柔術）、各キャラ固有のシステム（受け・脱力・連続投げ・首相撲・ジャスト入力・トラップ・ガルド・三獣の構え・当て身）
+- 9 機の機甲兵とそのパイロット（空手・システマ・グレコローマン・ラウェイ・形意拳・カリ・サバット・カラリパヤット・古流柔術）。各機 2 種の装備と 4 色の塗装。各キャラ固有のシステム（受け・脱力・連続投げ・首相撲・ジャスト入力・トラップ・ガルド・三獣の構え・当て身）
 - 9 ステージ（壁・フェンス・破壊できる壁・リングアウト）
 - モード: アーケード（ストーリー・ライバル・ボス）、対戦（CPU / 2P）、トレーニング、チュートリアル 12 課、技トライアル、サバイバル、タイムアタック、CPU 観戦、リプレイ、ギャラリー、実績 30 種
 - タッチ操作（フローティングスティック・フリック）、ゲームパッド、キーボード
@@ -43,7 +43,7 @@ godot --headless --path . --fixed-fps 60 res://tools/validate/soak.tscn  # CPU �
 xvfb-run -a godot --path . --rendering-driver vulkan res://tools/validate/render_smoke.tscn  # 全シェーダーを実際に描画して確認
 godot --headless --path . -s res://tools/validate/combo_search.gd    # コンボの探索（--verify で検証のみ）
 godot --headless --path . -s res://tools/validate/balance_report.gd  # CPU 同士の全組み合わせ勝率 → reports/balance.md
-python3 tools/charmodel/gen_model.py <id> [a b]                      # キャラモデルの生成
+python3 tools/charmodel/gen_mech.py <id> [a b]                       # 機甲兵のモデルの生成（デザインは character.json の model.mech）
 python3 tools/content/build.py [id ...]                              # 灯真以外のキャラデータの生成
 ```
 

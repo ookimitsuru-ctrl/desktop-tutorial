@@ -88,5 +88,10 @@ func char_name(id: String) -> String:
 	return pick(char_json(id).get("name", [id, id]))
 
 
+## 乗っている機甲兵（ロボット）の名前。無ければ空
+func machine_name(id: String) -> String:
+	return pick(char_json(id).get("machine", ["", ""]))
+
+
 func move_name(cd: CharDef, m: MoveDef) -> String:
 	return m.name_ja if Settings.lang() == "ja" else m.name_en

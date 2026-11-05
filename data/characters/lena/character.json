@@ -100,52 +100,76 @@
       "jaw": "0.35",
       "brow": "0.35",
       "nose": "0.4"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "visor",
+      "shoulder": "slim",
+      "chest": "slim",
+      "back": "flat",
+      "forearm": "slim",
+      "shin": "slim",
+      "antenna": "none",
+      "hose": true,
+      "skirt": "none"
     }
   },
   "colors": [
     {
-      "skin": "#EBCDB7",
-      "hair": "#C9CCD1",
-      "primary": "#4A4D52",
-      "secondary": "#1F2124",
-      "accent": "#7FC8E8",
-      "gloves": "#111111",
-      "shoes": "#222222",
-      "tertiary": "#141414",
-      "metal": "#EDEDED"
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#5B6670",
+      "secondary": "#47515A",
+      "accent": "#C8CED4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#C8CED4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#EBCDB7",
-      "hair": "#C9CCD1",
-      "primary": "#1E2A44",
-      "secondary": "#E8E8E8",
-      "accent": "#C8372D",
-      "gloves": "#151515",
-      "shoes": "#1A1A1A",
-      "tertiary": "#E2E2E2",
-      "metal": "#F2F2F2"
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#D9DCDF",
+      "secondary": "#A9AFB5",
+      "accent": "#2A2E33",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#2A2E33",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#EBCDB7",
-      "hair": "#C9CCD1",
-      "primary": "#6B1E2C",
-      "secondary": "#151515",
-      "accent": "#D9B36A",
-      "gloves": "#111111",
-      "shoes": "#1E1E1E",
-      "tertiary": "#2A0E14",
-      "metal": "#E8E0D8"
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#2B2E33",
+      "secondary": "#1E2125",
+      "accent": "#B3262B",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A3A",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#EBCDB7",
-      "hair": "#C9CCD1",
-      "primary": "#5B6142",
-      "secondary": "#C9B48A",
-      "accent": "#E07B39",
-      "gloves": "#2F2A20",
-      "shoes": "#3B3226",
-      "tertiary": "#3A3D2B",
-      "metal": "#E6DCC4"
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#55603A",
+      "secondary": "#454E2F",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     }
   ],
   "home_stage": "fort",
@@ -161,8 +185,8 @@
     {
       "id": "a",
       "name": [
-        "タクティカル",
-        "Tactical"
+        "偵察型",
+        "Recon"
       ],
       "model": {
         "outfit": [
@@ -177,8 +201,8 @@
     {
       "id": "b",
       "name": [
-        "トレーニング",
-        "Training"
+        "突撃型",
+        "Assault"
       ],
       "model": {
         "outfit": [
@@ -194,8 +218,17 @@
           "pants": {
             "secondary": "tertiary"
           }
+        },
+        "mech": {
+          "shoulder": "box",
+          "head": "twin",
+          "back": "pack"
         }
       }
     }
+  ],
+  "machine": [
+    "RF-31 ストリジ",
+    "RF-31 STRIZH"
   ]
 }

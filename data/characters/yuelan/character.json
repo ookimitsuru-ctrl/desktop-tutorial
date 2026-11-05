@@ -59,48 +59,76 @@
       "jaw": "0.3",
       "brow": "0.3",
       "nose": "0.35"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "twin",
+      "shoulder": "round",
+      "chest": "round",
+      "back": "flat",
+      "forearm": "slim",
+      "shin": "slim",
+      "antenna": "twin",
+      "hose": true,
+      "skirt": "none"
     }
   },
   "colors": [
     {
-      "skin": "#EED3BC",
-      "hair": "#121212",
-      "primary": "#1F5E63",
-      "secondary": "#F0EEE6",
-      "accent": "#D4AF37",
-      "gloves": "#1B1B1B",
-      "shoes": "#151515",
-      "tertiary": "#333333"
-    },
-    {
-      "skin": "#EED3BC",
-      "hair": "#121212",
-      "primary": "#161616",
-      "secondary": "#C9A548",
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#2F7F86",
+      "secondary": "#E3E6E8",
       "accent": "#C9A548",
-      "gloves": "#1B1B1B",
-      "shoes": "#151515",
-      "tertiary": "#333333"
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF5AA0",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#EED3BC",
-      "hair": "#121212",
-      "primary": "#F2F0EA",
-      "secondary": "#B3262B",
-      "accent": "#B3262B",
-      "gloves": "#1B1B1B",
-      "shoes": "#151515",
-      "tertiary": "#333333"
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#B3262B",
+      "secondary": "#D9B23A",
+      "accent": "#2A2A2E",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFD23A",
+      "dark": "#1B1C1E",
+      "lips": "#2A2A2E",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     },
     {
-      "skin": "#EED3BC",
-      "hair": "#121212",
-      "primary": "#8C7BB0",
-      "secondary": "#8A8A8A",
-      "accent": "#E0D8F0",
-      "gloves": "#1B1B1B",
-      "shoes": "#2A2A2A",
-      "tertiary": "#333333"
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#2A2C30",
+      "secondary": "#9AA0A8",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#3A3D40",
+      "hair": "#202224",
+      "primary": "#8FB8D8",
+      "secondary": "#E3E6E8",
+      "accent": "#1F2A4D",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF5AA0",
+      "dark": "#1B1C1E",
+      "lips": "#1F2A4D",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
     }
   ],
   "home_stage": "bamboo",
@@ -116,8 +144,8 @@
     {
       "id": "a",
       "name": [
-        "立ち襟",
-        "High Collar"
+        "拳法型",
+        "Fist"
       ],
       "model": {
         "outfit": [
@@ -130,8 +158,8 @@
     {
       "id": "b",
       "name": [
-        "練習着",
-        "Practice Wear"
+        "儀仗型",
+        "Ceremonial"
       ],
       "model": {
         "outfit": [
@@ -139,8 +167,16 @@
           "pants",
           "armbands",
           "cloth_shoes"
-        ]
+        ],
+        "mech": {
+          "head": "visor",
+          "shoulder": "layered"
+        }
       }
     }
+  ],
+  "machine": [
+    "RF-18 チンルアン",
+    "RF-18 QINGLUAN"
   ]
 }
