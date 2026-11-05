@@ -14,6 +14,9 @@ var costume := "a"
 var color := 0
 var yaw := -25.0
 var cam_dist := 3.8
+## カメラの高さと注視点の高さ（身長に対する割合）
+var cam_h := 0.64
+var look_h := 0.60
 var mirror := false
 ## 機体の大きさに合わせてカメラを引く倍率（背の高さと体格）
 var _fit_k := 1.0
@@ -102,8 +105,8 @@ func _process(delta: float) -> void:
 	model.set_face(blink, 0.0)
 	var h := lib.rig.height
 	# 勝利のガッツポーズで頭上に突き上げた拳まで入るよう、少し引いて高めを見る
-	cam.position = Vector3(0, h * 0.64, cam_dist * _fit_k)
-	cam.look_at(Vector3(0, h * 0.60, 0))
+	cam.position = Vector3(0, h * cam_h, cam_dist * _fit_k)
+	cam.look_at(Vector3(0, h * look_h, 0))
 
 
 func play(a: String) -> void:

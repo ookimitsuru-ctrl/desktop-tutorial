@@ -12,7 +12,10 @@ func build() -> void:
 	for i: int in range(2):
 		var pv := CharPreview.new()
 		pv.mirror = i == 1
-		pv.cam_dist = 2.4
+		# 上半身を大きく、頭と肩は切らずに（大柄な機体ほど引く）
+		pv.cam_dist = 3.3
+		pv.cam_h = 0.74
+		pv.look_h = 0.68
 		pv.size = Vector2(vs.x * 0.42, vs.y)
 		pv.position = Vector2(-vs.x * 0.42 if i == 0 else vs.x, 0)
 		content.add_child(pv)
