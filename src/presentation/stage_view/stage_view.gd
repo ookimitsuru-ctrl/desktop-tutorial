@@ -620,6 +620,32 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 			for k: int in range(4):
 				_cyl(2.45 - k * 0.2, 2.55 - k * 0.2, 1.2, Vector3(0, 2 + k * 6, -14), _mat(Color(0.7, 0.12, 0.1), 0.6))
 			_cyl(1.6, 1.8, 2.5, Vector3(0, 25.5, -14), _mat(Color(0.2, 0.22, 0.25), 0.4, 0.6))
+			# 灯室のガラス（発光）・回廊と手すり・屋根
+			var glass := _cyl(1.45, 1.45, 1.8, Vector3(0, 25.6, -14), _mat(Color(1.0, 0.95, 0.75)), null, 16)
+			(glass.material_override as StandardMaterial3D).emission_enabled = true
+			(glass.material_override as StandardMaterial3D).emission = Color(1.0, 0.9, 0.6) * 2.2
+			_cyl(2.6, 2.6, 0.18, Vector3(0, 24.15, -14), _mat(Color(0.18, 0.18, 0.2), 0.5, 0.6), null, 20)
+			for k5: int in range(16):
+				var a5 := k5 * TAU / 16.0
+				_cyl(0.03, 0.03, 0.9, Vector3(sin(a5) * 2.5, 24.7, -14 + cos(a5) * 2.5), _mat(Color(0.15, 0.15, 0.17), 0.5, 0.6), null, 4)
+			_cyl(0.0, 1.9, 1.2, Vector3(0, 27.4, -14), _mat(Color(0.12, 0.13, 0.15), 0.4, 0.6), null, 16)
+			# 灯台守の小屋（明かりの灯る窓）
+			_box(Vector3(5, 3, 4), Vector3(-6.5, 0.4, -15), _mat(Color(0.82, 0.8, 0.76), 0.8))
+			_gable(self, Vector3(-6.5, 1.9, -15), 5.6, 4.6, 1.4, Color(0.25, 0.12, 0.1), PI * 0.5)
+			var win := _box(Vector3(1.0, 0.8, 0.05), Vector3(-6.5, 0.7, -12.97), _mat(Color(1.0, 0.8, 0.45)))
+			(win.material_override as StandardMaterial3D).emission_enabled = true
+			(win.material_override as StandardMaterial3D).emission = Color(1.0, 0.7, 0.35) * 2.0
+			var wl := OmniLight3D.new()
+			wl.position = Vector3(-6.5, 0.8, -12.4)
+			wl.light_color = Color(1.0, 0.7, 0.4)
+			wl.light_energy = 1.2
+			wl.omni_range = 6.0
+			add_child(wl)
+			# 舞台の縁に打ち寄せる波しぶき（白い泡の輪）
+			var foam := _cyl(5.6, 5.9, 0.2, Vector3(0, -1.45, 0), _mat(Color(0.85, 0.9, 0.95), 0.9), null, 40)
+			var fm := foam.material_override as StandardMaterial3D
+			fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			fm.albedo_color = Color(0.85, 0.9, 0.95, 0.55)
 			_lighthouse_beam = Node3D.new()
 			_lighthouse_beam.position = Vector3(0, 25.5, -14)
 			add_child(_lighthouse_beam)
