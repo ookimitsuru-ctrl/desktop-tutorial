@@ -20,7 +20,7 @@ FLAVOR = {
     "zaw": {"kick": "round", "punch": "elbow",
             "names": {"9k_x_": ("跳び蹴り", "Jump Kick"), "2pk_x": ("突き上げ肘", "Rising Elbow"), "66p_x": ("踏み込み肘", "Stepping Elbow")}},
     "yuelan": {"kick": "front", "punch": "straight",
-               "names": {"6pk_x": ("虎撲", "Tiger Pounce"), "9k_x": ("燕形・跳び蹴り", "Swallow Leap Kick"), "66p_x": ("躦拳・踏み込み", "Stepping Drill Fist"), "2pk_x": ("鼉形・突き上げ", "Alligator Rise")}},
+               "names": {"6pk_x": ("虎撲", "Tiger Pounce"), "9k_x": ("燕形・跳び蹴り", "Swallow Leap Kick"), "66p_x": ("鑽拳・踏み込み", "Stepping Drill Fist"), "2pk_x": ("鼉形・突き上げ", "Alligator Rise")}},
     "mariel": {"kick": "round", "punch": "elbow",
                "names": {"6pk_x": ("ダブルスティック", "Double Stick"), "kg_x": ("スタント・アックス", "Stunt Axe Kick"), "9k_x": ("ワイヤー・キック", "Wire Kick"), "2pk_x": ("突き上げ肘", "Rising Elbow")}},
     "adrien": {"kick": "side", "punch": "straight", "reach": 0.90,
