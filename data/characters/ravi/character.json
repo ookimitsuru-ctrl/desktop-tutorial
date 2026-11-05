@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "ravi",
   "name": [
-    "ラヴィ・ナーヤル",
-    "Ravi Nair"
+    "ガルダ",
+    "Garuda"
   ],
   "style": [
     "カラリパヤット",
@@ -296,9 +296,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-14 ガルダ",
-    "RF-14 GARUDA"
-  ],
-  "win_pose": 1
+  "machine": "RF-14",
+  "win_pose": 1,
+  "pilot": [
+    "ラヴィ・ナーヤル",
+    "Ravi Nair"
+  ]
 }

@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "lena",
   "name": [
-    "レナ・ヴォルコワ",
-    "Lena Volkova"
+    "ストリジ",
+    "Strizh"
   ],
   "style": [
     "システマ",
@@ -227,9 +227,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-31 ストリジ",
-    "RF-31 STRIZH"
-  ],
-  "win_pose": 2
+  "machine": "RF-31",
+  "win_pose": 2,
+  "pilot": [
+    "レナ・ヴォルコワ",
+    "Lena Volkova"
+  ]
 }

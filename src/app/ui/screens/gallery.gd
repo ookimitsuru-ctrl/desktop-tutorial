@@ -145,6 +145,7 @@ func _char(id: String) -> void:
 	var pf: Dictionary = st.get("profile", {})
 	var lines: Array[String] = []
 	lines.append(DataDB.char_name(id))
+	lines.append(DataDB.char_sub(id))
 	lines.append(DataDB.pick(cj.get("style", ["", ""])))
 	lines.append("")
 	if not pf.is_empty():

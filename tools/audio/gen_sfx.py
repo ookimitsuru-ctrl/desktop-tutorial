@@ -102,30 +102,42 @@ def clang(f0, dur, bright=1.0):
     return x + bp(noise(dur), f0 * 1.5, min(f0 * 8, 9000)) * env(len(tt), 0.0005, dur * 0.06) * 0.6
 
 
+def thump(f, dur, drive=2.5):
+    """低い「ドン」: 正弦を歪ませて倍音を作る（スマホのスピーカーでも重さが伝わる帯域に）"""
+    tt = t(dur)
+    return sat(np.sin(2 * np.pi * f * tt) * env(len(tt), 0.002, dur * 0.32), drive)
+
+
 def hit(weight, var):
-    j = 1 + var * 0.07
+    """機甲兵どうしの打撃: 破裂音・歪んだ胴鳴り・低い衝撃・重低音・鋼の響き・破片の音・残響を重ねる"""
+    j = 1 + var * 0.06
     if weight == "light":
-        click = hp(noise(0.004), 3000) * env(int(SR * 0.004), 0.0005, 0.0015)
-        body = sweep(190 * j, 75, 0.07) * env(int(SR * 0.07), 0.001, 0.025)
-        slap = bp(noise(0.06), 900 * j, 4200) * env(int(SR * 0.06), 0.0008, 0.018)
-        return mix(click * 0.6, body * 0.8, slap * 0.6, clang(980 * j, 0.16, 0.9) * 0.55)
+        crack = bp(noise(0.02), 1400, 6000) * env(int(SR * 0.02), 0.0004, 0.005)
+        body = sat(sweep(260 * j, 90, 0.13) * env(int(SR * 0.13), 0.001, 0.045), 2.8)
+        low = thump(105 * j, 0.12, 2.2)
+        sub = np.sin(2 * np.pi * 58 * t(0.16)) * env(int(SR * 0.16), 0.002, 0.05)
+        return reverb(mix(crack * 0.55, body * 0.9, low * 0.7, sub * 0.5, clang(560 * j, 0.24, 0.6) * 0.45), 0.22, 0.07)
     if weight == "medium":
-        click = hp(noise(0.005), 2500) * env(int(SR * 0.005), 0.0005, 0.002)
-        body = sat(sweep(160 * j, 55, 0.12) * env(int(SR * 0.12), 0.001, 0.045), 2.5)
-        slap = bp(noise(0.1), 500 * j, 3200) * env(int(SR * 0.1), 0.001, 0.03)
-        return mix(click * 0.5, body * 1.0, slap * 0.7, clang(640 * j, 0.24, 0.8) * 0.6)
-    click = hp(noise(0.006), 2000) * env(int(SR * 0.006), 0.0005, 0.0025)
-    body = sat(sweep(130 * j, 38, 0.26) * env(int(SR * 0.26), 0.001, 0.09), 3.0)
-    crunch = lp(noise(0.2), 2400) * env(int(SR * 0.2), 0.001, 0.05)
-    sub = np.sin(2 * np.pi * 48 * t(0.3)) * env(int(SR * 0.3), 0.003, 0.12)
-    return reverb(mix(click * 0.5, body * 1.0, crunch * 0.7, sub * 0.6, clang(410 * j, 0.42, 0.7) * 0.65), 0.3, 0.12)
+        crack = bp(noise(0.025), 1200, 5500) * env(int(SR * 0.025), 0.0004, 0.006)
+        body = sat(sweep(200 * j, 70, 0.24) * env(int(SR * 0.24), 0.001, 0.08), 3.2)
+        low = thump(86 * j, 0.2, 2.6)
+        sub = np.sin(2 * np.pi * 48 * t(0.32)) * env(int(SR * 0.32), 0.002, 0.11)
+        crunch = lp(noise(0.16), 2000) * env(int(SR * 0.16), 0.001, 0.035)
+        return reverb(mix(crack * 0.5, body * 1.0, low * 0.85, sub * 0.7, crunch * 0.5, clang(370 * j, 0.4, 0.55) * 0.5), 0.32, 0.1)
+    crack = bp(noise(0.03), 1000, 5000) * env(int(SR * 0.03), 0.0004, 0.008)
+    body = sat(sweep(170 * j, 52, 0.42) * env(int(SR * 0.42), 0.001, 0.14), 4.0)
+    low = thump(70 * j, 0.36, 3.0)
+    sub = sat(sweep(46, 30, 0.6) * env(int(SR * 0.6), 0.003, 0.22), 1.6)
+    crunch = lp(noise(0.32), 1700) * env(int(SR * 0.32), 0.001, 0.07)
+    debris = bp(noise(0.5), 2500, 7000) * env(int(SR * 0.5), 0.01, 0.1)
+    return reverb(mix(crack * 0.5, body * 1.0, low * 0.95, sub * 0.8, crunch * 0.6, debris * 0.12, clang(230 * j, 0.65, 0.5) * 0.55), 0.48, 0.17)
 
 
 def counter():
-    tt = t(0.45)
-    ring = sum(np.sin(2 * np.pi * f * tt) * a for f, a in ((1180, 1.0), (1873, 0.6), (2690, 0.4), (3510, 0.25)))
-    ring *= env(len(tt), 0.001, 0.12)
-    return reverb(mix(hit("heavy", 2) * 0.9, ring * 0.35), 0.35, 0.15)
+    tt = t(0.6)
+    ring = sum(np.sin(2 * np.pi * f * tt) * a for f, a in ((620, 1.0), (988, 0.6), (1420, 0.4), (1890, 0.25)))
+    ring *= env(len(tt), 0.001, 0.16)
+    return reverb(mix(hit("heavy", 2) * 1.0, ring * 0.3, thump(55, 0.5, 3.0) * 0.6), 0.5, 0.18)
 
 
 def guard(heavy, var):
@@ -133,7 +145,9 @@ def guard(heavy, var):
     thud = bp(noise(0.07), 250 * j, 1400) * env(int(SR * 0.07), 0.001, 0.02 if not heavy else 0.035)
     clack = bp(noise(0.02), 2200, 6500) * env(int(SR * 0.02), 0.0005, 0.005)
     low = sweep(220 * j, 120, 0.06) * env(int(SR * 0.06), 0.001, 0.02)
-    x = mix(thud, clack * 0.6, low * (0.7 if heavy else 0.4), clang((760 if heavy else 1150) * j, 0.22 if heavy else 0.14) * 0.45)
+    # 腕の装甲で受ける重い金属音
+    x = mix(thud, clack * 0.5, low * (0.8 if heavy else 0.5), thump(120 * j if heavy else 150 * j, 0.14 if heavy else 0.09, 2.4) * 0.6,
+            clang((420 if heavy else 600) * j, 0.32 if heavy else 0.2, 0.6) * 0.55)
     return reverb(x, 0.2, 0.08) if heavy else x
 
 
@@ -219,13 +233,15 @@ def main():
     save("grab", mix(bp(noise(0.09), 900, 3500) * env(int(SR * 0.09), 0.001, 0.03), thud(0.12, 160, 90, 0.2) * 0.6), -6.0)
     save("throw_break", mix(hp(noise(0.006), 3000) * env(int(SR * 0.006), 0.0005, 0.002), chime([2480, 3720], 0.25) * 0.5,
                             bp(noise(0.12), 1500, 7000) * env(int(SR * 0.12), 0.001, 0.03)), -1.5)
-    save("slam", reverb(mix(thud(0.5, 95, 28, 0.9) * 1.2, bp(noise(0.3), 200, 2000) * env(int(SR * 0.3), 0.002, 0.08) * 0.6), 0.45, 0.2), -0.5)
+    save("slam", reverb(mix(thud(0.6, 95, 28, 0.9) * 1.2, bp(noise(0.3), 200, 2000) * env(int(SR * 0.3), 0.002, 0.08) * 0.6,
+                            thump(62, 0.5, 3.0) * 0.8, clang(190, 0.7, 0.4) * 0.45), 0.5, 0.2), -0.5)
     save("launch", mix(whoosh(0.3, 300, 1800) * 0.7, thud(0.15, 140, 70, 0.2) * 0.6), -4.0)
     save("land", mix(thud(0.25, 120, 45, 0.7), clang(330, 0.25, 0.5) * 0.35), -4.0)
     save("land_heavy", reverb(mix(thud(0.45, 100, 32, 0.9), clang(260, 0.4, 0.5) * 0.4), 0.35, 0.15), -2.0)
     save("tech", mix(bp(noise(0.05), 600, 3000) * env(int(SR * 0.05), 0.001, 0.015), pad(np.zeros(int(SR * 0.08)), int(SR * 0.08)),
                      ), -7.0)
-    save("wall_hit", reverb(mix(thud(0.35, 120, 40, 0.6), bp(noise(0.15), 300, 3000) * env(int(SR * 0.15), 0.001, 0.04)), 0.4, 0.2), -1.0)
+    save("wall_hit", reverb(mix(thud(0.45, 120, 40, 0.6), bp(noise(0.15), 300, 3000) * env(int(SR * 0.15), 0.001, 0.04),
+                                thump(75, 0.35, 2.8) * 0.7, clang(260, 0.5, 0.5) * 0.4), 0.45, 0.2), -1.0)
     save("wall_break", crumble(1.2), -0.5)
     save("ringout", mix(whoosh(0.7, 2000, 250) * 0.6, pad(np.zeros(int(SR * 0.45)), int(SR * 0.45))), -5.0)
     save("ringout_harbor", splash(1.0), -2.0)

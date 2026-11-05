@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "mariel",
   "name": [
-    "マリエル・サントス",
-    "Mariel Santos"
+    "カンピラン",
+    "Kampilan"
   ],
   "style": [
     "カリ／パナントゥカン",
@@ -184,9 +184,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-25 カンピラン",
-    "RF-25 KAMPILAN"
-  ],
-  "win_pose": 1
+  "machine": "RF-25",
+  "win_pose": 1,
+  "pilot": [
+    "マリエル・サントス",
+    "Mariel Santos"
+  ]
 }

@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "toma",
   "name": [
-    "篠宮 灯真",
-    "Toma Shinomiya"
+    "ハガネ",
+    "Hagane"
   ],
   "style": [
     "篠宮流 実戦空手",
@@ -174,9 +174,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-07 ハガネ",
-    "RF-07 HAGANE"
-  ],
-  "win_pose": 0
+  "machine": "RF-07",
+  "win_pose": 0,
+  "pilot": [
+    "篠宮 灯真",
+    "Toma Shinomiya"
+  ]
 }

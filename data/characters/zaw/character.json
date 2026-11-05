@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "zaw",
   "name": [
-    "ゾー・ミン",
-    "Zaw Min"
+    "ナーガ",
+    "Naga"
   ],
   "style": [
     "ラウェイ",
@@ -175,9 +175,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-22 ナーガ",
-    "RF-22 NAGA"
-  ],
-  "win_pose": 2
+  "machine": "RF-22",
+  "win_pose": 2,
+  "pilot": [
+    "ゾー・ミン",
+    "Zaw Min"
+  ]
 }

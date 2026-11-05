@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "bjorn",
   "name": [
-    "ビョルン・ハルヴォルセン",
-    "Bjorn Halvorsen"
+    "イスビョルン",
+    "Isbjorn"
   ],
   "style": [
     "グレコローマン・レスリング",
@@ -175,9 +175,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-12 イスビョルン",
-    "RF-12 ISBJORN"
-  ],
-  "win_pose": 1
+  "machine": "RF-12",
+  "win_pose": 1,
+  "pilot": [
+    "ビョルン・ハルヴォルセン",
+    "Bjorn Halvorsen"
+  ]
 }

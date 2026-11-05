@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "gensai",
   "name": [
-    "鷹司 玄斎",
-    "Gensai Takatsukasa"
+    "コガラス",
+    "Kogarasu"
   ],
   "style": [
     "鷹司流 古流柔術",
@@ -182,9 +182,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-00 コガラス",
-    "RF-00 KOGARASU"
-  ],
-  "win_pose": 2
+  "machine": "RF-00",
+  "win_pose": 2,
+  "pilot": [
+    "鷹司 玄斎",
+    "Gensai Takatsukasa"
+  ]
 }

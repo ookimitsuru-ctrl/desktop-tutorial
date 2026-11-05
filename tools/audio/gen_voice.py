@@ -47,13 +47,13 @@ def announcer():
         "final_round": "Final round", "fight": "Fight!", "ko": "K. O.", "ring_out": "Ring out!", "time_up": "Time up",
         "draw": "Draw", "perfect": "Perfect", "extra_round": "Extra round",
     }
-    # 「（キャラ名） Wins」
+    # 「（機体名） Wins」。英語の読み上げで崩れる名前は読みを指定する
+    say = {"Strizh": "Streezh", "Isbjorn": "Ees byorn", "Qingluan": "Ching lwahn", "Rapiere": "Rapi air", "Kogarasu": "Koh gah rah soo",
+           "Hagane": "Hah gah neh", "Garuda": "Gah roo dah", "Kampilan": "Kahm pee lahn", "Naga": "Nah gah"}
     for d in sorted((ROOT / "data/characters").iterdir()):
         cj = json.loads((d / "character.json").read_text())
-        first = str(cj.get("name", [d.name, d.name])[1]).split(" ")[0]
-        if d.name == "gensai":
-            first = "Gensai"
-        lines["win_" + d.name] = first + " wins!"
+        nm = str(cj.get("name", [d.name, d.name])[1])
+        lines["win_" + d.name] = say.get(nm, nm) + " wins!"
     for k, txt in lines.items():
         with tempfile.TemporaryDirectory() as td:
             wp = pathlib.Path(td) / "a.wav"

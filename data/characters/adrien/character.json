@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "adrien",
   "name": [
-    "アドリアン・ルフェーヴル",
-    "Adrien Lefèvre"
+    "ラピエール",
+    "Rapiere"
   ],
   "style": [
     "サバット",
@@ -209,9 +209,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-09 ラピエール",
-    "RF-09 RAPIERE"
-  ],
-  "win_pose": 0
+  "machine": "RF-09",
+  "win_pose": 0,
+  "pilot": [
+    "アドリアン・ルフェーヴル",
+    "Adrien Lefèvre"
+  ]
 }

@@ -23,7 +23,7 @@ func build() -> void:
 		var nl := UITheme.outline(UITheme.label(DataDB.char_name(Game.p_char[i]), 40, "display", UITheme.P1 if i == 0 else UITheme.P2), 8)
 		nl.position = Vector2(vs.x * (0.06 if i == 0 else 0.56), vs.y * 0.78)
 		content.add_child(nl)
-		var ml := UITheme.outline(UITheme.label(DataDB.machine_name(Game.p_char[i]), 22, "bold", UITheme.ACCENT), 5)
+		var ml := UITheme.outline(UITheme.label(DataDB.char_sub(Game.p_char[i]), 22, "bold", UITheme.ACCENT), 5)
 		ml.position = Vector2(nl.position.x, vs.y * 0.78 - 30)
 		content.add_child(ml)
 		var sl := UITheme.outline(UITheme.label(DataDB.pick(cj.get("style", ["", ""])), 22, "bold"), 5)

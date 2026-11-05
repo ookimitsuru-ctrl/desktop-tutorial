@@ -2,8 +2,8 @@
   "schema_version": 1,
   "id": "yuelan",
   "name": [
-    "蘇 月嵐",
-    "Su Yuelan"
+    "チンルアン",
+    "Qingluan"
   ],
   "style": [
     "形意拳",
@@ -175,9 +175,10 @@
       }
     }
   ],
-  "machine": [
-    "RF-18 チンルアン",
-    "RF-18 QINGLUAN"
-  ],
-  "win_pose": 0
+  "machine": "RF-18",
+  "win_pose": 0,
+  "pilot": [
+    "蘇 月嵐",
+    "Su Yuelan"
+  ]
 }

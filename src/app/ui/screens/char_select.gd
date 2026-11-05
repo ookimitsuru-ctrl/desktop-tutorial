@@ -149,7 +149,8 @@ func _info(i: int, id: String) -> void:
 	var cj := DataDB.char_json(id)
 	name_labels[i].text = DataDB.char_name(id)
 	_fit(name_labels[i], 30, 18)
-	machine_labels[i].text = DataDB.machine_name(id)
+	machine_labels[i].text = DataDB.char_sub(id)
+	_fit(machine_labels[i], 18, 12)
 	var stars := "★".repeat(int(cj.get("difficulty", 2))) + "☆".repeat(5 - int(cj.get("difficulty", 2)))
 	info_labels[i].text = "%s  %s" % [DataDB.pick(cj.get("style", ["", ""])), stars]
 

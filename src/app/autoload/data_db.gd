@@ -88,9 +88,19 @@ func char_name(id: String) -> String:
 	return pick(char_json(id).get("name", [id, id]))
 
 
-## 乗っている機甲兵（ロボット）の名前。無ければ空
-func machine_name(id: String) -> String:
-	return pick(char_json(id).get("machine", ["", ""]))
+## パイロット（操縦者）の名前
+func pilot_name(id: String) -> String:
+	return pick(char_json(id).get("pilot", ["", ""]))
+
+
+## 機体名の下に添える一行: 型式とパイロット（例「RF-07 ／ パイロット 篠宮 灯真」）
+func char_sub(id: String) -> String:
+	var cj := char_json(id)
+	var no := String(cj.get("machine", ""))
+	var pl := pilot_name(id)
+	if pl == "":
+		return no
+	return "%s ／ %s %s" % [no, t("pilot"), pl] if Settings.lang() == "ja" else "%s / %s: %s" % [no, t("pilot"), pl]
 
 
 func move_name(cd: CharDef, m: MoveDef) -> String:
