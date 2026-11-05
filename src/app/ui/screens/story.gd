@@ -53,6 +53,7 @@ func build() -> void:
 	content.add_child(hint)
 	_show()
 	AudioHub.bgm("bgm_ending" if kind == "ending" else "bgm_select")
+	add_title_button()
 
 
 func _show() -> void:
@@ -72,6 +73,10 @@ func _input(event: InputEvent) -> void:
 		or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
 	if not tap or text_label == null:
 		return
+	# 「タイトルへ」ボタンの上のタップは会話を進めない
+	if title_button != null and (event is InputEventScreenTouch or event is InputEventMouseButton):
+		if title_button.get_global_rect().has_point((event as InputEventFromWindow).position if event is InputEventMouseButton else (event as InputEventScreenTouch).position):
+			return
 	get_viewport().set_input_as_handled()
 	if text_label.visible_ratio < 1.0:
 		text_label.visible_ratio = 1.0
@@ -87,5 +92,9 @@ func _done() -> void:
 	set_process_input(false)
 	if kind == "ending":
 		SceneRouter.goto("records", {"credits": true})
+	elif kind == "rival" or kind == "boss":
+		# 対戦の準備（相手・ステージ・CPU の強さ）は next_fight が済ませている。ここで next_fight を呼ぶと
+		# 同じ会話の画面へ戻ってしまい先へ進めなくなる
+		SceneRouter.goto("vs", {"boss": kind == "boss"})
 	else:
 		ArcadeFlow.next_fight()

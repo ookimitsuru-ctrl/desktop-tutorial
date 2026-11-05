@@ -96,6 +96,12 @@ jobs:
           grep -q "ui_smoke: [0-9]* screen(s) visited" ui_smoke.log
           if grep -E "SCRIPT ERROR|^ERROR:|^WARNING:" ui_smoke.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::UI smoke でエラーが出ました"; exit 1; fi
 
+      - name: Arcade walk (every character reaches the ending)
+        run: |
+          ~/godot/godot --headless --path . res://tools/validate/arcade_walk.tscn 2>&1 | tee arcade_walk.log
+          grep -q "arcade_walk: [0-9]* character(s), PASS" arcade_walk.log
+          if grep -E "SCRIPT ERROR|^ERROR:" arcade_walk.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::アーケードの通しでエラーが出ました"; exit 1; fi
+
       - name: Render smoke (all shaders compiled on a software Vulkan device)
         run: |
           sudo apt-get update -qq

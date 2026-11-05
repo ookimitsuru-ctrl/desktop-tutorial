@@ -93,6 +93,9 @@ func _main() -> void:
 	box.add_child(UITheme.button(DataDB.t("retire"), func() -> void:
 		get_tree().paused = false
 		SceneRouter.goto("main_menu")))
+	box.add_child(UITheme.button(DataDB.t("to_title"), func() -> void:
+		get_tree().paused = false
+		SceneRouter.goto("title")))
 	_center()
 
 

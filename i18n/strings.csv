@@ -90,7 +90,7 @@ replay_old,別バージョン,other version
 reset_position,位置リセット,Reset Position
 reset_save,セーブデータ初期化（2回押す）,Reset Save Data (press twice)
 resume,再開,Resume
-retire,リタイア,Quit Match
+retire,メインメニューへ,Main Menu
 ring_legend,赤 = リングアウト　黄 = 柵　白 = 壁　破線 = 破壊壁,Red = ring out   Yellow = fence   White = wall   Dashed = breakable
 set_assist_escape,投げ抜け簡易化（オフライン）,Easy Throw Escape (offline)
 set_button_scale,ボタンの大きさ(%),Button Size (%)
@@ -236,3 +236,5 @@ replay_kept,保存しました,Saved
 trial_combo,コンボ,Combo
 trial_wall_combo,壁コンボ,Wall Combo
 pilot,パイロット,Pilot
+to_title,タイトルへ,Title Screen
+to_title_confirm,もう一度押すとタイトルへ,Tap again to quit

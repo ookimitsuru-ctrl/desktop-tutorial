@@ -6,6 +6,8 @@ var params: Dictionary = {}
 var content: Control
 var title_label: Label
 var back_target := ""
+var title_button: Button = null
+var _title_armed := 0.0
 
 
 func setup(p: Dictionary) -> void:
@@ -55,6 +57,29 @@ func add_title(t: String) -> void:
 	line.position = r.position + Vector2(12, 66)
 	line.size = Vector2(160, 4)
 	content.add_child(line)
+
+
+## 右上の「タイトルへ」ボタン。誤って押しても進行を失わないよう、1 回目で確認の表示に変わり 2 回目で戻る
+func add_title_button() -> void:
+	var r := safe_rect()
+	title_button = UITheme.button(DataDB.t("to_title"), _on_title_button, 200)
+	title_button.position = Vector2(r.position.x + r.size.x - 210, r.position.y + 6)
+	content.add_child(title_button)
+
+
+func _on_title_button() -> void:
+	if _title_armed > 0.0:
+		get_tree().paused = false
+		SceneRouter.goto("title")
+		return
+	_title_armed = 2.5
+	title_button.text = DataDB.t("to_title_confirm")
+	var tw := create_tween()
+	tw.tween_interval(2.5)
+	tw.tween_callback(func() -> void:
+		_title_armed = 0.0
+		if title_button != null:
+			title_button.text = DataDB.t("to_title"))
 
 
 func add_back(target: String) -> void:
