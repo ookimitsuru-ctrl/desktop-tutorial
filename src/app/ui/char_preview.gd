@@ -65,7 +65,8 @@ func show_char(id: String, p_costume: String = "a", p_color: int = 0) -> void:
 	model = CharacterModel.new()
 	vp.add_child(model)
 	model.build(id, p_costume, DataDB.char_json(id), p_color, lib.rig)
-	model.rotation_degrees = Vector3(0, (180.0 - yaw) if mirror else yaw, 0)
+	# モデルの正面は -Z。カメラは +Z 側にあるので 180° 回して正面を向け、yaw だけ斜めにする（左右で向きを鏡写し）
+	model.rotation_degrees = Vector3(0, (180.0 - yaw) if mirror else (180.0 + yaw), 0)
 
 
 func _process(delta: float) -> void:
