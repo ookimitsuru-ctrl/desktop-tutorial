@@ -171,6 +171,21 @@ func stop_bgm(fade: float = 0.5) -> void:
 		tw.tween_callback(_bgm.stop)
 
 
+## 全プレイヤーを止めて読み込んだ音を手放す（検証ツールの終了前の後片付け用）
+func release_all() -> void:
+	var players: Array = []
+	players.append_array(_sfx_players)
+	players.append_array(_voice)
+	players.append_array([_bgm, _bgm_b, _ann, _amb])
+	for p: AudioStreamPlayer in players:
+		p.stop()
+		p.stream = null
+	_ann_queue.clear()
+	_cache.clear()
+	_bgm_id = ""
+	_amb_id = ""
+
+
 ## BGM を一時的に下げる（打撃・アナウンス）
 func duck(amount: float) -> void:
 	_duck = maxf(_duck, amount)

@@ -39,6 +39,7 @@ godot --headless --path . res://tools/validate/check_scene.tscn      # 全スク
 godot --headless --path . -s res://tools/bake/bake_all.gd            # アニメと判定のベイク（技データを変えたら必須）
 godot --headless --path . -s res://tests/run_tests.gd [-- 名前の一部] # テスト（全技のフレームデータ実測を含む）
 godot --headless --path . res://tools/validate/ui_smoke.tscn         # 全画面の実行確認
+godot --headless --path . --fixed-fps 60 res://tools/validate/soak.tscn  # CPU 同士の連続試合で解放漏れを確認
 godot --headless --path . -s res://tools/validate/combo_search.gd    # コンボの探索（--verify で検証のみ）
 godot --headless --path . -s res://tools/validate/balance_report.gd  # CPU 同士の全組み合わせ勝率 → reports/balance.md
 python3 tools/charmodel/gen_model.py <id> [a b]                      # キャラモデルの生成

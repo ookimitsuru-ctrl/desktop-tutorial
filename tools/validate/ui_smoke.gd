@@ -39,9 +39,10 @@ func _next() -> void:
 		if SceneRouter.current != null:
 			SceneRouter.current.queue_free()
 			SceneRouter.current = null
-		AudioHub.stop_bgm(0.0)
-		AudioHub.stop_ambience(0.0)
-		for _k: int in range(10):
+		AudioHub.release_all()
+		# 止めた再生はオーディオスレッドが次に回るときに手放される。--fixed-fps では数フレームが一瞬で過ぎるため実時間で待つ
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < 400:
 			await get_tree().process_frame
 		get_tree().quit(0)
 		return

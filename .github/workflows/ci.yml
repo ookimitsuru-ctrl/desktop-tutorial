@@ -96,6 +96,12 @@ jobs:
           grep -q "ui_smoke: [0-9]* screen(s) visited" ui_smoke.log
           if grep -E "SCRIPT ERROR|^ERROR:|^WARNING:" ui_smoke.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::UI smoke でエラーが出ました"; exit 1; fi
 
+      - name: Soak (36 CPU matches, leak check)
+        run: |
+          ~/godot/godot --headless --path . --fixed-fps 60 res://tools/validate/soak.tscn -- --matches 36 --frames 2400 2>&1 | tee soak.log
+          grep -q "soak: .* PASS" soak.log
+          if grep -E "SCRIPT ERROR|^ERROR:|^WARNING:" soak.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::ソークテストでエラーが出ました"; exit 1; fi
+
       - name: Combo routes (combos.json) still work
         run: ~/godot/godot --headless --path . -s res://tools/validate/combo_search.gd -- --verify
 
