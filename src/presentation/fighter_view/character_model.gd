@@ -3,6 +3,7 @@ extends Node3D
 ## キャラクターの見た目（glb の骨格メッシュ + パレットシェーダー）。ポーズは PoseEval の結果を適用する。
 
 const SHADER := preload("res://shaders/character.gdshader")
+const GHOST_SHADER := preload("res://shaders/character_ghost.gdshader")
 const SLOT_KEYS: Array[String] = ["skin", "hair", "primary", "secondary", "accent", "gloves", "shoes", "eye", "dark", "lips", "metal", "tertiary"]
 
 var skeleton: Skeleton3D
@@ -26,7 +27,8 @@ static func load_glb(path: String) -> Node:
 	return doc.generate_scene(state)
 
 
-func build(char_id: String, costume: String, char_json: Dictionary, color_idx: int, p_rig: Rig) -> void:
+## ghost: 残像用（半透明のシェーダーを使う）
+func build(char_id: String, costume: String, char_json: Dictionary, color_idx: int, p_rig: Rig, ghost: bool = false) -> void:
 	rig = p_rig
 	var path := "res://assets/characters/%s/%s_%s.glb" % [char_id, char_id, costume]
 	var scene := load_glb(path)
@@ -36,7 +38,7 @@ func build(char_id: String, costume: String, char_json: Dictionary, color_idx: i
 	skeleton = _find_skeleton(scene)
 	mesh = _find_mesh(scene)
 	material = ShaderMaterial.new()
-	material.shader = SHADER
+	material.shader = GHOST_SHADER if ghost else SHADER
 	set_colors(char_json, color_idx)
 	if mesh != null:
 		mesh.material_override = material

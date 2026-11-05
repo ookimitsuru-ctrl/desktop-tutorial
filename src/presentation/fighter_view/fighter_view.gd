@@ -44,7 +44,7 @@ func setup(p_char: String, costume: String, color_idx: int, p_cd: CharDef, p_sid
 		var g := CharacterModel.new()
 		g.visible = false
 		add_child(g)
-		g.build(p_char, costume, cj, color_idx, lib.rig)
+		g.build(p_char, costume, cj, color_idx, lib.rig, true)
 		g.top_level = true
 		if g.material != null:
 			g.material.set_shader_parameter("ghost", 0.35)

@@ -77,7 +77,8 @@ func _init() -> void:
 				(c as Node3D).rotation_degrees = Vector3(0, float(OS.get_environment("PREVIEW_YAW")) if OS.get_environment("PREVIEW_YAW") != "" else -20.0, 0)
 				(c as Node3D).position = Vector3.ZERO
 		cam.fov = 22
-		cam.position = Vector3(0, hy, 0.75)
+		var dist := float(OS.get_environment("PREVIEW_DIST")) if OS.get_environment("PREVIEW_DIST") != "" else 0.75
+		cam.position = Vector3(0, hy, dist)
 		cam.look_at_from_position(cam.position, Vector3(0, hy - 0.02, 0))
 	vp.add_child(cam)
 

@@ -383,6 +383,13 @@ func _wall(node: Node3D, a: Vector3, b: Vector3, h: float) -> void:
 				var t := (k + 0.5) / float(n)
 				var p := a.lerp(b, t) + out_n + Vector3(0, h + 0.22, 0)
 				_box(Vector3(0.4, 0.44, 0.55), p, _mat(wc.darkened(0.1)), node, yaw)
+	# 壁の飾り（筋・腰石・屋根・狭間）も本体と一緒に透けるよう、最初から深度プリパス付きの半透明にしておく
+	# （試合中に透明モードを切り替えるとシェーダーの作り直しで引っかかる端末があるため）
+	for c: Node in node.get_children():
+		if c is MeshInstance3D:
+			var dm := (c as MeshInstance3D).material_override as StandardMaterial3D
+			if dm != null and dm.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED:
+				dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 
 
 ## 切妻屋根（棟が辺に沿う）: base は軒の中心、len は棟の長さ、wid は屋根の幅、h は高さ

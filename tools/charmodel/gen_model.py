@@ -258,29 +258,56 @@ def head_prims(B):
     nl = (0.035 + 0.012 * nose) * s
     pr.append(Prim("cone", [v3(c + [0, 0.018 * s, -0.096 * s]), v3(c + [0, -0.022 * s, -0.096 * s - nl * 0.6]), 0.008 * s, 0.012 * s], hb, k=0.012))
     # 口元
-    pr.append(Prim("ell", [v3(c + [0, -0.052 * s, -0.088 * s]), v3([0.030 * s, 0.012 * s, 0.010 * s])], hb, slot=LIPS, k=0.008, bias=0.0015))
+    pr.append(Prim("ell", [v3(c + [0, -0.052 * s, -0.088 * s]), v3([0.022 * s, 0.009 * s, 0.009 * s])], hb, slot=LIPS, k=0.008, bias=0.0006))
     if old:
         pr.append(Prim("ell", [v3(c + [0, -0.06 * s, -0.08 * s]), v3([0.05 * s, 0.03 * s, 0.03 * s])], hb, k=0.03))
     return pr
 
 
+EYE_OUT = 0.0040   # 白目の前端を顔の表面からどれだけ前に出すか（m、体格倍率を掛ける）
+BROW_OUT = 0.0012  # 眉の前面を眉骨の表面からどれだけ前に出すか
+
+
+def face_surface_z(B, x, y, z_in):
+    """顔の皮膚（頭の SDF だけ。髪は含めない）の表面の z を、(x, y) の位置で内側 z_in から前方（-z）へ探す"""
+    prims = head_prims(B)
+    zs = np.arange(z_in, z_in - 0.16 * B.s, -0.0002, dtype=np.float32)
+    P = np.stack([np.full_like(zs, x), np.full_like(zs, y), zs], axis=1)
+    F = np.full(len(zs), 1.0, dtype=np.float32)
+    for p in prims:
+        F = sdf.smin(F, p.eval(P).astype(np.float32), p.k)
+    outside = np.nonzero(F > 0)[0]
+    if len(outside) == 0:
+        return float(zs[-1])
+    return float(zs[outside[0]])
+
+
 def eye_parts(B):
-    """目（白目と黒目）と眉を明示的な小メッシュとして作る（頭ボーン固定）"""
+    """目（白目と黒目）と眉を明示的な小メッシュとして作る（頭ボーン固定）。
+    奥行きは顔の表面から決める（表面より奥に置くと皮膚に隠れて見えない）"""
     s = B.s
     hj = B.j("Head")
     c = hj + v3([0, 0.105 * s, -0.008 * s])
     parts = []
     fem = B.female
     for sx in (-1, 1):
-        # 白目は少し奥に置いた横長の楕円、黒目は大きめ、上まぶた（肌）で上を覆ってアーモンド形に
-        e = c + v3([sx * 0.032 * s, 0.006 * s, -0.075 * s])
+        # 白目は横長の楕円で前端だけを顔の表面から出す。黒目は大きめ、上まぶた（肌）で上を覆ってアーモンド形に
+        ex, ey = c[0] + sx * 0.032 * s, c[1] + 0.006 * s
+        zs = face_surface_z(B, ex, ey, c[2])
+        e = v3([ex, ey, zs - EYE_OUT * s + 0.0110 * s])
         parts.append(("ell", e, v3([0.0130 * s, 0.0085 * s, 0.0110 * s]), EYE_WHITE, MT_EYE))
         parts.append(("ell", e + v3([0, 0.0003 * s, -0.0088 * s]), v3([0.0066 * s, 0.0066 * s, 0.0030 * s]), DARK, MT_EYE))
         lid = e + v3([0, 0.0078 * s, -0.0012 * s])
         parts.append(("ell", lid, v3([0.0150 * s, 0.0048 * s if fem else 0.0056 * s, 0.0118 * s]), SKIN, MT_SKIN))
-        bpos = c + v3([sx * 0.034 * s, 0.026 * s, -0.092 * s])
+        bx, by = c[0] + sx * 0.034 * s, c[1] + 0.026 * s
+        bz = face_surface_z(B, bx, by, c[2])
+        bpos = v3([bx, by, bz - BROW_OUT * s + 0.006 * s])
         bw = 0.0028 * s if fem else 0.0040 * s
         parts.append(("box", bpos, v3([0.019 * s, bw, 0.006 * s]), sx * (-0.10 if fem else -0.22), B.m.get("brow_slot", HAIR)))
+    # 口の線（唇の合わせ目）
+    my = c[1] - 0.052 * s
+    mz = face_surface_z(B, c[0], my, c[2])
+    parts.append(("box", v3([c[0], my, mz - 0.0005 * s + 0.0015 * s]), v3([0.0115 * s, 0.0009 * s, 0.0015 * s]), 0.0, DARK))
     return parts
 
 
