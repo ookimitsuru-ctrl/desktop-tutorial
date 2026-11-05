@@ -65,6 +65,10 @@ func _init() -> void:
 			continue
 		pe.evaluate(clip.sample(float(shots[k][1])))
 		m.apply_pose(pe)
+		# PREVIEW_FACE="blink,frown"（例 "1,0"）で表情を指定
+		var fv := OS.get_environment("PREVIEW_FACE").split(",", false)
+		if fv.size() == 2:
+			m.set_face(fv[0].to_float(), fv[1].to_float())
 	cam = Camera3D.new()
 	cam.fov = 30
 	cam.position = Vector3(0, 1.1, 3.6 + n * 1.2)

@@ -11,7 +11,8 @@ def _pad4(b, fill=b"\x00"):
     return b
 
 
-def write_glb(path, rig, verts, normals, faces, colors, joints, weights):
+def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=()):
+    """morphs: [(名前, 頂点ごとの位置の差分)]。差分のある頂点だけを疎なアクセサで書く"""
     bones = rig["bones"]
     nb = len(bones)
     buf = bytearray()
@@ -42,6 +43,27 @@ def write_glb(path, rig, verts, normals, faces, colors, joints, weights):
     a_jnt = add(joints.astype(np.uint8), 34962, 5121, "VEC4")
     a_wgt = add(weights.astype(np.float32), 34962, 5126, "VEC4")
     a_idx = add(faces.astype(np.uint32).reshape(-1), 34963, 5125, "SCALAR")
+    targets = []
+    for _name, disp in morphs:
+        nz = np.nonzero(np.abs(disp).sum(axis=1) > 0)[0].astype(np.uint32)
+        vals = disp[nz].astype(np.float32)
+        iv_off = len(buf)
+        buf += nz.tobytes()
+        buf = bytearray(_pad4(bytes(buf)))
+        views.append({"buffer": 0, "byteOffset": iv_off, "byteLength": int(nz.nbytes)})
+        iv = len(views) - 1
+        vv_off = len(buf)
+        buf += np.ascontiguousarray(vals).tobytes()
+        buf = bytearray(_pad4(bytes(buf)))
+        views.append({"buffer": 0, "byteOffset": vv_off, "byteLength": int(vals.nbytes)})
+        vv = len(views) - 1
+        full_min = np.minimum(disp.min(axis=0), 0.0)
+        full_max = np.maximum(disp.max(axis=0), 0.0)
+        accessors.append({"componentType": 5126, "count": int(len(verts)), "type": "VEC3",
+                          "min": [float(x) for x in full_min], "max": [float(x) for x in full_max],
+                          "sparse": {"count": int(len(nz)), "indices": {"bufferView": iv, "componentType": 5125},
+                                     "values": {"bufferView": vv}}})
+        targets.append({"POSITION": len(accessors) - 1})
     ibm = np.zeros((nb, 16), dtype=np.float32)
     for i, b in enumerate(bones):
         m = np.eye(4, dtype=np.float32)
@@ -72,9 +94,7 @@ def write_glb(path, rig, verts, normals, faces, colors, joints, weights):
         "scene": 0,
         "scenes": [{"nodes": [arm]}],
         "nodes": nodes,
-        "meshes": [{"name": "Body", "primitives": [{
-            "attributes": {"POSITION": a_pos, "NORMAL": a_nrm, "COLOR_0": a_col, "JOINTS_0": a_jnt, "WEIGHTS_0": a_wgt},
-            "indices": a_idx, "material": 0}]}],
+        "meshes": [_mesh_entry(a_pos, a_nrm, a_col, a_jnt, a_wgt, a_idx, targets, [m[0] for m in morphs])],
         "materials": [{"name": "Body", "pbrMetallicRoughness": {"baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0.0, "roughnessFactor": 0.7}}],
         "skins": [{"joints": list(range(nb)), "inverseBindMatrices": a_ibm, "skeleton": roots[0]}],
         "accessors": accessors,
@@ -90,3 +110,15 @@ def write_glb(path, rig, verts, normals, faces, colors, joints, weights):
         f.write(js)
         f.write(struct.pack("<II", len(bb), 0x004E4942))
         f.write(bb)
+
+
+def _mesh_entry(a_pos, a_nrm, a_col, a_jnt, a_wgt, a_idx, targets, names):
+    prim = {"attributes": {"POSITION": a_pos, "NORMAL": a_nrm, "COLOR_0": a_col, "JOINTS_0": a_jnt, "WEIGHTS_0": a_wgt},
+            "indices": a_idx, "material": 0}
+    mesh = {"name": "Body", "primitives": [prim]}
+    if targets:
+        prim["targets"] = targets
+        mesh["weights"] = [0.0] * len(targets)
+        mesh["extras"] = {"targetNames": names}
+    return mesh
+

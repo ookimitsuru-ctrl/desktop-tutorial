@@ -298,12 +298,17 @@ def eye_parts(B):
         parts.append(("ell", e, v3([0.0130 * s, 0.0085 * s, 0.0110 * s]), EYE_WHITE, MT_EYE))
         parts.append(("ell", e + v3([0, 0.0003 * s, -0.0088 * s]), v3([0.0066 * s, 0.0066 * s, 0.0030 * s]), DARK, MT_EYE))
         lid = e + v3([0, 0.0078 * s, -0.0012 * s])
-        parts.append(("ell", lid, v3([0.0150 * s, 0.0048 * s if fem else 0.0056 * s, 0.0118 * s]), SKIN, MT_SKIN))
+        # 目を閉じた形: まぶたを下ろして白目と黒目を覆う
+        closed = (e + v3([0, 0.0001 * s, -0.0012 * s]), v3([0.0153 * s, 0.0102 * s, 0.0122 * s]))
+        parts.append(("ell", lid, v3([0.0150 * s, 0.0048 * s if fem else 0.0056 * s, 0.0118 * s]), SKIN, MT_SKIN, {"blink": closed}))
         bx, by = c[0] + sx * 0.034 * s, c[1] + 0.026 * s
         bz = face_surface_z(B, bx, by, c[2])
         bpos = v3([bx, by, bz - BROW_OUT * s + 0.006 * s])
         bw = 0.0028 * s if fem else 0.0040 * s
-        parts.append(("box", bpos, v3([0.019 * s, bw, 0.006 * s]), sx * (-0.10 if fem else -0.22), B.m.get("brow_slot", HAIR)))
+        # 眉は内側をやや下げた形を基本に、力み・被弾では内側へ寄せてさらに下げる
+        bhalf = v3([0.019 * s, bw, 0.006 * s])
+        frown = (bpos + v3([-sx * 0.0015 * s, -0.0026 * s, -0.0008 * s]), bhalf, sx * (0.30 if fem else 0.38))
+        parts.append(("box", bpos, bhalf, sx * (0.02 if fem else 0.10), B.m.get("brow_slot", HAIR), {"frown": frown}))
     # 口の線（唇の合わせ目）
     my = c[1] - 0.052 * s
     mz = face_surface_z(B, c[0], my, c[2])
@@ -391,25 +396,61 @@ def field_normals(F, lo, voxel, V):
     return out / np.maximum(n, 1e-8)
 
 
+MORPHS = ["blink", "frown"]  # 表情のモーフターゲット（目を閉じる / 眉を寄せる）
+
+
+def _ell_points(c, r, nu=10, nv=8):
+    """楕円体の頂点と法線（UV 球の並び）"""
+    pts, nrm = [], []
+    for i in range(nv + 1):
+        th = math.pi * i / nv
+        for j in range(nu):
+            ph = 2 * math.pi * j / nu
+            n = np.array([math.sin(th) * math.cos(ph), math.cos(th), math.sin(th) * math.sin(ph)])
+            pts.append(c + n * r)
+            nn = n / r
+            nrm.append(nn / np.linalg.norm(nn))
+    return pts, nrm
+
+
+def _box_points(c, half, tilt):
+    """箱の頂点と法線（面ごとに 4 頂点、z 軸まわりに tilt だけ傾ける）"""
+    ct, st = math.cos(tilt), math.sin(tilt)
+    Rz = np.array([[ct, -st, 0], [st, ct, 0], [0, 0, 1]])
+    pts, nrm = [], []
+    for ax in range(3):
+        for sg in (1, -1):
+            n = np.zeros(3)
+            n[ax] = sg
+            u, w = (ax + 1) % 3, (ax + 2) % 3
+            eu = np.zeros(3)
+            eu[u] = 1
+            ew = np.zeros(3)
+            ew[w] = 1
+            quad = [n * half[ax] + eu * half[u] * a1 + ew * half[w] * b1
+                    for (a1, b1) in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+            if np.dot(np.cross(quad[1] - quad[0], quad[2] - quad[0]), n) < 0:
+                quad = quad[::-1]
+            for q in quad:
+                pts.append(c + Rz @ q)
+                nrm.append(Rz @ n)
+    return pts, nrm
+
+
 def explicit_mesh(parts, head_bone):
-    """目・眉などの小部品（UV球・箱）を三角形メッシュに"""
+    """目・眉などの小部品（UV 球・箱）を三角形メッシュに。
+    部品の最後の要素に {"blink": 別の形, ...} があれば、その形との差分をモーフターゲットとして返す"""
     verts, norms, faces, slots, mts = [], [], [], [], []
+    morph = {k: [] for k in MORPHS}
     base = 0
     for part in parts:
+        tg = part[-1] if isinstance(part[-1], dict) else {}
         if part[0] in ("sphere", "ell"):
-            _, c, r, slot, mt = part
+            c, r, slot, mt = part[1], part[2], part[3], part[4]
             r = np.array([r, r, r]) if part[0] == "sphere" else np.asarray(r)
             nu, nv = 10, 8
-            for i in range(nv + 1):
-                th = math.pi * i / nv
-                for j in range(nu):
-                    ph = 2 * math.pi * j / nu
-                    n = np.array([math.sin(th) * math.cos(ph), math.cos(th), math.sin(th) * math.sin(ph)])
-                    verts.append(c + n * r)
-                    nn = n / r
-                    norms.append(nn / np.linalg.norm(nn))
-                    slots.append(slot)
-                    mts.append(mt)
+            pts, nrm = _ell_points(c, r, nu, nv)
+            alt = {k: _ell_points(v[0], np.asarray(v[1]), nu, nv)[0] for k, v in tg.items()}
             for i in range(nv):
                 for j in range(nu):
                     a = base + i * nu + j
@@ -418,36 +459,30 @@ def explicit_mesh(parts, head_bone):
                     d = base + (i + 1) * nu + (j + 1) % nu
                     faces.append([a, c2, b])
                     faces.append([b, c2, d])
-            base += (nv + 1) * nu
         else:
-            _, c, half, tilt, slot = part
-            ct, st = math.cos(tilt), math.sin(tilt)
-            Rz = np.array([[ct, -st, 0], [st, ct, 0], [0, 0, 1]])
-            for ax in range(3):
-                for sg in (1, -1):
-                    n = np.zeros(3)
-                    n[ax] = sg
-                    u, w = (ax + 1) % 3, (ax + 2) % 3
-                    eu = np.zeros(3)
-                    eu[u] = 1
-                    ew = np.zeros(3)
-                    ew[w] = 1
-                    quad = [n * half[ax] + eu * half[u] * a1 + ew * half[w] * b1
-                            for (a1, b1) in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-                    if np.dot(np.cross(quad[1] - quad[0], quad[2] - quad[0]), n) < 0:
-                        quad = quad[::-1]
-                    for q in quad:
-                        verts.append(c + Rz @ q)
-                        norms.append(Rz @ n)
-                        slots.append(slot)
-                        mts.append(MT_HAIR)
-                    faces.append([base, base + 1, base + 2])
-                    faces.append([base, base + 2, base + 3])
-                    base += 4
+            c, half, tilt, slot = part[1], part[2], part[3], part[4]
+            mt = MT_HAIR
+            pts, nrm = _box_points(c, half, tilt)
+            alt = {k: _box_points(v[0], v[1], v[2])[0] for k, v in tg.items()}
+            for q in range(6):
+                b0 = base + q * 4
+                faces.append([b0, b0 + 1, b0 + 2])
+                faces.append([b0, b0 + 2, b0 + 3])
+        verts += pts
+        norms += nrm
+        slots += [slot] * len(pts)
+        mts += [mt] * len(pts)
+        for k in MORPHS:
+            if k in alt:
+                morph[k] += [a2 - a1 for a1, a2 in zip(pts, alt[k])]
+            else:
+                morph[k] += [np.zeros(3)] * len(pts)
+        base += len(pts)
     V = np.array(verts, dtype=np.float32)
     N = np.array(norms, dtype=np.float32)
     Fc = np.array(faces, dtype=np.uint32)
-    return V, N, Fc, np.array(slots), np.array(mts)
+    M = {k: np.array(v, dtype=np.float32) for k, v in morph.items()}
+    return V, N, Fc, np.array(slots), np.array(mts), M
 
 
 def generate(cid, costume_id):
@@ -482,7 +517,7 @@ def generate(cid, costume_id):
     ao = np.clip(ao_d / 0.02, 0.35, 1.0)
     joints, weights = skin_weights(prims, D, len(rig["bones"]))
     # 目・眉
-    ev, en, ef, es, em = explicit_mesh(eye_parts(B), B.b("Head"))
+    ev, en, ef, es, em, emorph = explicit_mesh(eye_parts(B), B.b("Head"))
     nb = len(verts)
     verts = np.concatenate([verts, ev])
     normals = np.concatenate([normals, en])
@@ -506,7 +541,12 @@ def generate(cid, costume_id):
     colors = np.stack([(slots.astype(np.float32) + 0.5) / 16.0, mtypes, ao, np.ones(len(verts))], axis=1).astype(np.float32)
     out = ROOT / f"assets/characters/{cid}/{cid}_{costume_id}.glb"
     out.parent.mkdir(parents=True, exist_ok=True)
-    write_glb(out, rig, verts, normals, faces, colors, joints, weights)
+    morphs = []
+    for k in MORPHS:
+        d = np.zeros((len(verts), 3), dtype=np.float32)
+        d[nb:] = emorph[k]
+        morphs.append((k, d))
+    write_glb(out, rig, verts, normals, faces, colors, joints, weights, morphs)
     print(f"  wrote {out.relative_to(ROOT)} ({out.stat().st_size // 1024} KB) in {time.time() - t0:.1f}s")
 
 

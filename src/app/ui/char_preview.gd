@@ -15,6 +15,8 @@ var color := 0
 var yaw := -25.0
 var cam_dist := 3.3
 var mirror := false
+var _blink_wait := randf_range(0.8, 3.0)
+var _blink_t := -1.0
 
 
 func _init() -> void:
@@ -81,6 +83,19 @@ func _process(delta: float) -> void:
 		f = minf(f, float(c.length))
 	pe.evaluate(c.sample(f))
 	model.apply_pose(pe)
+	# ときどき瞬きする
+	var blink := 0.0
+	if _blink_t >= 0.0:
+		_blink_t += delta
+		blink = clampf(1.0 - absf(_blink_t - 0.06) / 0.06, 0.0, 1.0)
+		if _blink_t > 0.13:
+			_blink_t = -1.0
+	else:
+		_blink_wait -= delta
+		if _blink_wait <= 0.0:
+			_blink_t = 0.0
+			_blink_wait = randf_range(2.0, 5.0)
+	model.set_face(blink, 0.0)
 	var h := lib.rig.height
 	cam.position = Vector3(0, h * 0.58, cam_dist)
 	cam.look_at(Vector3(0, h * 0.55, 0))

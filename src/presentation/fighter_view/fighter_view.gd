@@ -22,6 +22,10 @@ var blend_total := 1
 var last_frame := -1
 var flash := 0.0
 var shake := 0.0
+# 表情（まばたき・力み・被弾）
+var _blink_wait := randf_range(1.0, 4.0)
+var _blink_t := -1.0
+var _pain := 0.0
 var shadow: MeshInstance3D
 # 揺れ物（ワールド空間の粒子）
 var _tip_pos: Dictionary = {}
@@ -149,7 +153,37 @@ func sync(w: SimWorld, i: int, delta: float) -> void:
 	if flash > 0.0:
 		flash = maxf(0.0, flash - delta * 8.0)
 	set_material_param("hit_flash", flash * (0.1 if bool(Settings.g("photosensitive")) else 0.25))
+	_face(p, delta)
 	_ghosts(delta)
+
+
+## 表情: ときどき瞬きし、技の最中は眉を寄せ（力み）、被弾・ガード中は目を細め、KO・敗北では目を閉じる
+func _face(p: FighterState, delta: float) -> void:
+	var blink := 0.0
+	if _blink_t >= 0.0:
+		_blink_t += delta
+		blink = clampf(1.0 - absf(_blink_t - 0.06) / 0.06, 0.0, 1.0)
+		if _blink_t > 0.13:
+			_blink_t = -1.0
+	else:
+		_blink_wait -= delta
+		if _blink_wait <= 0.0:
+			_blink_t = 0.0
+			_blink_wait = randf_range(2.0, 5.0)
+	_pain = maxf(0.0, _pain - delta * 1.5)
+	var frown := _pain
+	match p.state:
+		SE.ST_MOVE, SE.ST_THROWING:
+			frown = maxf(frown, 0.7)
+		SE.ST_HITSTUN, SE.ST_BLOCKSTUN, SE.ST_THROWN, SE.ST_AIR:
+			frown = maxf(frown, 0.9)
+			blink = maxf(blink, 0.45)
+		SE.ST_WIN:
+			frown = 0.0
+	if p.ko != 0 or p.state == SE.ST_LOSE:
+		blink = 1.0
+		frown = 0.3
+	model.set_face(blink, frown)
 
 
 func _hips_offset() -> Vector3:
@@ -159,6 +193,7 @@ func _hips_offset() -> Vector3:
 
 func on_hit(heavy: bool) -> void:
 	flash = 1.0
+	_pain = 1.0
 	shake = 1.0 if heavy else 0.6
 
 

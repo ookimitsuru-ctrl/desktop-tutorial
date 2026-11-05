@@ -11,6 +11,9 @@ var mesh: MeshInstance3D
 var material: ShaderMaterial
 var bone_map: PackedInt32Array = PackedInt32Array()
 var rig: Rig
+## 表情のブレンドシェイプ番号（モデルに無ければ -1）
+var _bs_blink := -1
+var _bs_frown := -1
 
 
 static func load_glb(path: String) -> Node:
@@ -41,6 +44,8 @@ func build(char_id: String, costume: String, char_json: Dictionary, color_idx: i
 	material.shader = GHOST_SHADER if ghost else SHADER
 	set_colors(char_json, color_idx)
 	if mesh != null:
+		_bs_blink = mesh.find_blend_shape_by_name(&"blink")
+		_bs_frown = mesh.find_blend_shape_by_name(&"frown")
 		mesh.material_override = material
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	bone_map.resize(Rig.B.COUNT)
@@ -100,3 +105,14 @@ func apply_pose(pe: PoseEval, extra_rot: Dictionary = {}) -> void:
 	var hb := bone_map[Rig.B.HIPS]
 	if hb >= 0:
 		skeleton.set_bone_pose_position(hb, pe.hips_pos)
+
+
+## 表情: blink は目の閉じ具合、frown は眉の寄せ具合（どちらも 0〜1）
+func set_face(blink: float, frown: float) -> void:
+	if mesh == null:
+		return
+	if _bs_blink >= 0:
+		mesh.set_blend_shape_value(_bs_blink, clampf(blink, 0.0, 1.0))
+	if _bs_frown >= 0:
+		mesh.set_blend_shape_value(_bs_frown, clampf(frown, 0.0, 1.0))
+
