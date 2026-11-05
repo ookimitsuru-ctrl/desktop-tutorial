@@ -68,10 +68,21 @@ func build() -> void:
 	for id: String in chars:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(gw / 3.0 - 8, 74)
+		b.size = b.custom_minimum_size
+		# 日本語の長い名前でタイルが広がらないよう、幅を固定して 2 行に折り返す
+		b.clip_text = true
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		var locked := id == "gensai" and not SaveData.unlocked("char_gensai")
-		b.text = DataDB.char_name(id) if not locked else "？？？"
+		var tn := DataDB.char_name(id)
+		# 長い日本語の名前は「・」の後で改行する（任意の位置で折り返すと名前の途中で切れる）
+		if tn.length() > 6 and tn.contains("・"):
+			tn = tn.replace("・", "・\n")
+		b.text = tn if not locked else "？？？"
 		b.disabled = locked
-		b.add_theme_font_size_override("font_size", 19)
+		var longest := 0
+		for part: String in tn.split("\n"):
+			longest = maxi(longest, part.length())
+		b.add_theme_font_size_override("font_size", 19 if longest <= 6 else 17)
 		b.pressed.connect(_pick.bind(id))
 		b.focus_entered.connect(func() -> void:
 			AudioHub.ui("move")
@@ -134,9 +145,19 @@ func _hover(id: String) -> void:
 func _info(i: int, id: String) -> void:
 	var cj := DataDB.char_json(id)
 	name_labels[i].text = DataDB.char_name(id)
+	_fit(name_labels[i], 30, 18)
 	machine_labels[i].text = DataDB.machine_name(id)
 	var stars := "★".repeat(int(cj.get("difficulty", 2))) + "☆".repeat(5 - int(cj.get("difficulty", 2)))
 	info_labels[i].text = "%s  %s" % [DataDB.pick(cj.get("style", ["", ""])), stars]
+
+
+## ラベルの幅に収まるまで文字を小さくする
+func _fit(l: Label, max_size: int, min_size: int) -> void:
+	var font := l.get_theme_font("font")
+	var fs := max_size
+	while fs > min_size and font.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x:
+		fs -= 1
+	l.add_theme_font_size_override("font_size", fs)
 
 
 func _pick(id: String) -> void:

@@ -7,7 +7,7 @@ const ROWS := [
 	["round_seconds", [30, 45, 60, 99999]],
 	["ringout", [true, false]],
 	["intros", ["full", "short", "skip"]],
-	["language", ["auto", "ja", "en"]],
+	["language", ["ja", "en"]],
 	["cat_controls", ""],
 	["touch_preset", ["standard", "classic", "assist", "left"]],
 	["stick_mode", ["floating", "fixed"]],

@@ -11,7 +11,7 @@ const DEFAULTS := {
 	"ringout": true,
 	"ko_replay": true,
 	"intros": "full",
-	"language": "auto",
+	"language": "ja",
 	"touch_preset": "standard",
 	"stick_mode": "floating",
 	"stick_deadzone": 22,
@@ -60,6 +60,9 @@ func load_settings() -> void:
 	if v is Dictionary:
 		for k: String in v:
 			data[k] = v[k]
+	# 以前の「端末の言語に合わせる」設定は日本語に置き換える（既定は日本語）
+	if String(data.get("language", "ja")) == "auto":
+		data["language"] = "ja"
 	apply_audio()
 
 
@@ -90,6 +93,4 @@ func apply_audio() -> void:
 
 func lang() -> String:
 	var l := String(g("language"))
-	if l == "auto":
-		return "ja" if OS.get_locale_language() == "ja" else "en"
-	return l
+	return "en" if l == "en" else "ja"
