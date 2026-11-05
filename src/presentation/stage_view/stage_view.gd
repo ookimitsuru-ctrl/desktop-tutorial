@@ -536,25 +536,7 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 			(screen.material_override as StandardMaterial3D).emission_enabled = true
 			(screen.material_override as StandardMaterial3D).emission = Color(0.15, 0.3, 0.7)
 		"harbor":
-			var cont_cols: Array[Color] = [Color(0.6, 0.15, 0.1), Color(0.1, 0.3, 0.55), Color(0.15, 0.45, 0.25), Color(0.7, 0.55, 0.1), Color(0.4, 0.4, 0.42)]
-			for k: int in range(int(18 * dens) + 4):
-				var ang := r.randf_range(-1.2, 1.2) + (PI if k % 2 == 0 else 0.0)
-				var d := r.randf_range(14, 26)
-				var p := Vector3(sin(ang) * d, 0, cos(ang) * d)
-				var stack := r.randi_range(1, 3)
-				for s: int in range(stack):
-					_box(Vector3(2.4, 2.5, 6.0), p + Vector3(0, -1.6 + 1.25 + s * 2.5, 0), _mat(cont_cols[r.randi() % cont_cols.size()], 0.7, 0.3), null, ang)
-			for k2: int in range(2):
-				var cp := Vector3(-18 + k2 * 36, 0, -20)
-				_box(Vector3(0.8, 18, 0.8), cp + Vector3(0, 7.4, 0), _mat(Color(0.8, 0.6, 0.1), 0.5, 0.4))
-				_box(Vector3(0.6, 0.6, 14), cp + Vector3(0, 16, 4), _mat(Color(0.8, 0.6, 0.1), 0.5, 0.4))
-				var lamp := OmniLight3D.new()
-				lamp.position = cp + Vector3(0, 15, 8)
-				lamp.light_color = Color(1.0, 0.7, 0.4)
-				lamp.light_energy = 3.0
-				lamp.omni_range = 30.0
-				add_child(lamp)
-			_box(Vector3(80, 1.0, 10), Vector3(0, -1.1, -24), _mat(Color(0.25, 0.25, 0.27)))
+			_harbor(r, dens)
 		"bamboo":
 			var xf2: Array[Transform3D] = []
 			for k: int in range(int(420 * dens)):
@@ -752,6 +734,104 @@ func _temple(r: RandomNumberGenerator, dens: float) -> void:
 	_multimesh(lm, leaf_xf, leaf_mat, leaf_c)
 	# 遠景の山
 	_mountains(r, Color(0.45, 0.35, 0.42), 9)
+
+
+## 埠頭: コンテナの山、ガントリークレーン、係留柱、街灯、停泊中の貨物船、対岸の街明かり
+func _harbor(r: RandomNumberGenerator, dens: float) -> void:
+	var cont_cols: Array[Color] = [Color(0.6, 0.15, 0.1), Color(0.1, 0.3, 0.55), Color(0.15, 0.45, 0.25), Color(0.7, 0.55, 0.1), Color(0.4, 0.4, 0.42), Color(0.55, 0.3, 0.12)]
+	# 岸壁（リングの奥側は陸、手前側は海）
+	_box(Vector3(80, 1.0, 34), Vector3(0, -1.1, -24), _mat(Color(0.22, 0.22, 0.24), 0.9))
+	# コンテナの山（扉側を暗く）
+	for k: int in range(int(14 * dens) + 6):
+		var x := r.randf_range(-30, 30)
+		var z := r.randf_range(-36, -12)
+		if absf(x) < 8 and z > -16:
+			continue
+		var yaw := (PI * 0.5 if r.randf() > 0.6 else 0.0) + r.randf_range(-0.03, 0.03)
+		var stack := r.randi_range(1, 4)
+		for st: int in range(stack):
+			var col := cont_cols[r.randi() % cont_cols.size()]
+			var c := _box(Vector3(2.44, 2.59, 6.06), Vector3(x, -0.6 + 1.3 + st * 2.6, z), _mat(col, 0.75, 0.25), null, yaw)
+			# 扉・リブ
+			var door_off := Basis(Vector3.UP, yaw) * Vector3(0, 0, 3.04)
+			_box(Vector3(2.3, 2.4, 0.04), c.position + door_off, _mat(col.darkened(0.35), 0.8, 0.2), null, yaw)
+	# ガントリークレーン 2 基（脚・梁・ブーム・赤い航空障害灯）
+	var crane_c := Color(0.85, 0.55, 0.08)
+	for k2: int in range(2):
+		var cx := -14.0 + k2 * 28.0
+		var cz := -14.0
+		for lx: float in [-3.0, 3.0]:
+			for lz: float in [-4.0, 4.0]:
+				_box(Vector3(0.6, 20, 0.6), Vector3(cx + lx, 9.4, cz + lz), _mat(crane_c, 0.5, 0.4))
+			_box(Vector3(0.5, 0.5, 8.6), Vector3(cx + lx, 6.0, cz), _mat(crane_c, 0.5, 0.4))
+		_box(Vector3(7.2, 1.2, 1.2), Vector3(cx, 19.0, cz - 4.0), _mat(crane_c, 0.5, 0.4))
+		_box(Vector3(7.2, 1.2, 1.2), Vector3(cx, 19.0, cz + 4.0), _mat(crane_c, 0.5, 0.4))
+		_box(Vector3(1.4, 1.4, 34), Vector3(cx, 20.2, cz + 9), _mat(crane_c, 0.5, 0.4))
+		_box(Vector3(3.0, 2.4, 3.0), Vector3(cx, 18.3, cz + 2), _mat(Color(0.85, 0.85, 0.82), 0.5))
+		var warn := _box(Vector3(0.4, 0.4, 0.4), Vector3(cx, 21.2, cz + 25.5), _mat(Color(1, 0.1, 0.05)))
+		(warn.material_override as StandardMaterial3D).emission_enabled = true
+		(warn.material_override as StandardMaterial3D).emission = Color(1.0, 0.1, 0.05) * 3.0
+		var lamp := OmniLight3D.new()
+		lamp.position = Vector3(cx, 17.0, cz + 6)
+		lamp.light_color = Color(1.0, 0.72, 0.42)
+		lamp.light_energy = 3.0
+		lamp.omni_range = 30.0
+		add_child(lamp)
+	# 係留柱（ビット）と岸壁の縁石
+	var bol_xf: Array[Transform3D] = []
+	for k3: int in range(14):
+		var bx := -26.0 + k3 * 4.0
+		bol_xf.append(Transform3D(Basis(), Vector3(bx, -0.35, -7.4)))
+	var bm := CylinderMesh.new()
+	bm.top_radius = 0.22
+	bm.bottom_radius = 0.26
+	bm.height = 0.5
+	bm.radial_segments = 10
+	_multimesh(bm, bol_xf, _mat(Color(0.12, 0.12, 0.13), 0.5, 0.5))
+	_box(Vector3(80, 0.18, 0.4), Vector3(0, -0.52, -7.2), _mat(Color(0.85, 0.7, 0.1), 0.6))
+	# 街灯（ナトリウム灯）
+	for lx2: float in [-9.0, 9.0]:
+		_cyl(0.08, 0.1, 7.0, Vector3(lx2, 2.9, -8.5), _mat(Color(0.2, 0.2, 0.22), 0.5, 0.6))
+		var bulb := _box(Vector3(0.8, 0.2, 0.4), Vector3(lx2, 6.4, -8.1), _mat(Color(1.0, 0.8, 0.5)))
+		(bulb.material_override as StandardMaterial3D).emission_enabled = true
+		(bulb.material_override as StandardMaterial3D).emission = Color(1.0, 0.65, 0.3) * 2.5
+		var sl := OmniLight3D.new()
+		sl.position = Vector3(lx2, 6.0, -7.5)
+		sl.light_color = Color(1.0, 0.68, 0.38)
+		sl.light_energy = 1.6
+		sl.omni_range = 12.0
+		add_child(sl)
+	# 停泊中の貨物船（手前の海、右奥）
+	var hull_c := Color(0.12, 0.13, 0.16)
+	var ship := Node3D.new()
+	ship.position = Vector3(24, -1.6, 22)
+	ship.rotation.y = 0.35
+	add_child(ship)
+	_box(Vector3(9, 6, 60), Vector3(0, 2.0, 0), _mat(hull_c, 0.7, 0.2), ship)
+	_box(Vector3(9.1, 1.2, 60.1), Vector3(0, -0.3, 0), _mat(Color(0.5, 0.12, 0.1), 0.7), ship)
+	_hip(Vector3(0, -1.0, 31.5), 9.0, 6.0, 0.0, hull_c, ship)
+	_box(Vector3(8, 8, 7), Vector3(0, 9.0, -22), _mat(Color(0.88, 0.88, 0.85), 0.6), ship)
+	var win := ShaderMaterial.new()
+	win.shader = load("res://shaders/emissive_windows.gdshader")
+	var wb := MeshInstance3D.new()
+	var bxm := BoxMesh.new()
+	wb.mesh = bxm
+	wb.material_override = win
+	wb.scale = Vector3(8.05, 7.0, 7.05)
+	wb.position = Vector3(0, 9.0, -22)
+	ship.add_child(wb)
+	for k4: int in range(int(6 * dens) + 2):
+		_box(Vector3(2.44, 2.59, 6.06), Vector3(r.randf_range(-2.5, 2.5), 6.3, -10 + k4 * 6.5), _mat(cont_cols[r.randi() % cont_cols.size()], 0.75, 0.25), ship)
+	# 対岸の街明かり
+	var bxf: Array[Transform3D] = []
+	for k5: int in range(int(60 * dens) + 10):
+		var x5 := r.randf_range(-110, 110)
+		var h5 := r.randf_range(6, 40)
+		var w5 := r.randf_range(4, 10)
+		bxf.append(Transform3D(Basis().scaled(Vector3(w5, h5, w5)), Vector3(x5, -2 + h5 * 0.5, r.randf_range(95, 120))))
+	var city := ShaderMaterial.new()
+	city.shader = load("res://shaders/emissive_windows.gdshader")
+	_multimesh(BoxMesh.new(), bxf, city)
 
 
 ## 遠景の山並み（霧で霞む）

@@ -90,10 +90,10 @@ func hit(pos: Vector3, kind: String) -> void:
 			_spark(pos, 0.8, Color(1.0, 0.86, 0.55), 0, 0.18, 10)
 		"heavy", "launch":
 			_spark(pos, 1.15, Color(1.0, 0.8, 0.45), 0, 0.23, 12)
-			_spark(pos, 0.9, Color(1.0, 0.75, 0.4, 0.8), 1, 0.25, 0)
+			_spark(pos, 0.75, Color(1.0, 0.6, 0.25, 0.8), 1, 0.22, 0)
 		"counter":
 			_spark(pos, 1.25, Color(1.0, 0.38, 0.18), 0, 0.25, 14)
-			_spark(pos, 1.1, Color(1.0, 0.35, 0.2), 1, 0.28, 0)
+			_spark(pos, 0.9, Color(1.0, 0.3, 0.15), 1, 0.25, 0)
 		"guard":
 			_spark(pos, 0.8, Color(0.55, 0.8, 1.0), 2, 0.16, 0)
 			_spark(pos, 0.35, Color(0.7, 0.9, 1.0), 0, 0.12, 6)

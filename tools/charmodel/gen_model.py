@@ -463,6 +463,13 @@ def generate(cid, costume_id):
     slots = np.concatenate([slots, es])
     mtypes = np.concatenate([mtypes, em])
     ao = np.concatenate([ao, np.ones(len(ev), dtype=np.float32)])
+    # 巻き順を法線（外向き）に合わせる: glTF の表面は反時計回り。面ごとに頂点法線と比べて裏返す
+    fv = verts[faces]
+    fn = np.cross(fv[:, 1] - fv[:, 0], fv[:, 2] - fv[:, 0])
+    vn = normals[faces].sum(axis=1)
+    flip = (fn * vn).sum(axis=1) < 0
+    faces[flip] = faces[flip][:, ::-1]
+    print(f"  winding: flipped {int(flip.sum())} / {len(faces)} faces")
     hj = np.zeros((len(ev), 4), dtype=np.uint8)
     hj[:, 0] = B.b("Head")
     hw = np.zeros((len(ev), 4), dtype=np.float32)

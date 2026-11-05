@@ -32,6 +32,10 @@ float vnoise(vec3 x) {
 }
 
 void vertex() {
+	// 関節で骨の向きが大きく違うと、スキニング後の法線が打ち消し合って長さ 0 になる（正規化で NaN → ブルームで白い球）
+	if (!(dot(NORMAL, NORMAL) > 1e-8)) {
+		NORMAL = vec3(0.0, 1.0, 0.0);
+	}
 	int idx = clamp(int(round(COLOR.r * 16.0 - 0.5)), 0, 11);
 	v_base = palette[idx].rgb;
 	float m = COLOR.g;
@@ -41,6 +45,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (any(isnan(NORMAL)) || !(dot(NORMAL, NORMAL) > 1e-8)) {
+		NORMAL = vec3(0.0, 0.0, 1.0);
+	}
 	vec3 base = v_base;
 	float n = vnoise(v_local * 90.0);
 	float n2 = vnoise(v_local * 18.0);
@@ -53,7 +60,8 @@ void fragment() {
 	float spec = v_mat.x * 0.35 + v_mat.y * 0.2 + v_mat.z * 0.35 + v_mat.w * 0.6 + glossy * 0.7;
 	float ao = mix(0.45, 1.0, v_ao);
 	ALBEDO = base * ao;
-	ROUGHNESS = mix(rough, 0.2, wetness);
+	// 粗さが低い画素が混ざると、エンジン側の鏡面計算で極端な値（白い光の玉）が出る端末があるため下限を設ける
+	ROUGHNESS = clamp(mix(rough, 0.2, wetness), 0.45, 1.0);
 	SPECULAR = spec;
 	// リム（ステージのリム光方向寄りを強く）
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
@@ -74,7 +82,8 @@ void light() {
 	float t = clamp(1.0 - abs(ndl) * 2.5, 0.0, 1.0);
 	tint = mix(vec3(1.0), vec3(1.25, 0.82, 0.72), t * 0.6 * v_mat.x);
 	DIFFUSE_LIGHT += diff * ATTENUATION * LIGHT_COLOR * tint / 3.14159;
-	vec3 h = normalize(VIEW + LIGHT);
+	vec3 hv = VIEW + LIGHT;
+	vec3 h = dot(hv, hv) > 1e-8 ? normalize(hv) : NORMAL;
 	float sp = pow(clamp(dot(NORMAL, h), 0.0, 1.0), mix(80.0, 8.0, ROUGHNESS)) * (1.0 - ROUGHNESS) * 0.6;
 	SPECULAR_LIGHT += sp * ATTENUATION * LIGHT_COLOR;
 }
