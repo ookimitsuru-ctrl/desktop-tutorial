@@ -31,6 +31,52 @@ def _cut(p, cuts):
     return p
 
 
+def _rot_yz(ay, az, ax=0.0):
+    """x 軸まわり ax、z 軸まわり az、y 軸まわり ay の順に回す回転行列（列が局所軸）"""
+    cy, sy = math.cos(ay), math.sin(ay)
+    cz, sz = math.cos(az), math.sin(az)
+    cx, sx = math.cos(ax), math.sin(ax)
+    Ry = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]], dtype=np.float64)
+    Rz = np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]], dtype=np.float64)
+    Rx = np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]], dtype=np.float64)
+    return (Ry @ Rz @ Rx).astype(np.float32)
+
+
+def chest_prims(B, Prim, v3, g, slot, mtype, layer, k_add=0.0):
+    """胸の形（体と服で共通）。g は服の厚み。
+    男性: 胸郭に沿って外側が後ろへ回り込み、脇へ向かって上がる平たい板（丸い山にすると乳房に見える）。
+    女性: やや低く外向きの膨らみを柔らかく溶け込ませる。服では谷間を布が渡る。"""
+    s, p = B.s, B.p
+    M, T = p["mus"], p["torso"]
+    chest = B.j("Chest")
+    sw = abs(B.j("RightUpperArm")[0]) / (0.185 * s)
+    rx, rz = 0.150 * s * sw * T, 0.105 * s * T
+    cb = B.b("Chest")
+    pr = []
+    for sx in (-1, 1):
+        x = sx * 0.060 * s
+        # 胸郭（胴の楕円体）の前面の z（-z が前）
+        zc = 0.005 - rz * math.sqrt(max(0.05, 1.0 - (x / rx) ** 2))
+        if B.female:
+            R = _rot_yz(-sx * 0.30, 0.0)
+            rad = [0.056 * s + g, 0.050 * s + g, 0.038 * s + g]
+            c = chest + v3([x, 0.068 * s, zc + 0.038 * s - 0.034 * s])
+            pr.append(Prim("ell", [v3(c), v3(rad), R], cb, slot, mtype, k=0.040 + k_add, layer=layer))
+        else:
+            # 上端は胸郭に沈め、下端だけが出るように前へ傾ける（上に段ができない）
+            R = _rot_yz(-sx * 0.38, sx * 0.14, 0.36)
+            half = v3([0.058 * s * M + g, 0.046 * s + g, 0.022 * s + g])
+            proud = 0.002 * s * M
+            c = chest + v3([x, 0.095 * s, zc - proud + 0.022 * s])
+            pr.append(Prim("box", [v3(c), half, 0.020 * s + g, R], cb, slot, mtype, k=0.028 + k_add, layer=layer))
+    if B.female and g > 0.0:
+        # 服は谷間に沈まず、左右の膨らみの間を渡る
+        zc0 = 0.005 - rz
+        pr.append(Prim("ell", [v3(chest + v3([0, 0.070 * s, zc0 + 0.018 * s])), v3([0.050 * s + g, 0.040 * s + g, 0.030 * s + g])],
+                       cb, slot, mtype, k=0.035 + k_add, layer=layer))
+    return pr
+
+
 def torso_shell(B, Prim, v3, slot, grow, top_y, bottom_y, cuts=(), mtype=MT_CLOTH, k=0.03):
     s, p = B.s, B.p
     T = p["torso"]
@@ -46,11 +92,8 @@ def torso_shell(B, Prim, v3, slot, grow, top_y, bottom_y, cuts=(), mtype=MT_CLOT
         Prim("ell", [v3(hips + [0, -0.02 * s, 0.005]), v3([(0.140 + 0.03 * F) * s * T + g, 0.10 * s + g, 0.095 * s * T + g])], B.b("Hips"), slot, mtype, k=k, layer="cloth"),
         Prim("ell", [v3(neck + [0, -0.035 * s, 0.025 * s]), v3([0.12 * s * M * sw + g, 0.045 * s + g, 0.05 * s + g])], B.b("Chest"), slot, mtype, k=k, layer="cloth"),
     ]
+    pr += chest_prims(B, Prim, v3, g, slot, mtype, "cloth", k_add=max(0.0, k - 0.03) + 0.006)
     for sx in (-1, 1):
-        if B.female:
-            pr.append(Prim("ell", [v3(chest + [sx * 0.058 * s, 0.075 * s, -0.075 * s]), v3([0.060 * s + g, 0.058 * s + g, 0.050 * s + g])], B.b("Chest"), slot, mtype, k=k, layer="cloth"))
-        else:
-            pr.append(Prim("ell", [v3(chest + [sx * 0.062 * s, 0.10 * s, -0.070 * s]), v3([0.070 * s * M + g, 0.050 * s + g, 0.040 * s * M + g])], B.b("Chest"), slot, mtype, k=k, layer="cloth"))
         pr.append(Prim("ell", [v3(chest + [sx * 0.10 * s, 0.03 * s, 0.03 * s]), v3([0.055 * s * M + g, 0.11 * s + g, 0.065 * s + g])], B.b("Chest"), slot, mtype, k=k, layer="cloth"))
         pr.append(Prim("ell", [v3(hips + [sx * 0.065 * s, -0.06 * s, 0.055 * s]), v3([0.075 * s + g, 0.08 * s + g, 0.065 * s + g])], B.b("Hips"), slot, mtype, k=k, layer="cloth"))
     allc = [((0, 1, 0), (0, top_y, 0)), ((0, -1, 0), (0, bottom_y, 0))] + list(cuts)
@@ -196,10 +239,11 @@ def _piece(B, c, Prim, v3, pc, pr, s, hips, chest, neck, top_neck):
                 elif rolled == "rolled":
                     ln = 0.40
                 pr += sleeve(B, Prim, v3, nm, PRIMARY, 0.020 * s, ln, flare=0.012 * s)
-            # 襟（V字の重なり）
+            # 襟（V字の重なり）。羽織を重ねるときは羽織の開きの中で止める（下まで伸ばすと羽織を突き抜ける）
+            outer = "haori" in (c.get("outfit", []) if isinstance(c.get("outfit"), list) else [])
             for sx in (-1, 1):
                 a = neck + v3([sx * 0.055 * s, -0.01 * s, -0.04 * s])
-                b = hips + v3([-sx * 0.05 * s, 0.10 * s, -0.125 * s])
+                b = chest + v3([-sx * 0.025 * s, 0.03 * s, -0.10 * s]) if outer else hips + v3([-sx * 0.05 * s, 0.10 * s, -0.125 * s])
                 pr.append(Prim("capsule", [v3(a), v3(b), 0.016 * s], B.b("Chest"), SECONDARY if c.get("lapel_dark") else PRIMARY, MT_CLOTH, k=0.008, layer="cloth", bias=0.003))
         elif pc == "gi_pants" or pc == "pants_loose":
             for nm in ("Left", "Right"):
@@ -235,7 +279,7 @@ def _piece(B, c, Prim, v3, pc, pr, s, hips, chest, neck, top_neck):
             bottom = {"jacket_short": hips[1] + 0.05 * s, "kurta": hips[1] - 0.32 * s}.get(pc, hips[1] - 0.05 * s)
             cuts = []
             if pc == "jacket_short":
-                cuts = [((0.0, 0.0, -1.0), v3([0, 0, -0.10 * s]))]
+                cuts = [((0.0, 0.62, -0.79), v3([0, chest[1] + 0.10 * s, -0.04 * s]))]
             pr += torso_shell(B, Prim, v3, slot, g, top_neck + (0.03 * s if pc == "turtleneck" else 0), bottom, cuts=cuts)
             ln = {"shirt": 0.50, "rashguard": 0.95, "turtleneck": 0.95, "jacket": 0.95, "jacket_short": 0.92, "kurta": 0.75}[pc]
             for nm in ("Left", "Right"):
@@ -269,8 +313,9 @@ def _piece(B, c, Prim, v3, pc, pr, s, hips, chest, neck, top_neck):
                 pr.append(Prim("capsule", [v3(a), v3(m), 0.011 * s], B.b("Chest"), ACCENT, MT_LEATHER, k=0.004, layer="cloth", bias=0.004))
                 pr.append(Prim("capsule", [v3(m), v3(b), 0.011 * s], B.b("Chest"), ACCENT, MT_LEATHER, k=0.004, layer="cloth", bias=0.004))
         elif pc == "haori":
+            # 前の開きは斜めの面で切る（ほぼ垂直な面だと胸の凹凸に沿って切り口がぎざぎざになる）
             pr += torso_shell(B, Prim, v3, PRIMARY, 0.026 * s, top_neck, hips[1] - 0.42 * s,
-                              cuts=[((0.0, 0.3, -0.95), v3([0, chest[1] + 0.05 * s, -0.08 * s]))])
+                              cuts=[((0.0, 0.55, -0.83), v3([0, chest[1] + 0.0 * s, -0.04 * s]))])
             for nm in ("Left", "Right"):
                 pr += sleeve(B, Prim, v3, nm, PRIMARY, 0.030 * s, 0.80, flare=0.045 * s)
         elif pc == "hakama":

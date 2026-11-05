@@ -147,12 +147,9 @@ def body_prims(B):
     pr.append(Prim("ell", [v3(chest + [0, 0.10 * s, 0.005]), v3([0.150 * s * sw * T, 0.150 * s, 0.105 * s * T])], B.b("Chest"), k=0.04))
     pr.append(Prim("ell", [v3(spine + [0, 0.05 * s, 0.0]), v3([(0.125 + 0.05 * F) * s * T, 0.13 * s, (0.090 + 0.05 * F) * s * T])], B.b("Spine"), k=0.05))
     pr.append(Prim("ell", [v3(hips + [0, -0.02 * s, 0.005]), v3([(0.140 + 0.03 * F + (0.015 if fem else 0)) * s * T, 0.10 * s, 0.095 * s * T])], B.b("Hips"), k=0.045))
-    # 胸筋 / 胸
+    # 胸筋 / 胸（服と共通の形）
+    pr += outfits.chest_prims(B, Prim, v3, 0.0, SKIN, MT_SKIN, "body")
     for sx, nm in ((-1, "Left"), (1, "Right")):
-        if fem:
-            pr.append(Prim("ell", [v3(chest + [sx * 0.058 * s, 0.075 * s, -0.075 * s]), v3([0.060 * s, 0.058 * s, 0.050 * s])], B.b("Chest"), k=0.03))
-        else:
-            pr.append(Prim("ell", [v3(chest + [sx * 0.062 * s, 0.10 * s, -0.070 * s]), v3([0.070 * s * M, 0.050 * s, 0.040 * s * M])], B.b("Chest"), k=0.03))
         # 広背筋
         pr.append(Prim("ell", [v3(chest + [sx * 0.10 * s, 0.03 * s, 0.03 * s]), v3([0.055 * s * M, 0.11 * s, 0.065 * s])], B.b("Chest"), k=0.04))
         # 臀部

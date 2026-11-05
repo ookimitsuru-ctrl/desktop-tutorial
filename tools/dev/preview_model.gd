@@ -75,7 +75,8 @@ func _init() -> void:
 	cam.look_at_from_position(cam.position, Vector3(0, 0.95, 0))
 	# PREVIEW_HEAD=1: 顔のアップ（1 体目、正面やや斜め）
 	if OS.get_environment("PREVIEW_HEAD") == "1":
-		var hy := lib.rig.height * 0.93
+		# PREVIEW_Y: 注視する高さ（身長に対する割合、既定は顔 0.93。胸なら 0.72）
+		var hy := lib.rig.height * (float(OS.get_environment("PREVIEW_Y")) if OS.get_environment("PREVIEW_Y") != "" else 0.93)
 		for c: Node in vp.get_children():
 			if c is CharacterModel:
 				(c as Node3D).rotation_degrees = Vector3(0, float(OS.get_environment("PREVIEW_YAW")) if OS.get_environment("PREVIEW_YAW") != "" else -20.0, 0)
