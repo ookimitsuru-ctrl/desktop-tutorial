@@ -51,9 +51,9 @@ const THEMES := {
 	"fort": {
 		"sky": [Color(0.55, 0.62, 0.72), Color(0.86, 0.88, 0.92), Color(0.7, 0.72, 0.76)],
 		"sun_rot": Vector3(-38, 140, 0), "sun": Color(0.95, 0.97, 1.0), "sun_e": 1.2,
-		"amb": Color(0.65, 0.7, 0.8), "amb_e": 0.85, "fog": Color(0.82, 0.85, 0.9), "fog_d": 0.03,
+		"amb": Color(0.65, 0.7, 0.8), "amb_e": 0.8, "fog": Color(0.82, 0.85, 0.9), "fog_d": 0.016,
 		"floor": 3, "floor_c": Color(0.55, 0.55, 0.55), "line_c": Color(0.9, 0.9, 0.9), "alt_c": Color(0.35, 0.36, 0.4),
-		"wall_c": Color(0.48, 0.46, 0.44), "outside": "snow", "outside_c": Color(0.88, 0.9, 0.95), "rim": Color(0.85, 0.92, 1.0),
+		"wall_c": Color(0.38, 0.36, 0.34), "outside": "snow", "outside_c": Color(0.88, 0.9, 0.95), "rim": Color(0.85, 0.92, 1.0),
 		"snow": true, "glow": 0.5, "dust": Color(0.95, 0.96, 1.0),
 	},
 	"ruins": {
@@ -263,7 +263,7 @@ func _ring(sdef: StageDef) -> void:
 			SE.EDGE_FENCE:
 				_fence(node, a3, b3, h)
 			SE.EDGE_WALL:
-				_wall(node, a3, b3, 2.4)
+				_wall(node, a3, b3, 1.9 if stage_id == "fort" else 2.4)
 			SE.EDGE_BREAKABLE:
 				if stage_id == "skyline":
 					_fence(node, a3, b3, 1.2)
@@ -367,6 +367,9 @@ func _wall(node: Node3D, a: Vector3, b: Vector3, h: float) -> void:
 		var rc: Color = theme.get("roof_c", Color(0.2, 0.2, 0.2))
 		_gable(node, mid + out_n + Vector3(0, hh, 0), ln + 0.8, 0.95, 0.32, rc, yaw)
 	elif stage_id == "fort":
+		# 石積みの目地（横線）
+		for li: int in range(4):
+			_box(Vector3(0.38, 0.03, ln + 0.37), mid + out_n + Vector3(0, 0.45 + li * 0.5, 0), _mat(wc.darkened(0.3), 0.95), node, yaw)
 		var n := int(ln / 0.9)
 		for k: int in range(n):
 			if k % 2 == 0:
@@ -564,22 +567,7 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 			sm.rings = 4
 			_multimesh(sm, xf3, _mat(Color(0.3, 0.45, 0.2), 0.9))
 		"fort":
-			for k: int in range(int(10 * dens) + 3):
-				var ang4 := r.randf() * TAU
-				var d4 := r.randf_range(14, 30)
-				var p4 := Vector3(sin(ang4) * d4, -1.5, cos(ang4) * d4)
-				_box(Vector3(r.randf_range(2, 6), r.randf_range(2, 6), r.randf_range(1, 2)), p4 + Vector3(0, 1.5, 0), _mat(Color(0.5, 0.48, 0.46), 0.95), null, ang4)
-			var xf4: Array[Transform3D] = []
-			for k2: int in range(int(60 * dens)):
-				var ang5 := r.randf() * TAU
-				var d5 := r.randf_range(18, 40)
-				xf4.append(Transform3D(Basis().scaled(Vector3(1, r.randf_range(1.5, 3.0), 1)), Vector3(sin(ang5) * d5, 1.5, cos(ang5) * d5)))
-			var cone := CylinderMesh.new()
-			cone.top_radius = 0.0
-			cone.bottom_radius = 1.2
-			cone.height = 3.5
-			cone.radial_segments = 7
-			_multimesh(cone, xf4, _mat(Color(0.18, 0.3, 0.25), 0.9))
+			_fort(r, dens)
 		"ruins":
 			for k: int in range(int(14 * dens) + 4):
 				var ang6 := (k / float(int(14 * dens) + 4)) * TAU + r.randf_range(-0.1, 0.1)
@@ -832,6 +820,74 @@ func _harbor(r: RandomNumberGenerator, dens: float) -> void:
 	var city := ShaderMaterial.new()
 	city.shader = load("res://shaders/emissive_windows.gdshader")
 	_multimesh(BoxMesh.new(), bxf, city)
+
+
+## 雪原の砦跡: 崩れた石塁、見張り塔、かがり火、旗、雪をかぶった針葉樹、雪山
+func _fort(r: RandomNumberGenerator, dens: float) -> void:
+	var stone := Color(0.52, 0.5, 0.48)
+	var snow := Color(0.93, 0.95, 0.98)
+	# 崩れた石塁（雪が積もる）
+	for k: int in range(int(10 * dens) + 4):
+		var ang := r.randf() * TAU
+		var d := r.randf_range(12, 26)
+		var p := Vector3(sin(ang) * d, -1.5, cos(ang) * d)
+		var sz := Vector3(r.randf_range(2, 6), r.randf_range(1.5, 4.5), r.randf_range(1, 2))
+		_box(sz, p + Vector3(0, sz.y * 0.5, 0), _mat(stone, 0.95), null, ang)
+		_box(Vector3(sz.x + 0.1, 0.18, sz.z + 0.1), p + Vector3(0, sz.y + 0.05, 0), _mat(snow, 0.9), null, ang)
+	# 見張り塔（北東の奥、上部が崩れている）
+	var tp := Vector3(13, -1.5, -15)
+	_cyl(2.6, 3.0, 10.0, tp + Vector3(0, 5.0, 0), _mat(stone.darkened(0.08), 0.95), null, 12)
+	for k2: int in range(6):
+		if k2 % 3 == 1:
+			continue
+		var a2 := k2 * TAU / 6.0
+		_box(Vector3(1.2, 1.2, 0.8), tp + Vector3(sin(a2) * 2.5, 10.6, cos(a2) * 2.5), _mat(stone.darkened(0.08), 0.95), null, a2)
+	_cyl(2.65, 2.65, 0.2, tp + Vector3(0, 10.05, 0), _mat(snow, 0.9), null, 12)
+	# かがり火（塀の外の四方）と旗
+	for bp: Vector3 in [Vector3(-7.4, 0, -4.0), Vector3(7.4, 0, -4.0), Vector3(-7.4, 0, 4.0), Vector3(7.4, 0, 4.0)]:
+		_cyl(0.08, 0.1, 1.6, bp + Vector3(0, 0.8, 0), _mat(Color(0.2, 0.18, 0.16), 0.7, 0.4))
+		var bowl := _cyl(0.4, 0.25, 0.3, bp + Vector3(0, 1.7, 0), _mat(Color(0.25, 0.22, 0.2), 0.6, 0.5))
+		var _b := bowl
+		var fire := _cyl(0.0, 0.32, 0.6, bp + Vector3(0, 2.1, 0), _mat(Color(1.0, 0.55, 0.15)))
+		(fire.material_override as StandardMaterial3D).emission_enabled = true
+		(fire.material_override as StandardMaterial3D).emission = Color(1.0, 0.45, 0.1) * 3.0
+		var fl := OmniLight3D.new()
+		fl.position = bp + Vector3(0, 2.2, 0)
+		fl.light_color = Color(1.0, 0.55, 0.25)
+		fl.light_energy = 1.4
+		fl.omni_range = 6.0
+		add_child(fl)
+		_cyl(0.05, 0.05, 4.5, bp + Vector3(0.6, 2.25, 0), _mat(Color(0.3, 0.25, 0.2), 0.8))
+		_box(Vector3(0.05, 1.4, 0.9), bp + Vector3(0.62, 3.8, 0.47), _mat(Color(0.6, 0.1, 0.08), 0.9))
+	# 雪をかぶった針葉樹
+	var trunk: Array[Transform3D] = []
+	var leaf: Array[Transform3D] = []
+	var cap: Array[Transform3D] = []
+	for k3: int in range(int(70 * dens) + 10):
+		var ang3 := r.randf() * TAU
+		var d3 := r.randf_range(16, 45)
+		var base := Vector3(sin(ang3) * d3, -1.5, cos(ang3) * d3)
+		var hgt := r.randf_range(3.0, 6.5)
+		trunk.append(Transform3D(Basis().scaled(Vector3(1, hgt * 0.3, 1)), base + Vector3(0, hgt * 0.15, 0)))
+		for t: int in range(3):
+			var sc := (1.0 - t * 0.28) * hgt * 0.32
+			var y := hgt * (0.3 + t * 0.22)
+			leaf.append(Transform3D(Basis().scaled(Vector3(sc, sc * 1.1, sc)), base + Vector3(0, y, 0)))
+			cap.append(Transform3D(Basis().scaled(Vector3(sc * 0.55, sc * 0.45, sc * 0.55)), base + Vector3(0, y + sc * 0.4, 0)))
+	var tm := CylinderMesh.new()
+	tm.top_radius = 0.12
+	tm.bottom_radius = 0.18
+	tm.height = 1.0
+	tm.radial_segments = 6
+	_multimesh(tm, trunk, _mat(Color(0.25, 0.18, 0.12), 0.9))
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 1.0
+	cone.height = 1.0
+	cone.radial_segments = 8
+	_multimesh(cone, leaf, _mat(Color(0.14, 0.26, 0.2), 0.9))
+	_multimesh(cone, cap, _mat(snow, 0.85))
+	_mountains(r, Color(0.78, 0.82, 0.9), 10)
 
 
 ## 遠景の山並み（霧で霞む）
