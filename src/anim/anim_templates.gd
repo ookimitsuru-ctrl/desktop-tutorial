@@ -297,6 +297,49 @@ func rest_clip() -> AnimClip:
 	return c
 
 
+## メニュー用の直立（正面向き・左右対称）: 足を肩幅に平行に置き、背筋を伸ばし、腕を体の横に下ろす。ゆっくり呼吸する。
+## キャラ選択の回転表示で使う。試合では使わない
+func stand_clip() -> AnimClip:
+	var c := AnimClip.new()
+	c.name = "stand"
+	c.loop = true
+	c.length = 150
+	var r := st.copy()
+	r.root = V(0, -0.008 * s, 0)
+	r.hips = V(0, 0, 0)
+	r.spine = V(0, 0, 0)
+	r.chest = V(0, 0, 0)
+	r.neck = V(0, 0, 0)
+	r.head = V(0, 0, 0)
+	r.shoulder_l = V(0, 0, 0)
+	r.shoulder_r = V(0, 0, 0)
+	r.foot_l = V(-0.15 * s, ank, 0.0)
+	r.foot_r = V(0.15 * s, ank, 0.0)
+	r.knee_l = V(0, 0, 1)
+	r.knee_r = V(0, 0, 1)
+	r.ankle_l = V(0, 0, 0)
+	r.ankle_r = V(0, 0, 0)
+	r.toes_l = 0.0
+	r.toes_r = 0.0
+	# 太い装甲の胴や腰に当たらないよう、腕は体から少し離して真下へ
+	r.hand_l = V(-0.33 * s, hip_h - 0.04, 0.0)
+	r.hand_r = V(0.33 * s, hip_h - 0.04, 0.0)
+	r.elbow_l = V(-0.3, 0, -1)
+	r.elbow_r = V(0.3, 0, -1)
+	r.wrist_l = V(0, 0, 0)
+	r.wrist_r = V(0, 0, 0)
+	r.fist_l = 0.7
+	r.fist_r = 0.7
+	r.face = 0
+	var b := r.copy()
+	b.root += V(0, -0.005 * s, 0)
+	b.chest += V(-1.0, 0, 0)
+	b.hand_l += V(-0.003, -0.003, 0)
+	b.hand_r += V(0.003, -0.003, 0)
+	c.add(0, r).add(75, b, E.SMOOTH).add(150, r.copy(), E.SMOOTH)
+	return c
+
+
 func common(clip_name: String, info: Dictionary) -> AnimClip:
 	var c := AnimClip.new()
 	c.name = clip_name

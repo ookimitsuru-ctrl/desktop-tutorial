@@ -92,10 +92,10 @@ func _process(delta: float) -> void:
 		return
 	t += delta
 	var c: AnimClip = lib.clip(anim)
-	if anim == "rest":
-		if _rest == null or _rest_id != char_id:
-			_rest = lib.templates.rest_clip()
-			_rest_id = char_id
+	if anim == "rest" or anim == "stand":
+		if _rest == null or _rest_id != char_id + anim:
+			_rest = lib.templates.rest_clip() if anim == "rest" else lib.templates.stand_clip()
+			_rest_id = char_id + anim
 		c = _rest
 	if c == null:
 		c = lib.clip("idle")
