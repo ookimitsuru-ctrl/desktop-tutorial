@@ -34,6 +34,11 @@ func build() -> void:
 	for i: int in range(2):
 		var pv := CharPreview.new()
 		pv.mirror = i == 1
+		# ロボット選択: 構えずに立ち、体ごとゆっくり回る（左右で逆回り）。全身が入るよう少し引いて、やや下から見る
+		pv.spin_speed = 32.0 if i == 0 else -32.0
+		pv.cam_dist = 4.6
+		pv.cam_h = 0.46
+		pv.look_h = 0.5
 		pv.position = Vector2(r.position.x + (0.0 if i == 0 else r.size.x - pw), r.position.y + 70)
 		pv.size = Vector2(pw, r.size.y - 170)
 		content.add_child(pv)
@@ -141,7 +146,7 @@ func _hover(id: String) -> void:
 	var changed: bool = previews[slot].char_id != id
 	previews[slot].show_char(id, Game.p_costume[slot], Game.p_color[slot])
 	if changed:
-		previews[slot].play("win")
+		previews[slot].play("rest")
 	_info(slot, id)
 
 
@@ -168,7 +173,7 @@ func _pick(id: String) -> void:
 	Game.p_char[slot] = id
 	AudioHub.ui("ok")
 	previews[slot].show_char(id, Game.p_costume[slot], Game.p_color[slot])
-	previews[slot].play("win")
+	previews[slot].play("rest")
 	_refresh()
 
 
@@ -226,7 +231,7 @@ func _refresh() -> void:
 			var changed: bool = previews[i].char_id != Game.p_char[i]
 			previews[i].show_char(Game.p_char[i], Game.p_costume[i], Game.p_color[i])
 			if changed:
-				previews[i].play("win")
+				previews[i].play("rest")
 			_info(i, Game.p_char[i])
 	var who := ""
 	match mode:

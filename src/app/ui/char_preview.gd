@@ -21,6 +21,8 @@ var mirror := false
 ## 選択・紹介の画面では、姿勢（構えで上体がひねられていても）に関わらず胸を正面（カメラ）へ向ける
 var face_front := true
 var _front_ready := false
+## 0 以外なら体ごと回し続ける（度/秒）。正面から回り始める（キャラ選択のターンテーブル表示）
+var spin_speed := 0.0
 ## メニュー用の立ち姿（anim = "rest"）。キャラごとに作って使い回す
 var _rest: AnimClip = null
 var _rest_id := ""
@@ -102,7 +104,14 @@ func _process(delta: float) -> void:
 		f = minf(f, float(c.length))
 	pe.evaluate(c.sample(f))
 	model.apply_pose(pe)
-	if face_front:
+	if spin_speed != 0.0:
+		if _front_ready:
+			model.rotation.y += deg_to_rad(spin_speed) * delta
+		else:
+			var fw0 := pe.global[Rig.B.CHEST].basis * Vector3(0, 0, -1)
+			model.rotation.y = -atan2(fw0.x, fw0.z)
+			_front_ready = true
+	elif face_front:
 		# 胸の向き（モデル空間の -Z が正面）がカメラ（+Z）を向くように体ごと回す
 		var fw := pe.global[Rig.B.CHEST].basis * Vector3(0, 0, -1)
 		var target := -atan2(fw.x, fw.z)
