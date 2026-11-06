@@ -265,6 +265,54 @@ def song_battle(sid, bpm, root, mode, seed, progA, progB, kit, bass_style, chord
     return s, loop_start
 
 
+def song_drum(sid, bpm, root, mode, seed, progA, progB, bass_style, chord_rhythm, programs, intro_bars=4, brk_bars=4, mel_oct=1, extra=None):
+    """ドラムが主役の戦闘曲: イントロ（太鼓が盛り上げる）→ A → B → ドラムブレイク → A2 →（A へループ）。
+    この関数は太鼓以外（MIDI）を作る。太鼓は drumkit で合成して後で重ねる。戻り値: (曲, ループ開始小節, 区切りの一覧)"""
+    s = Song(sid, bpm, root, mode, seed)
+    s.programs.update(programs)
+    mot_a = motif(s, 8, 0.6)
+    mot_b = motif(s, 8, 0.75)
+    sections = [("intro", 0, intro_bars)]
+    bar = 0
+    # イントロ: 太鼓が主役。和音は後半だけ薄く
+    pad(s, 2, progA[:intro_bars][2:], 2, 0, "hold", 42)
+    bar += intro_bars
+    loop_start = bar
+    for sec, prog, mot, oct_shift in (("A", progA, mot_a, 0), ("B", progB, mot_b, 1), ("BRK", progA[:brk_bars], None, 0), ("A2", progA, mot_a, 0)):
+        n = len(prog)
+        sections.append((sec, bar, n))
+        if sec == "BRK":
+            # ドラムブレイク: 低音の根音だけを小節の頭に置き、太鼓を聞かせる
+            for b, deg in enumerate(prog):
+                s.add(1, (bar + b) * 4, 1.5, s.note_of(deg, -2), 100)
+            pad(s, 2, prog, bar, 0, "hold", 38)
+        else:
+            bass(s, 1, bass_style, prog, bar)
+            pad(s, 2, prog, bar, 0, chord_rhythm, 66)
+            melody(s, 3, prog, bar, mot, mel_oct + (1 if sec == "B" else 0), 96, vary=0.25 if sec == "A2" else 0.0)
+            if extra:
+                extra(s, prog, bar, sec)
+        bar += n
+    s.bars = bar
+    return s, loop_start, sections
+
+
+def render_drum_song(s, loop_start, sections, style, seed):
+    """MIDI の部分（FluidSynth）と合成した太鼓を混ぜる。太鼓を約 6dB 前に出す"""
+    import drumkit
+    mel, loop0 = render(s, loop_start)
+    total = len(mel)
+    dr = drumkit.render(style, s.bpm, sections, s.bars, seed, loop_bar=loop_start)
+    if len(dr) < total:
+        dr = np.concatenate([dr, np.zeros((total - len(dr), 2))])
+    dr = dr[:total]
+    def rms(x):
+        return np.sqrt(np.mean(x ** 2)) + 1e-9
+    mel = mel * (10 ** (-23.0 / 20) / rms(mel))
+    dr = dr * (10 ** (-17.0 / 20) / rms(dr))
+    return mel + dr, loop0
+
+
 def render(s, loop_start_bar, gain=0.5):
     with tempfile.TemporaryDirectory() as td:
         mp = pathlib.Path(td) / "a.mid"
@@ -299,6 +347,18 @@ def master(x, target_rms_db=-17.0):
     return x
 
 
+def loudness(x, lufs):
+    """聞こえの大きさ（LUFS）をそろえる（ドラムの曲は RMS だけでは他の曲と大きさが合わない）。ピークは 0.97 に抑える"""
+    import pyloudnorm as pyln
+    cur = pyln.Meter(SR).integrated_loudness(x)
+    x = x * (10 ** ((lufs - cur) / 20))
+    # ピークだけを丸める（0.8 までは素通し、その上を 0.97 に向けてなめらかに押さえる）
+    a = np.abs(x)
+    knee = 0.8
+    y = np.where(a > knee, np.sign(x) * (knee + 0.17 * np.tanh((a - knee) / 0.17)), x)
+    return y
+
+
 def save(sid, x, loop0, loop=True):
     OUT.mkdir(parents=True, exist_ok=True)
     path = OUT / f"{sid}.ogg"
@@ -328,48 +388,49 @@ def ch(prog, vol=100):
 def main():
     only = set(sys.argv[1:])
     songs = []
+    drum_songs = []
 
     def want(n):
         return not only or n in only
 
     if want("bgm_arena"):
-        s, l0 = song_battle("bgm_arena", 150, 52, "minor", 11, [0, 5, 3, 4] * 2, [5, 3, 0, 4, 5, 3, 6, 4], "rock", "eighth", "power",
+        s, l0, secs = song_drum("bgm_arena", 150, 52, "minor", 11, [0, 5, 3, 4] * 2, [5, 3, 0, 4, 5, 3, 6, 4], "eighth", "power",
                             {1: ch(P["pbass"], 105), 2: ch(P["distortion"], 82), 3: ch(P["square"], 92), 9: ch(0, 115)})
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "rock", 11))
     if want("bgm_harbor"):
-        s, l0 = song_battle("bgm_harbor", 132, 45, "phrygian", 22, [0, 0, 1, 6] * 2, [3, 1, 0, 6, 3, 1, 5, 6], "four", "offbeat", "arp",
+        s, l0, secs = song_drum("bgm_harbor", 132, 45, "phrygian", 22, [0, 0, 1, 6] * 2, [3, 1, 0, 6, 3, 1, 5, 6], "offbeat", "arp",
                             {1: ch(P["synbass2"], 105), 2: ch(P["saw"], 70), 3: ch(P["polysynth"], 85), 9: ch(0, 110), ("rev", 3): 80})
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "industrial", 22))
     if want("bgm_bamboo"):
         def bamboo_extra(sg, prog, bar, sec):
             pad(sg, 4, prog, bar, 0, "pluck", 70)
-        s, l0 = song_battle("bgm_bamboo", 120, 50, "japanese", 33, [0, 3, 4, 3] * 2, [5, 4, 3, 0, 5, 4, 1, 0], "taiko", "long", "hold",
+        s, l0, secs = song_drum("bgm_bamboo", 120, 50, "japanese", 33, [0, 3, 4, 3] * 2, [5, 4, 3, 0, 5, 4, 1, 0], "long", "hold",
                             {1: ch(P["fretless"], 90), 2: ch(P["warmpad"], 60), 3: ch(P["shakuhachi"], 100), 4: ch(P["koto"], 90), 9: ch(0, 105), ("rev", 3): 90},
                             extra=bamboo_extra)
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "taiko", 33))
     if want("bgm_fort"):
         def fort_extra(sg, prog, bar, sec):
             pad(sg, 4, prog, bar, -1, "stab", 85)
-        s, l0 = song_battle("bgm_fort", 112, 50, "harmonic", 44, [0, 5, 3, 4] * 2, [5, 6, 4, 0, 3, 4, 5, 4], "march", "walk", "ostinato",
+        s, l0, secs = song_drum("bgm_fort", 112, 50, "harmonic", 44, [0, 5, 3, 4] * 2, [5, 6, 4, 0, 3, 4, 5, 4], "walk", "ostinato",
                             {1: ch(P["strings"], 95), 2: ch(P["strings"], 80), 3: ch(P["brass"], 95), 4: ch(P["timpani"], 100), 9: ch(0, 100), ("rev", 3): 70},
                             extra=fort_extra)
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "march", 44))
     if want("bgm_ruins"):
-        s, l0 = song_battle("bgm_ruins", 124, 50, "hijaz", 55, [0, 1, 0, 6] * 2, [3, 1, 0, 6, 4, 3, 1, 0], "perc", "sync", "hold",
+        s, l0, secs = song_drum("bgm_ruins", 124, 50, "hijaz", 55, [0, 1, 0, 6] * 2, [3, 1, 0, 6, 4, 3, 1, 0], "sync", "hold",
                             {1: ch(P["fbass"], 100), 2: ch(P["bowed"], 60), 3: ch(P["sitar"], 100), 9: ch(0, 110), ("rev", 3): 70})
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "darbuka", 55))
     if want("bgm_skyline"):
-        s, l0 = song_battle("bgm_skyline", 172, 47, "minor", 66, [0, 5, 6, 4] * 2, [3, 4, 0, 5, 3, 4, 6, 6], "dnb", "sync", "hold",
+        s, l0, secs = song_drum("bgm_skyline", 172, 47, "minor", 66, [0, 5, 6, 4] * 2, [3, 4, 0, 5, 3, 4, 6, 6], "sync", "hold",
                             {1: ch(P["synbass1"], 110), 2: ch(P["halo"], 70), 3: ch(P["square"], 85), 9: ch(0, 115), ("rev", 3): 75})
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "dnb", 66))
     if want("bgm_temple"):
-        s, l0 = song_battle("bgm_temple", 108, 48, "japanese", 77, [0, 4, 3, 1] * 2, [5, 4, 0, 3, 5, 4, 1, 0], "taiko", "long", "pluck",
+        s, l0, secs = song_drum("bgm_temple", 108, 48, "japanese", 77, [0, 4, 3, 1] * 2, [5, 4, 0, 3, 5, 4, 1, 0], "long", "pluck",
                             {1: ch(P["fretless"], 85), 2: ch(P["shamisen"], 85), 3: ch(P["flute"], 95), 9: ch(0, 110), ("rev", 3): 85})
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "temple", 77))
     if want("bgm_raft"):
-        s, l0 = song_battle("bgm_raft", 140, 55, "major", 88, [0, 4, 5, 3] * 2, [3, 0, 4, 5, 3, 0, 4, 4], "light", "walk", "pluck",
+        s, l0, secs = song_drum("bgm_raft", 140, 55, "major", 88, [0, 4, 5, 3] * 2, [3, 0, 4, 5, 3, 0, 4, 4], "walk", "pluck",
                             {1: ch(P["fbass"], 95), 2: ch(P["steel"], 90), 3: ch(P["whistle"], 85), 9: ch(0, 100), ("rev", 3): 60})
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "djembe", 88))
     if want("bgm_boss"):
         def boss_extra(sg, prog, bar, sec):
             pad(sg, 4, prog, bar, 0, "hold", 80)
@@ -377,10 +438,10 @@ def main():
                 if b % 2 == 0:
                     for n in sg.chord(prog[b], 0, 3):
                         sg.add(5, (bar + b) * 4, 0.5, n, 110)
-        s, l0 = song_battle("bgm_boss", 140, 50, "harmonic", 99, [0, 5, 1, 4] * 2, [3, 1, 4, 0, 5, 1, 6, 4], "halftime", "sync", "ostinato",
+        s, l0, secs = song_drum("bgm_boss", 140, 50, "harmonic", 99, [0, 5, 1, 4] * 2, [3, 1, 4, 0, 5, 1, 6, 4], "sync", "ostinato",
                             {1: ch(P["synbass2"], 105), 2: ch(P["strings"], 90), 3: ch(P["brass"], 95), 4: ch(P["choir"], 85), 5: ch(P["orchhit"], 85), 9: ch(0, 115), ("rev", 4): 90},
                             extra=boss_extra)
-        songs.append((s, l0))
+        drum_songs.append((s, l0, secs, "epic", 99))
     if want("bgm_title"):
         s, l0 = song_battle("bgm_title", 90, 50, "minor", 101, [0, 5, 3, 4], [5, 3, 0, 4], "taiko", "long", "hold",
                             {1: ch(P["strings"], 80), 2: ch(P["choirpad"], 70), 3: ch(P["shakuhachi"], 90), 9: ch(0, 105), ("rev", 3): 100}, intro_bars=4)
@@ -404,6 +465,9 @@ def main():
     for s, l0 in songs:
         x, loop0 = render(s, l0)
         save(s.id, master(x), loop0)
+    for s, l0, secs, style, seed in drum_songs:
+        x, loop0 = render_drum_song(s, l0, secs, style, seed)
+        save(s.id, loudness(master(x, -17.0), -12.5), loop0)
     # ジングル（ループなし）
     for sid, prog, notes in (("bgm_result_win", P["brass"], [0, 2, 4, 7]), ("bgm_result_lose", P["strings"], [4, 3, 1, 0])):
         if not want(sid):
