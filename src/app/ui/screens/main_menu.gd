@@ -41,10 +41,10 @@ func build() -> void:
 	preview = CharPreview.new()
 	preview.position = Vector2(r.position.x + r.size.x * 0.45, r.position.y)
 	preview.size = Vector2(r.size.x * 0.55, r.size.y)
-	# メインメニューでは構えずに自然に立つ。足先まで入るよう少し引く
-	preview.cam_dist = 4.3
-	preview.cam_h = 0.6
-	preview.look_h = 0.55
+	# メインメニューでは構えずに堂々と立つ。箱絵のように少し下から見上げ、足先まで入るよう引く
+	preview.cam_dist = 3.9
+	preview.cam_h = 0.34
+	preview.look_h = 0.52
 	content.add_child(preview)
 	preview.show_char(Game.p_char[0] if Game.p_char[0] != "" else "toma", Game.p_costume[0], Game.p_color[0])
 	preview.play("rest")
