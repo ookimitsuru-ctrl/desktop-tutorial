@@ -297,7 +297,7 @@ func rest_clip() -> AnimClip:
 	return c
 
 
-## メニュー用の直立（正面向き・左右対称）: 足を肩幅に平行に置き、背筋を伸ばし、腕を体の横に下ろす。ゆっくり呼吸する。
+## メニュー用の直立（正面向き・左右対称）: 足を肩幅より広く開き、背筋を伸ばし、腕を体の横に下ろす。ゆっくり呼吸する。
 ## キャラ選択の回転表示で使う。試合では使わない
 func stand_clip() -> AnimClip:
 	var c := AnimClip.new()
@@ -305,7 +305,7 @@ func stand_clip() -> AnimClip:
 	c.loop = true
 	c.length = 150
 	var r := st.copy()
-	r.root = V(0, -0.008 * s, 0)
+	r.root = V(0, -0.03 * s, 0)
 	r.hips = V(0, 0, 0)
 	r.spine = V(0, 0, 0)
 	r.chest = V(0, 0, 0)
@@ -313,12 +313,13 @@ func stand_clip() -> AnimClip:
 	r.head = V(0, 0, 0)
 	r.shoulder_l = V(0, 0, 0)
 	r.shoulder_r = V(0, 0, 0)
-	r.foot_l = V(-0.15 * s, ank, 0.0)
-	r.foot_r = V(0.15 * s, ank, 0.0)
-	r.knee_l = V(0, 0, 1)
-	r.knee_r = V(0, 0, 1)
-	r.ankle_l = V(0, 0, 0)
-	r.ankle_r = V(0, 0, 0)
+	# 足は肩幅より広く開き、爪先と膝をわずかに外へ向ける（どっしりと立つ）
+	r.foot_l = V(-0.25 * s, ank, 0.0)
+	r.foot_r = V(0.25 * s, ank, 0.0)
+	r.knee_l = V(-0.25, 0, 1)
+	r.knee_r = V(0.25, 0, 1)
+	r.ankle_l = V(0, 12, 0)
+	r.ankle_r = V(0, -12, 0)
 	r.toes_l = 0.0
 	r.toes_r = 0.0
 	# 太い装甲の胴や腰に当たらないよう、腕は体から少し離して真下へ
