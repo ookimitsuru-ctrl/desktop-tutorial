@@ -21,6 +21,8 @@ func _ready() -> void:
 	Game.mode = Game.Mode.WATCH if scr == "match" else Game.Mode.VERSUS
 	if OS.get_environment("SHOT_MODE") == "versus":
 		Game.mode = Game.Mode.VERSUS
+	if OS.get_environment("SHOT_MODE") == "arcade":
+		Game.mode = Game.Mode.ARCADE
 	Game.p_char = [chars[0] if chars.size() > 0 else "toma", chars[1] if chars.size() > 1 else "toma"]
 	Game.p_costume = ["a", "a"]
 	Game.p_color = [0, 1]
