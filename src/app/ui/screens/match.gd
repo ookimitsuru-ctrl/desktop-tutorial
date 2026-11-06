@@ -24,6 +24,8 @@ var pause_menu: Control
 var mode_ctrl: Object = null
 var quality := 2
 var _acc := 0.0
+## 映像の書き出し用（tools/pv）: 0 以上なら描画 1 フレームあたりこの数だけ Tick を進める（実時間を見ない）
+var pv_ticks := -1
 var _last_usec := 0
 var _slow := 0
 var _slow_div := 1
@@ -160,6 +162,8 @@ func _process(delta: float) -> void:
 
 ## この描画フレームで進める Tick 数（原則 1、フレーム落ち時に追いつく）
 func _ticks(delta: float) -> int:
+	if pv_ticks >= 0:
+		return pv_ticks
 	var now := Time.get_ticks_usec()
 	var dt := (now - _last_usec) / 1000.0
 	_last_usec = now

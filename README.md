@@ -43,6 +43,9 @@ godot --headless --path . --fixed-fps 60 res://tools/validate/soak.tscn  # CPU �
 xvfb-run -a godot --path . --rendering-driver vulkan res://tools/validate/render_smoke.tscn  # 全シェーダーを実際に描画して確認
 godot --headless --path . -s res://tools/validate/combo_search.gd    # コンボの探索（--verify で検証のみ）
 godot --headless --path . -s res://tools/validate/balance_report.gd  # CPU 同士の全組み合わせ勝率 → reports/balance.md
+# PV（45 秒の宣伝映像）: 撮影（1080p で書き出すには一時的に override.cfg で window_width/height_override を 1920x1080 に）→ 編集
+PV_SHOTS=tools/pv/shots.json PV_LOG=raw_log.json xvfb-run -a godot --path . --rendering-driver vulkan --write-movie raw.avi --fixed-fps 30 res://tools/pv/pv_director.tscn
+python3 tools/pv/make_pv.py raw.avi raw_log.json build/ringbound_pv.mp4
 python3 tools/charmodel/gen_mech.py <id> [a b]                       # 機甲兵のモデルの生成（デザインは character.json の model.mech）
 python3 tools/content/build.py [id ...]                              # 灯真以外のキャラデータの生成
 ```
