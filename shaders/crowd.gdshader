@@ -16,4 +16,8 @@ void vertex() {
 void fragment() {
 	ALBEDO = COLOR.rgb * (0.6 + 0.4 * v_rand);
 	ROUGHNESS = 0.9;
+	// 観客席のカメラのフラッシュ（盛り上がるほど増える）
+	float tick = floor(TIME * 10.0);
+	float f = step(0.9975 - excite * 0.01, fract(sin(v_rand * 913.7 + tick * 12.9898) * 43758.5453));
+	EMISSION = vec3(1.0, 1.0, 0.95) * f * 4.0;
 }

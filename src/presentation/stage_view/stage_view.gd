@@ -4,6 +4,9 @@ extends Node3D
 ## 仕様: 05_stages.md
 
 const FP_TO_F := 1.0 / 65536.0
+## 小道具に重ねる質感（tools/gen/gen_textures.py で生成。三面投影で貼る）
+const TEX_GRUNGE := preload("res://assets/textures/grunge.png")
+const TEX_BUMP := preload("res://assets/textures/bump_n.png")
 
 var stage_id := ""
 var theme: Dictionary = {}
@@ -22,6 +25,25 @@ var _lighthouse_beam: Node3D = null
 ## [材質, 位相]: 点滅する航空障害灯
 var _blinkers: Array = []
 var _blink_t := 0.0
+## 空のドーム（カメラに追従）
+var _dome: MeshInstance3D = null
+var _dome_mat: ShaderMaterial = null
+## [光源, 基準の明るさ, 位相]: 揺らぐ炎の明かり
+var _flames: Array = []
+## [材質, 基準の発光色, 位相]: ちらつくネオン
+var _neons: Array = []
+## [ノード, 基準の回転, 位相, 振れ幅]: 夜空を掃くサーチライト
+var _sweeps: Array = []
+## 流れる景色（川下りの岸）。同じ内容を 3 つ並べて流し、端で巻き戻す
+var _scrollers: Array[Node3D] = []
+var _scroll_z := 0.0
+var _scroll_speed := 0.0
+const SCROLL_SPAN := 160.0
+## [ノード, 中心, 半径, 角速度, 角度]: 遠くを旋回する鳥の群れ
+var _flocks: Array = []
+var _t := 0.0
+## 三面投影をワールド座標で行うか（動く物はローカル座標にしないと模様が流れる）
+var _tri_world := true
 var ground_color := Color(0.7, 0.68, 0.62)
 ## [ノード, 辺の中点, 外向き法線]: カメラと選手の間に入る壁を透明にする
 var _fade_walls: Array = []
@@ -34,6 +56,7 @@ const THEMES := {
 		"floor": 0, "floor_c": Color(0.2, 0.38, 0.75), "line_c": Color(0.92, 0.93, 0.95), "alt_c": Color(0.1, 0.1, 0.12),
 		"fence_c": Color(0.12, 0.13, 0.18), "pad_c": Color(0.75, 0.15, 0.12), "outside": "floor", "outside_c": Color(0.06, 0.06, 0.08),
 		"rim": Color(0.75, 0.85, 1.0), "glow": 0.9, "dust": Color(0.75, 0.78, 0.85),
+		"skyfx": {"stars": 0.7, "moon": 0.035, "cover": 0.25, "lit": Color(0.10, 0.11, 0.17), "dark": Color(0.04, 0.045, 0.08), "wind": Vector2(0.006, 0.002), "glow": 0.25},
 	},
 	"harbor": {
 		"sky": [Color(0.015, 0.02, 0.04), Color(0.09, 0.1, 0.16), Color(0.01, 0.015, 0.03)],
@@ -42,6 +65,7 @@ const THEMES := {
 		"floor": 1, "floor_c": Color(0.45, 0.45, 0.47), "line_c": Color(0.85, 0.7, 0.1), "alt_c": Color(0.2, 0.2, 0.2),
 		"outside": "water", "water": [Color(0.01, 0.04, 0.07), Color(0.04, 0.13, 0.2)], "rim": Color(1.0, 0.75, 0.5), "wet": 0.7,
 		"rain": true, "glow": 1.0, "dust": Color(0.5, 0.6, 0.7),
+		"skyfx": {"cover": 0.9, "lit": Color(0.13, 0.15, 0.21), "dark": Color(0.04, 0.05, 0.08), "wind": Vector2(0.02, 0.008), "glow": 0.15},
 	},
 	"bamboo": {
 		"sky": [Color(0.55, 0.68, 0.72), Color(0.82, 0.86, 0.8), Color(0.3, 0.38, 0.3)],
@@ -50,14 +74,17 @@ const THEMES := {
 		"floor": 2, "floor_c": Color(0.52, 0.52, 0.48), "line_c": Color(0.8, 0.8, 0.8), "alt_c": Color(0.24, 0.32, 0.2),
 		"fence_c": Color(0.55, 0.6, 0.32), "outside": "grass", "outside_c": Color(0.2, 0.3, 0.16), "rim": Color(0.9, 1.0, 0.85),
 		"leaves": Color(0.5, 0.7, 0.3), "glow": 0.5, "dust": Color(0.6, 0.62, 0.55),
+		"skyfx": {"cover": 0.55, "lit": Color(1.0, 1.0, 0.98), "dark": Color(0.72, 0.78, 0.78), "wind": Vector2(0.008, 0.003), "glow": 0.5, "sun_disc": 0.03},
 	},
 	"fort": {
-		"sky": [Color(0.55, 0.62, 0.72), Color(0.86, 0.88, 0.92), Color(0.7, 0.72, 0.76)],
-		"sun_rot": Vector3(-38, 140, 0), "sun": Color(0.95, 0.97, 1.0), "sun_e": 1.2,
-		"amb": Color(0.65, 0.7, 0.8), "amb_e": 0.8, "fog": Color(0.82, 0.85, 0.9), "fog_d": 0.016,
+		# 薄明の雪原。空にオーロラ、かがり火が雪を照らす
+		"sky": [Color(0.02, 0.05, 0.13), Color(0.16, 0.26, 0.40), Color(0.20, 0.24, 0.32)],
+		"sun_rot": Vector3(-38, 140, 0), "sun": Color(0.62, 0.74, 1.0), "sun_e": 1.15,
+		"amb": Color(0.42, 0.52, 0.75), "amb_e": 0.85, "fog": Color(0.14, 0.20, 0.32), "fog_d": 0.014,
 		"floor": 3, "floor_c": Color(0.55, 0.55, 0.55), "line_c": Color(0.9, 0.9, 0.9), "alt_c": Color(0.35, 0.36, 0.4),
-		"wall_c": Color(0.38, 0.36, 0.34), "outside": "snow", "outside_c": Color(0.88, 0.9, 0.95), "rim": Color(0.85, 0.92, 1.0),
-		"snow": true, "glow": 0.5, "dust": Color(0.95, 0.96, 1.0),
+		"wall_c": Color(0.38, 0.36, 0.34), "outside": "snow", "outside_c": Color(0.80, 0.85, 0.95), "rim": Color(0.6, 0.8, 1.0),
+		"snow": true, "glow": 0.85, "dust": Color(0.95, 0.96, 1.0),
+		"skyfx": {"stars": 0.55, "moon": 0.03, "cover": 0.3, "lit": Color(0.30, 0.36, 0.48), "dark": Color(0.12, 0.15, 0.24), "wind": Vector2(0.007, 0.002), "glow": 0.3, "aurora": 0.9},
 	},
 	"ruins": {
 		"sky": [Color(0.32, 0.36, 0.55), Color(0.98, 0.62, 0.36), Color(0.6, 0.45, 0.32)],
@@ -66,6 +93,7 @@ const THEMES := {
 		"floor": 4, "floor_c": Color(0.75, 0.6, 0.42), "line_c": Color(0.9, 0.8, 0.6), "alt_c": Color(0.45, 0.35, 0.25),
 		"outside": "sand", "outside_c": Color(0.78, 0.62, 0.42), "rim": Color(1.0, 0.7, 0.45), "sand": true, "glow": 0.8,
 		"dust": Color(0.85, 0.7, 0.5),
+		"skyfx": {"cover": 0.4, "lit": Color(1.0, 0.72, 0.5), "dark": Color(0.5, 0.33, 0.36), "wind": Vector2(0.006, 0.002), "glow": 0.9, "sun_disc": 0.05},
 	},
 	"skyline": {
 		"sky": [Color(0.01, 0.01, 0.04), Color(0.1, 0.06, 0.18), Color(0.02, 0.02, 0.05)],
@@ -73,6 +101,7 @@ const THEMES := {
 		"amb": Color(0.3, 0.3, 0.5), "amb_e": 0.7, "fog": Color(0.08, 0.05, 0.14), "fog_d": 0.006,
 		"floor": 5, "floor_c": Color(0.22, 0.24, 0.27), "line_c": Color(0.95, 0.85, 0.2), "alt_c": Color(0.15, 0.15, 0.18),
 		"fence_c": Color(0.5, 0.52, 0.55), "outside": "void", "rim": Color(0.6, 0.7, 1.0), "glow": 1.1, "dust": Color(0.6, 0.62, 0.7),
+		"skyfx": {"stars": 0.9, "moon": 0.045, "cover": 0.3, "lit": Color(0.20, 0.14, 0.30), "dark": Color(0.06, 0.04, 0.12), "wind": Vector2(0.008, 0.003), "glow": 0.3},
 	},
 	"temple": {
 		"sky": [Color(0.38, 0.32, 0.5), Color(0.98, 0.58, 0.38), Color(0.4, 0.3, 0.25)],
@@ -81,6 +110,7 @@ const THEMES := {
 		"floor": 6, "floor_c": Color(0.82, 0.8, 0.76), "line_c": Color(0.8, 0.8, 0.8), "alt_c": Color(0.5, 0.48, 0.45),
 		"wall_c": Color(0.86, 0.82, 0.72), "roof_c": Color(0.18, 0.18, 0.2), "outside": "floor", "outside_c": Color(0.4, 0.35, 0.3),
 		"rim": Color(1.0, 0.75, 0.55), "leaves": Color(0.9, 0.3, 0.12), "glow": 0.7, "dust": Color(0.8, 0.78, 0.72),
+		"skyfx": {"cover": 0.5, "lit": Color(1.0, 0.66, 0.5), "dark": Color(0.45, 0.3, 0.42), "wind": Vector2(0.007, 0.002), "glow": 0.8, "sun_disc": 0.045},
 	},
 	"raft": {
 		"sky": [Color(0.3, 0.55, 0.85), Color(0.75, 0.85, 0.95), Color(0.4, 0.5, 0.45)],
@@ -89,6 +119,7 @@ const THEMES := {
 		"floor": 7, "floor_c": Color(0.55, 0.4, 0.25), "line_c": Color(0.8, 0.8, 0.8), "alt_c": Color(0.18, 0.12, 0.08),
 		"outside": "water", "water": [Color(0.04, 0.15, 0.14), Color(0.12, 0.35, 0.32)], "rim": Color(1.0, 0.96, 0.85), "glow": 0.5,
 		"dust": Color(0.6, 0.75, 0.85), "trees": true,
+		"skyfx": {"cover": 0.45, "lit": Color(1.0, 1.0, 1.0), "dark": Color(0.62, 0.7, 0.82), "wind": Vector2(0.015, 0.0), "glow": 0.5, "sun_disc": 0.03},
 	},
 	"lighthouse": {
 		"sky": [Color(0.01, 0.015, 0.03), Color(0.06, 0.08, 0.12), Color(0.01, 0.01, 0.02)],
@@ -97,6 +128,7 @@ const THEMES := {
 		"floor": 8, "floor_c": Color(0.38, 0.4, 0.42), "line_c": Color(0.8, 0.8, 0.8), "alt_c": Color(0.2, 0.22, 0.25),
 		"outside": "water", "water": [Color(0.01, 0.03, 0.05), Color(0.05, 0.12, 0.16)], "rim": Color(0.75, 0.85, 1.0), "wet": 0.8,
 		"rain": true, "storm": true, "glow": 1.0, "dust": Color(0.6, 0.7, 0.8),
+		"skyfx": {"cover": 0.97, "lit": Color(0.10, 0.12, 0.16), "dark": Color(0.02, 0.03, 0.045), "wind": Vector2(0.05, 0.02), "glow": 0.0},
 	},
 }
 
@@ -161,6 +193,42 @@ func _environment(quality: int) -> void:
 	sun.shadow_bias = 0.04
 	add_child(sun)
 	rim_dir = -sun.global_transform.basis.z
+	_build_dome(quality)
+
+
+## 空のドーム: 雲・星・月・太陽・オーロラを描く大きな球（カメラに追従させる）
+func _build_dome(quality: int) -> void:
+	var fx: Dictionary = theme.get("skyfx", {})
+	var sc: Array = theme["sky"]
+	_dome = MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 1.0
+	sm.height = 2.0
+	sm.radial_segments = 32
+	sm.rings = 16
+	_dome.mesh = sm
+	_dome.scale = Vector3.ONE * 300.0
+	_dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_dome.extra_cull_margin = 2000.0
+	_dome_mat = ShaderMaterial.new()
+	_dome_mat.shader = load("res://shaders/sky_dome.gdshader")
+	_dome_mat.set_shader_parameter("top_color", sc[0])
+	_dome_mat.set_shader_parameter("horizon_color", sc[1])
+	_dome_mat.set_shader_parameter("ground_color", sc[2])
+	_dome_mat.set_shader_parameter("sun_dir", sun.global_transform.basis.z)
+	_dome_mat.set_shader_parameter("sun_color", theme["sun"])
+	_dome_mat.set_shader_parameter("sun_disc", float(fx.get("sun_disc", 0.0)))
+	_dome_mat.set_shader_parameter("sun_glow", float(fx.get("glow", 0.4)))
+	_dome_mat.set_shader_parameter("moon", float(fx.get("moon", 0.0)))
+	_dome_mat.set_shader_parameter("stars", float(fx.get("stars", 0.0)))
+	_dome_mat.set_shader_parameter("cloud_cover", float(fx.get("cover", 0.4)))
+	_dome_mat.set_shader_parameter("cloud_wind", fx.get("wind", Vector2(0.01, 0.003)))
+	_dome_mat.set_shader_parameter("cloud_lit", fx.get("lit", Color.WHITE))
+	_dome_mat.set_shader_parameter("cloud_dark", fx.get("dark", Color(0.5, 0.55, 0.65)))
+	_dome_mat.set_shader_parameter("aurora", float(fx.get("aurora", 0.0)))
+	_dome_mat.set_shader_parameter("octaves", [2, 3, 4, 4][clampi(quality, 0, 3)])
+	_dome.material_override = _dome_mat
+	add_child(_dome)
 
 
 func _mat(c: Color, rough: float = 0.8, metal: float = 0.0) -> StandardMaterial3D:
@@ -168,6 +236,17 @@ func _mat(c: Color, rough: float = 0.8, metal: float = 0.0) -> StandardMaterial3
 	m.albedo_color = c
 	m.roughness = rough
 	m.metallic = metal
+	# 質感: 明るさのむら・染みを三面投影で重ねる（中画質以上）。高画質では細かな凹凸も
+	if _quality >= 1:
+		m.albedo_texture = TEX_GRUNGE
+		m.uv1_triplanar = true
+		m.uv1_world_triplanar = _tri_world
+		m.uv1_scale = Vector3.ONE * 0.16
+		m.uv1_triplanar_sharpness = 2.0
+		if _quality >= 2:
+			m.normal_enabled = true
+			m.normal_texture = TEX_BUMP
+			m.normal_scale = 0.3
 	return m
 
 
@@ -488,7 +567,7 @@ func _rng(seed_v: int) -> RandomNumberGenerator:
 	return r
 
 
-func _multimesh(mesh: Mesh, xforms: Array[Transform3D], mat: Material, colors: Array[Color] = []) -> MultiMeshInstance3D:
+func _multimesh(mesh: Mesh, xforms: Array[Transform3D], mat: Material, colors: Array[Color] = [], parent: Node3D = null) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = colors.size() > 0
@@ -502,7 +581,7 @@ func _multimesh(mesh: Mesh, xforms: Array[Transform3D], mat: Material, colors: A
 	mmi.multimesh = mm
 	mmi.material_override = mat
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mmi)
+	(parent if parent != null else self).add_child(mmi)
 	return mmi
 
 
@@ -548,11 +627,28 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 				spot.light_energy = 2.0 if quality >= 2 else 1.2
 				spot.light_color = Color(1.0, 0.95, 0.85)
 				add_child(spot)
-				_box(Vector3(0.5, 0.3, 0.5), lp, _mat(Color(0.9, 0.9, 0.85), 0.3), null)
+				var head := _box(Vector3(0.6, 0.35, 0.6), lp, _mat(Color(1.0, 0.97, 0.9), 0.3), null)
+				(head.material_override as StandardMaterial3D).emission_enabled = true
+				(head.material_override as StandardMaterial3D).emission = Color(1.0, 0.95, 0.85) * 2.5
+				_cone(lp, Vector3(0, 0.6, 0), 11.5, 3.0, Color(1.0, 0.95, 0.85), 0.075)
+				# 照明をつなぐトラス（梁）と、そこから下がる垂れ幕
+				var lp2 := Vector3(cos((k3 + 1) * PI * 0.5 + 0.78) * 9.0, 9.0, sin((k3 + 1) * PI * 0.5 + 0.78) * 9.0)
+				var mid := (lp + lp2) * 0.5
+				var yaw3 := atan2((lp2 - lp).x, (lp2 - lp).z)
+				_box(Vector3(0.18, 0.18, lp.distance_to(lp2)), mid, _mat(Color(0.2, 0.21, 0.24), 0.5, 0.6), null, yaw3)
+				_box(Vector3(0.1, 0.1, lp.distance_to(lp2)), mid + Vector3(0, 0.45, 0), _mat(Color(0.2, 0.21, 0.24), 0.5, 0.6), null, yaw3)
+				var bc := Color(0.7, 0.12, 0.1) if k3 % 2 == 0 else Color(0.1, 0.22, 0.6)
+				_banner(mid + Vector3(0, -0.1, 0), 2.6, 4.2, bc, Color(0.95, 0.82, 0.3), yaw3 + PI * 0.5, true, null, 0.35)
 			_box(Vector3(8, 4.5, 0.3), Vector3(0, 9.5, -17), _mat(Color(0.05, 0.05, 0.08)))
-			var screen := _box(Vector3(7.4, 4.0, 0.05), Vector3(0, 9.5, -16.8), _mat(Color(0.1, 0.2, 0.4)))
-			(screen.material_override as StandardMaterial3D).emission_enabled = true
-			(screen.material_override as StandardMaterial3D).emission = Color(0.15, 0.3, 0.7)
+			var screen := MeshInstance3D.new()
+			var sq := QuadMesh.new()
+			sq.size = Vector2(7.4, 4.0)
+			screen.mesh = sq
+			var scm := ShaderMaterial.new()
+			scm.shader = load("res://shaders/arena_screen.gdshader")
+			screen.material_override = scm
+			screen.position = Vector3(0, 9.5, -16.82)
+			add_child(screen)
 		"harbor":
 			_harbor(r, dens)
 		"bamboo":
@@ -581,6 +677,12 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 			sm.radial_segments = 8
 			sm.rings = 4
 			_multimesh(sm, xf3, _mat(Color(0.3, 0.45, 0.2), 0.9))
+			for k4: int in range(8):
+				var a4 := k4 * TAU / 8.0 + 0.4
+				var d4 := r.randf_range(6.5, 11.5)
+				_shaft(Vector3(sin(a4) * d4, 4.4, cos(a4) * d4), 12.0, r.randf_range(1.3, 2.6), Color(1.0, 0.97, 0.78), r.randf_range(0.10, 0.18))
+			_motes(Color(1.0, 0.98, 0.75, 0.6), 80)
+			_flock(Vector3(0, 30, 0), 55.0, 7, 0.1)
 		"fort":
 			_fort(r, dens)
 		"ruins":
@@ -632,6 +734,8 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 			beam.light_color = Color(1.0, 0.95, 0.8)
 			beam.rotation_degrees = Vector3(-12, 0, 0)
 			_lighthouse_beam.add_child(beam)
+			for sg: float in [-1.0, 1.0]:
+				_cone(Vector3.ZERO, Vector3(0, -0.208, 0.978 * sg), 62.0, 7.5, Color(1.0, 0.95, 0.8), 0.26, _lighthouse_beam)
 			var rxf: Array[Transform3D] = []
 			for k2: int in range(int(40 * dens) + 8):
 				var ang10 := r.randf() * TAU
@@ -693,6 +797,7 @@ func _temple(r: RandomNumberGenerator, dens: float) -> void:
 		lt.light_energy = 1.0
 		lt.omni_range = 4.5
 		add_child(lt)
+		_flames.append([lt, 1.0, lp.x + lp.z * 0.5])
 	# 紅葉（幹 + 色の違う葉の塊）
 	var trunk_xf: Array[Transform3D] = []
 	var leaf_xf: Array[Transform3D] = []
@@ -722,6 +827,16 @@ func _temple(r: RandomNumberGenerator, dens: float) -> void:
 	var leaf_mat := _mat(Color.WHITE, 0.9)
 	leaf_mat.vertex_color_use_as_albedo = true
 	_multimesh(lm, leaf_xf, leaf_mat, leaf_c)
+	# 山門の脇ののぼり、夕日の筋、漂う光の粒、ねぐらへ帰る鳥
+	for nx: float in [-4.4, 4.4]:
+		_cyl(0.04, 0.05, 4.4, Vector3(nx, 2.2, 12.6), _mat(Color(0.25, 0.2, 0.16), 0.8))
+		_banner(Vector3(nx + 0.04, 2.7, 12.6), 0.75, 3.0, Color(0.55, 0.08, 0.1) if nx < 0 else Color(0.12, 0.16, 0.4), Color(0.95, 0.9, 0.8), 0.0, false, null, 0.7)
+	for k7: int in range(5):
+		var a7 := k7 * TAU / 5.0 + 1.1
+		var d7 := r.randf_range(7.5, 11.0)
+		_shaft(Vector3(sin(a7) * d7, 4.0, cos(a7) * d7), 12.0, r.randf_range(1.5, 2.4), Color(1.0, 0.72, 0.45), r.randf_range(0.07, 0.11))
+	_motes(Color(1.0, 0.8, 0.55, 0.5), 60)
+	_flock(Vector3(-10, 32, 0), 60.0, 9, 0.08)
 	# 遠景の山
 	_mountains(r, Color(0.45, 0.35, 0.42), 9)
 
@@ -758,15 +873,14 @@ func _harbor(r: RandomNumberGenerator, dens: float) -> void:
 		_box(Vector3(7.2, 1.2, 1.2), Vector3(cx, 19.0, cz + 4.0), _mat(crane_c, 0.5, 0.4))
 		_box(Vector3(1.4, 1.4, 34), Vector3(cx, 20.2, cz + 9), _mat(crane_c, 0.5, 0.4))
 		_box(Vector3(3.0, 2.4, 3.0), Vector3(cx, 18.3, cz + 2), _mat(Color(0.85, 0.85, 0.82), 0.5))
-		var warn := _box(Vector3(0.4, 0.4, 0.4), Vector3(cx, 21.2, cz + 25.5), _mat(Color(1, 0.1, 0.05)))
-		(warn.material_override as StandardMaterial3D).emission_enabled = true
-		(warn.material_override as StandardMaterial3D).emission = Color(1.0, 0.1, 0.05) * 3.0
+		_blinker(Vector3(cx, 21.2, cz + 25.5), 0.4, k2 * 0.5)
 		var lamp := _omni()
 		lamp.position = Vector3(cx, 17.0, cz + 6)
 		lamp.light_color = Color(1.0, 0.72, 0.42)
 		lamp.light_energy = 3.0
 		lamp.omni_range = 30.0
 		add_child(lamp)
+		_cone(Vector3(cx, 17.2, cz + 6), Vector3(cx, 0, cz + 9), 17.5, 6.5, Color(1.0, 0.75, 0.45), 0.075)
 	# 係留柱（ビット）と岸壁の縁石
 	var bol_xf: Array[Transform3D] = []
 	for k3: int in range(14):
@@ -791,6 +905,7 @@ func _harbor(r: RandomNumberGenerator, dens: float) -> void:
 		sl.light_energy = 1.6
 		sl.omni_range = 12.0
 		add_child(sl)
+		_cone(Vector3(lx2, 6.3, -8.1), Vector3(lx2, 0, -6.9), 6.7, 2.7, Color(1.0, 0.72, 0.42), 0.17)
 	# 停泊中の貨物船（手前の海、右奥）
 	var hull_c := Color(0.12, 0.13, 0.16)
 	var ship := Node3D.new()
@@ -850,17 +965,9 @@ func _fort(r: RandomNumberGenerator, dens: float) -> void:
 		_cyl(0.08, 0.1, 1.6, bp + Vector3(0, 0.8, 0), _mat(Color(0.2, 0.18, 0.16), 0.7, 0.4))
 		var bowl := _cyl(0.4, 0.25, 0.3, bp + Vector3(0, 1.7, 0), _mat(Color(0.25, 0.22, 0.2), 0.6, 0.5))
 		var _b := bowl
-		var fire := _cyl(0.0, 0.32, 0.6, bp + Vector3(0, 2.1, 0), _mat(Color(1.0, 0.55, 0.15)))
-		(fire.material_override as StandardMaterial3D).emission_enabled = true
-		(fire.material_override as StandardMaterial3D).emission = Color(1.0, 0.45, 0.1) * 3.0
-		var fl := _omni()
-		fl.position = bp + Vector3(0, 2.2, 0)
-		fl.light_color = Color(1.0, 0.55, 0.25)
-		fl.light_energy = 1.4
-		fl.omni_range = 6.0
-		add_child(fl)
+		_flame(bp + Vector3(0, 1.8, 0), 0.8, 2.4, 8.5)
 		_cyl(0.05, 0.05, 4.5, bp + Vector3(0.6, 2.25, 0), _mat(Color(0.3, 0.25, 0.2), 0.8))
-		_box(Vector3(0.05, 1.4, 0.9), bp + Vector3(0.62, 3.8, 0.47), _mat(Color(0.6, 0.1, 0.08), 0.9))
+		_banner(bp + Vector3(0.62, 3.75, 0.0), 1.6, 1.2, Color(0.62, 0.1, 0.08), Color(0.92, 0.86, 0.7), -PI * 0.5, false)
 	# 雪をかぶった針葉樹
 	var trunk: Array[Transform3D] = []
 	var leaf: Array[Transform3D] = []
@@ -947,15 +1054,7 @@ func _ruins(r: RandomNumberGenerator, dens: float) -> void:
 		_box(Vector3(0.7, 0.4, 0.7), bp + Vector3(0, 0.2, 0), dm)
 		_cyl(0.12, 0.16, 2.0, bp + Vector3(0, 1.4, 0), _mat(Color(0.3, 0.22, 0.14), 0.6, 0.5))
 		_cyl(0.5, 0.28, 0.35, bp + Vector3(0, 2.5, 0), _mat(Color(0.35, 0.25, 0.15), 0.5, 0.6))
-		var fire := _cyl(0.0, 0.38, 0.75, bp + Vector3(0, 3.0, 0), _mat(Color(1.0, 0.6, 0.2)))
-		(fire.material_override as StandardMaterial3D).emission_enabled = true
-		(fire.material_override as StandardMaterial3D).emission = Color(1.0, 0.5, 0.12) * 3.0
-		var fl := _omni()
-		fl.position = bp + Vector3(0, 3.1, 0)
-		fl.light_color = Color(1.0, 0.6, 0.3)
-		fl.light_energy = 1.2
-		fl.omni_range = 6.5
-		add_child(fl)
+		_flame(bp + Vector3(0, 2.62, 0), 0.9, 1.5, 7.5)
 	# オアシス（南西）: 水たまりとヤシ
 	var oasis := Vector3(-22, -1.5, 18)
 	var pond := _cyl(6.0, 6.0, 0.06, oasis + Vector3(0, 0.03, 0), _mat(Color(0.1, 0.32, 0.36), 0.15, 0.2), null, 24)
@@ -979,6 +1078,10 @@ func _ruins(r: RandomNumberGenerator, dens: float) -> void:
 		_box(Vector3(w, 3.2, w), zp + Vector3(0, 1.6 + t * 3.2, 0), _mat(stone.darkened(0.08 + t * 0.02), 0.95))
 	_box(Vector3(4.0, 0.6, 26.0), zp + Vector3(0, 9.0, 13.0), dm).rotation.x = -0.72
 	_box(Vector3(6.0, 4.0, 6.0), zp + Vector3(0, 21.2, 0), dm)
+	_flock(Vector3(20, 34, -30), 30.0, 5, -0.14)
+	_motes(Color(1.0, 0.85, 0.6, 0.45), 60)
+	for k9: int in range(4):
+		_shaft(Vector3(-12.0 + k9 * 0.4, 4.2, -9.0 + k9 * 4.5), 11.0, 1.8, Color(1.0, 0.78, 0.5), 0.07)
 
 
 ## 列柱 1 本: 礎石・柱身（溝の帯）・柱頭。broken なら柱頭なしで斜めに欠けた上端
@@ -1108,24 +1211,19 @@ func _skyline(r: RandomNumberGenerator, dens: float) -> void:
 			var sign := _box(Vector3(4.6, 1.8, 0.05), face + Vector3(0, -2.5, 0) - Vector3(sin(ang4), 0, cos(ang4)) * 0.12, _mat(neon_c), null, ang4)
 			(sign.material_override as StandardMaterial3D).emission_enabled = true
 			(sign.material_override as StandardMaterial3D).emission = neon_c * 2.2
+			_neons.append([sign.material_override, neon_c * 2.2, k4 * 1.7])
 			var nl := _omni()
 			nl.position = face + Vector3(0, -2.5, 0) - Vector3(sin(ang4), 0, cos(ang4)) * 1.5
 			nl.light_color = neon_c
 			nl.light_energy = 1.5
 			nl.omni_range = 9.0
 			add_child(nl)
-	# 月
-	var moon := MeshInstance3D.new()
-	var mm := SphereMesh.new()
-	mm.radius = 7.0
-	mm.height = 14.0
-	moon.mesh = mm
-	var mmat := _mat(Color(0.95, 0.93, 0.85))
-	mmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mmat.disable_fog = true
-	moon.material_override = mmat
-	moon.position = Vector3(-90, 75, -150)
-	add_child(moon)
+	# 夜空を掃くサーチライト（遠くのビルの屋上から）
+	for k5: int in range(3):
+		var a5 := k5 * TAU / 3.0 + 0.9
+		var sp := Vector3(sin(a5) * 46.0, -8.0, cos(a5) * 46.0)
+		var pv := _cone(sp, sp + Vector3(-sin(a5) * 0.25, 1.0, -cos(a5) * 0.25), 85.0, 5.0, Color(0.75, 0.85, 1.0), 0.17)
+		_sweeps.append([pv, pv.rotation, k5 * 2.1, 0.2])
 
 
 ## 点滅する赤い航空障害灯
@@ -1168,57 +1266,260 @@ func _raft(r: RandomNumberGenerator, dens: float) -> void:
 	var lantern := _box(Vector3(0.28, 0.36, 0.28), pole_p + Vector3(0, 2.1, 0), _mat(Color(1.0, 0.85, 0.55)))
 	(lantern.material_override as StandardMaterial3D).emission_enabled = true
 	(lantern.material_override as StandardMaterial3D).emission = Color(1.0, 0.7, 0.35) * 1.2
-	# 両岸: 水際の斜面と土手
+	# 両岸の景色は同じものを 3 つ並べて後ろへ流し、筏が川を下っているように見せる
+	_scroll_speed = 1.7
+	_tri_world = false
+	for ci: int in range(3):
+		var bank := Node3D.new()
+		bank.position.z = (ci - 1) * SCROLL_SPAN
+		add_child(bank)
+		_scrollers.append(bank)
+		_raft_bank(bank, _rng("raft_bank".hash()), dens)
+	_tri_world = true
+	_flock(Vector3(0, 28, 0), 45.0, 7, 0.12)
+	# 遠くの山
+	_mountains(r, Color(0.42, 0.55, 0.6), 10)
+
+
+## 炎（揺れる板）と揺らぐ明かり。size は炎の高さの目安
+func _flame(pos: Vector3, size: float, energy: float, light_range: float, parent: Node3D = null) -> void:
+	var q := QuadMesh.new()
+	q.size = Vector2(size * 0.95, size * 1.7)
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	var fm := ShaderMaterial.new()
+	fm.shader = load("res://shaders/flame.gdshader")
+	fm.set_shader_parameter("seed", pos.x * 3.1 + pos.z * 1.7)
+	mi.material_override = fm
+	mi.position = pos + Vector3(0, size * 0.8, 0)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	(parent if parent != null else self).add_child(mi)
+	var l := _omni()
+	l.position = pos + Vector3(0, size * 0.7, 0)
+	l.light_color = Color(1.0, 0.56, 0.24)
+	l.light_energy = energy
+	l.omni_range = light_range
+	(parent if parent != null else self).add_child(l)
+	_flames.append([l, energy, pos.x * 1.3 + pos.z * 0.7])
+	_embers(pos + Vector3(0, size * 0.9, 0), parent)
+
+
+## 火の粉（上へ舞い上がる小さな光の粒）
+func _embers(pos: Vector3, parent: Node3D = null) -> void:
+	if _quality <= 0:
+		return
+	var p := CPUParticles3D.new()
+	p.amount = 10
+	p.lifetime = 1.9
+	p.preprocess = 1.9
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.14
+	p.direction = Vector3.UP
+	p.spread = 24.0
+	p.gravity = Vector3(0.2, 0.55, 0.05)
+	p.initial_velocity_min = 0.5
+	p.initial_velocity_max = 1.4
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.3
+	var g := Gradient.new()
+	g.set_color(0, Color(1.0, 0.85, 0.45, 1.0))
+	g.set_color(1, Color(1.0, 0.2, 0.05, 0.0))
+	p.color_ramp = g
+	p.mesh = _spark_quad(0.034)
+	p.position = pos
+	(parent if parent != null else self).add_child(p)
+
+
+func _spark_quad(size: float) -> QuadMesh:
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.vertex_color_use_as_albedo = true
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	q.material = m
+	return q
+
+
+## 空中を漂う細かな光の粒（木漏れ日の中の塵・花粉）
+func _motes(color: Color, amount: int) -> void:
+	if _quality <= 0:
+		return
+	var p := CPUParticles3D.new()
+	p.amount = amount
+	p.lifetime = 7.0
+	p.preprocess = 7.0
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(10, 2.2, 10)
+	p.position = Vector3(0, 2.6, 0)
+	p.direction = Vector3(1, 0.2, 0.3)
+	p.spread = 180.0
+	p.gravity = Vector3(0.02, 0.01, 0.0)
+	p.initial_velocity_min = 0.03
+	p.initial_velocity_max = 0.14
+	var g := Gradient.new()
+	g.set_color(0, Color(color.r, color.g, color.b, 0.0))
+	g.add_point(0.3, Color(color.r, color.g, color.b, color.a))
+	g.add_point(0.7, Color(color.r, color.g, color.b, color.a))
+	g.set_color(g.get_point_count() - 1, Color(color.r, color.g, color.b, 0.0))
+	p.color_ramp = g
+	p.mesh = _spark_quad(0.03)
+	add_child(p)
+
+
+## 光の円錐（照明の光が見える表現）。pos から target へ向かって length だけ伸びる。戻り値は向きを持つ親ノード
+func _cone(pos: Vector3, target: Vector3, length: float, radius: float, color: Color, strength: float, parent: Node3D = null) -> Node3D:
+	var pivot := Node3D.new()
+	var dir := (target - pos).normalized()
+	var up := Vector3.UP if absf(dir.y) < 0.98 else Vector3.FORWARD
+	pivot.transform = Transform3D(Basis.looking_at(dir, up), pos)
+	(parent if parent != null else self).add_child(pivot)
+	if _quality <= 0:
+		return pivot
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.04
+	cm.bottom_radius = 1.0
+	cm.height = 1.0
+	cm.radial_segments = 20
+	cm.rings = 1
+	cm.cap_top = false
+	cm.cap_bottom = false
+	var mi := MeshInstance3D.new()
+	mi.mesh = cm
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/light_cone.gdshader")
+	sm.set_shader_parameter("color", color)
+	sm.set_shader_parameter("strength", strength)
+	mi.material_override = sm
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# メッシュの +Y（細い側）を親の +Z（光源側）へ向け、先を -Z（照らす側）へ伸ばす
+	mi.rotation_degrees = Vector3(90, 0, 0)
+	mi.scale = Vector3(radius, length, radius)
+	mi.position = Vector3(0, 0, -length * 0.5)
+	pivot.add_child(mi)
+	return pivot
+
+
+## 風になびく旗。hang = true は上辺を固定した垂れ幕、false は左辺を竿に固定した旗（pos は固定された辺の中央）
+func _banner(pos: Vector3, w: float, h: float, col: Color, stripe: Color, yaw: float, hang: bool, parent: Node3D = null, wind: float = 1.0) -> void:
+	var pm := PlaneMesh.new()
+	pm.orientation = PlaneMesh.FACE_Z
+	pm.size = Vector2(w, h)
+	pm.subdivide_width = 1 if hang else 10
+	pm.subdivide_depth = 10 if hang else 1
+	var mi := MeshInstance3D.new()
+	mi.mesh = pm
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/banner.gdshader")
+	sm.set_shader_parameter("color", col)
+	sm.set_shader_parameter("stripe", stripe)
+	sm.set_shader_parameter("phase", pos.x * 0.9 + pos.z * 1.3)
+	sm.set_shader_parameter("hang", 1.0 if hang else 0.0)
+	sm.set_shader_parameter("wind", wind)
+	mi.material_override = sm
+	mi.rotation.y = yaw
+	var off := Vector3(0, -h * 0.5, 0) if hang else Basis(Vector3.UP, yaw) * Vector3(w * 0.5, 0, 0)
+	mi.position = pos + off
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	(parent if parent != null else self).add_child(mi)
+
+
+## 木漏れ日・夕日の光の筋（光の向きに沿った板を十字に 2 枚）
+func _shaft(center: Vector3, length: float, width: float, color: Color, strength: float) -> void:
+	if _quality <= 0:
+		return
+	var dir := rim_dir.normalized()   # 光の進む向き
+	var x := dir.cross(Vector3.UP)
+	if x.length() < 0.05:
+		x = Vector3.RIGHT
+	x = x.normalized()
+	var node := Node3D.new()
+	node.transform = Transform3D(Basis(x, -dir, x.cross(-dir)), center)
+	add_child(node)
+	for k: int in range(2):
+		var q := QuadMesh.new()
+		q.size = Vector2(width, length)
+		var mi := MeshInstance3D.new()
+		mi.mesh = q
+		var sm := ShaderMaterial.new()
+		sm.shader = load("res://shaders/light_shaft.gdshader")
+		sm.set_shader_parameter("color", color)
+		sm.set_shader_parameter("strength", strength)
+		sm.set_shader_parameter("seed", center.x * 2.3 + center.z * 1.1 + k * 5.0)
+		mi.material_override = sm
+		mi.rotation.y = k * PI * 0.5
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.add_child(mi)
+
+
+## 遠くを旋回する鳥の群れ（V 字の編隊）
+func _flock(center: Vector3, radius: float, n: int, speed: float, col: Color = Color(0.05, 0.05, 0.06)) -> void:
+	if _quality <= 0:
+		return
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1.3, 0.28)
+	pm.subdivide_width = 1
+	var xf: Array[Transform3D] = []
+	for k: int in range(n):
+		var side := float((k + 1) / 2) * (1.0 if k % 2 == 0 else -1.0)
+		xf.append(Transform3D(Basis(), Vector3(side * 1.6, absf(side) * 0.15, absf(side) * 1.4)))
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/birds.gdshader")
+	sm.set_shader_parameter("color", col)
+	var mmi := _multimesh(pm, xf, sm)
+	_flocks.append([mmi, center, radius, speed, randf() * TAU])
+
+
+## 川岸の 1 区画（長さ SCROLL_SPAN）: 土手・斜面・岩・葦・木・小屋と桟橋
+func _raft_bank(bank: Node3D, r: RandomNumberGenerator, dens: float) -> void:
+	var half := SCROLL_SPAN * 0.5
 	var bank_c := Color(0.3, 0.42, 0.22)
 	for sgn2: float in [-1.0, 1.0]:
-		_box(Vector3(40, 2.0, 200), Vector3(sgn2 * 38, -0.6, 0), _mat(bank_c, 0.95))
-		var slope := _box(Vector3(6.0, 0.5, 200), Vector3(sgn2 * 16.4, -0.55, 0), _mat(Color(0.42, 0.38, 0.28), 0.95))
+		_box(Vector3(40, 2.0, SCROLL_SPAN + 0.3), Vector3(sgn2 * 38, -0.6, 0), _mat(bank_c, 0.95), bank)
+		var slope := _box(Vector3(6.0, 0.5, SCROLL_SPAN + 0.3), Vector3(sgn2 * 16.4, -0.55, 0), _mat(Color(0.42, 0.38, 0.28), 0.95), bank)
 		slope.rotation.z = sgn2 * 0.18
-	# 水際の岩
 	var rocks: Array[Transform3D] = []
-	for k2: int in range(int(60 * dens) + 10):
+	for k2: int in range(int(50 * dens) + 8):
 		var side := -1.0 if k2 % 2 == 0 else 1.0
-		var x2 := side * r.randf_range(13.0, 16.5)
-		var z2 := r.randf_range(-80, 80)
-		rocks.append(Transform3D(Basis(Vector3(r.randf(), r.randf(), r.randf()).normalized(), r.randf() * 3.0).scaled(Vector3(r.randf_range(0.5, 1.6), r.randf_range(0.4, 1.0), r.randf_range(0.5, 1.6))), Vector3(x2, -0.75, z2)))
+		rocks.append(Transform3D(Basis(Vector3(r.randf(), r.randf(), r.randf()).normalized(), r.randf() * 3.0) * Basis.from_scale(Vector3(r.randf_range(0.5, 1.6), r.randf_range(0.4, 1.0), r.randf_range(0.5, 1.6))),
+			Vector3(side * r.randf_range(13.0, 16.5), -0.75, r.randf_range(-half, half))))
 	var rock := SphereMesh.new()
 	rock.radial_segments = 6
 	rock.rings = 3
-	_multimesh(rock, rocks, _mat(Color(0.4, 0.4, 0.38), 0.95))
-	# 葦
+	_multimesh(rock, rocks, _mat(Color(0.4, 0.4, 0.38), 0.95), [], bank)
 	var reeds: Array[Transform3D] = []
-	for k3: int in range(int(260 * dens) + 40):
+	for k3: int in range(int(200 * dens) + 30):
 		var side3 := -1.0 if k3 % 2 == 0 else 1.0
-		var x3 := side3 * r.randf_range(12.5, 15.5)
-		var z3 := r.randf_range(-70, 70)
 		var hh := r.randf_range(0.8, 1.8)
-		reeds.append(Transform3D(Basis(Vector3(r.randf_range(-1, 1), 0, r.randf_range(-1, 1)).normalized(), r.randf_range(0.0, 0.25)).scaled(Vector3(1, hh, 1)), Vector3(x3, -0.7 + hh * 0.5, z3)))
+		reeds.append(Transform3D(Basis(Vector3(r.randf_range(-1, 1), 0, r.randf_range(-1, 1)).normalized(), r.randf_range(0.0, 0.25)) * Basis.from_scale(Vector3(1, hh, 1)),
+			Vector3(side3 * r.randf_range(12.5, 15.5), -0.7 + hh * 0.5, r.randf_range(-half, half))))
 	var rm := CylinderMesh.new()
 	rm.top_radius = 0.0
 	rm.bottom_radius = 0.035
 	rm.height = 1.0
 	rm.radial_segments = 4
-	_multimesh(rm, reeds, _mat(Color(0.55, 0.6, 0.3), 0.9))
-	# 木（幹＋三段の葉。色に幅を持たせる）
+	_multimesh(rm, reeds, _mat(Color(0.55, 0.6, 0.3), 0.9), [], bank)
 	var trunk: Array[Transform3D] = []
 	var leaf: Array[Transform3D] = []
 	var leaf_c: Array[Color] = []
-	for k4: int in range(int(150 * dens) + 20):
+	for k4: int in range(int(105 * dens) + 15):
 		var side4 := -1.0 if k4 % 2 == 0 else 1.0
-		var base := Vector3(side4 * r.randf_range(19, 46), 0.4, r.randf_range(-80, 80))
+		var base := Vector3(side4 * r.randf_range(19, 46), 0.4, r.randf_range(-half, half))
 		var hgt := r.randf_range(6.0, 12.0)
 		trunk.append(Transform3D(Basis().scaled(Vector3(1, hgt * 0.35, 1)), base + Vector3(0, hgt * 0.175, 0)))
 		var tint := Color.from_hsv(r.randf_range(0.26, 0.36), r.randf_range(0.5, 0.7), r.randf_range(0.26, 0.42))
 		for t: int in range(3):
 			var sc := (1.0 - t * 0.26) * hgt * 0.26
-			leaf.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(sc, sc * 1.25, sc)), base + Vector3(0, hgt * (0.32 + t * 0.2), 0)))
+			leaf.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU) * Basis.from_scale(Vector3(sc, sc * 1.25, sc)), base + Vector3(0, hgt * (0.32 + t * 0.2), 0)))
 			leaf_c.append(tint.lightened(t * 0.06))
 	var tm := CylinderMesh.new()
 	tm.top_radius = 0.12
 	tm.bottom_radius = 0.2
 	tm.height = 1.0
 	tm.radial_segments = 6
-	_multimesh(tm, trunk, _mat(Color(0.3, 0.22, 0.15), 0.9))
+	_multimesh(tm, trunk, _mat(Color(0.3, 0.22, 0.15), 0.9), [], bank)
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.0
 	cone.bottom_radius = 1.0
@@ -1227,17 +1528,15 @@ func _raft(r: RandomNumberGenerator, dens: float) -> void:
 	var leaf_mat := _mat(Color.WHITE, 0.9)
 	leaf_mat.vertex_color_use_as_albedo = true
 	leaf_mat.vertex_color_is_srgb = true
-	_multimesh(cone, leaf, leaf_mat, leaf_c)
+	_multimesh(cone, leaf, leaf_mat, leaf_c, bank)
 	# 小屋と桟橋（左岸）
 	var hp := Vector3(-21, 0.4, -14)
-	_box(Vector3(4.0, 2.6, 3.4), hp + Vector3(0, 1.3, 0), _mat(Color(0.5, 0.36, 0.22), 0.9))
-	_gable(self, hp + Vector3(0, 2.6, 0), 4.6, 4.2, 1.5, Color(0.3, 0.24, 0.16), 0.0)
-	_box(Vector3(9.0, 0.15, 1.6), Vector3(-15.0, -0.35, -14), _mat(Color(0.45, 0.33, 0.22), 0.9))
+	_box(Vector3(4.0, 2.6, 3.4), hp + Vector3(0, 1.3, 0), _mat(Color(0.5, 0.36, 0.22), 0.9), bank)
+	_gable(bank, hp + Vector3(0, 2.6, 0), 4.6, 4.2, 1.5, Color(0.3, 0.24, 0.16), 0.0)
+	_box(Vector3(9.0, 0.15, 1.6), Vector3(-15.0, -0.35, -14), _mat(Color(0.45, 0.33, 0.22), 0.9), bank)
 	for px: float in [-18.5, -15.5, -12.5, -10.8]:
 		for pz: float in [-14.7, -13.3]:
-			_cyl(0.09, 0.09, 1.4, Vector3(px, -0.9, pz), _mat(Color(0.32, 0.24, 0.16), 0.9))
-	# 遠くの山
-	_mountains(r, Color(0.42, 0.55, 0.6), 10)
+			_cyl(0.09, 0.09, 1.4, Vector3(px, -0.9, pz), _mat(Color(0.32, 0.24, 0.16), 0.9), bank)
 
 
 ## 小道具の点光源。低画質では作らない（呼び出し側は null を受け取っても add_child しない）
@@ -1318,6 +1617,8 @@ func excite_crowd(v: float) -> void:
 
 ## カメラが壁の外側にあるとき、その壁を半透明にする
 func fade_for_camera(cam_pos: Vector3) -> void:
+	if _dome != null:
+		_dome.global_position = cam_pos
 	for fw: Array in _fade_walls:
 		var node: Node3D = fw[0]
 		var mid: Vector3 = fw[1]
@@ -1332,6 +1633,33 @@ func fade_for_camera(cam_pos: Vector3) -> void:
 
 
 func update(delta: float, photosensitive: bool) -> void:
+	_t += delta
+	# 炎の明かりの揺らぎ（ゆっくりした明るさの変化なので光過敏の設定でもそのまま）
+	for fl: Array in _flames:
+		var ph := float(fl[2])
+		var k := 0.82 + 0.13 * sin(_t * 7.3 + ph) + 0.09 * sin(_t * 12.7 + ph * 1.7) + 0.05 * sin(_t * 23.1 + ph * 0.6)
+		(fl[0] as OmniLight3D).light_energy = float(fl[1]) * k
+	# ネオンのちらつき（光過敏の設定では止める）
+	if not photosensitive:
+		for ne: Array in _neons:
+			var np := float(ne[2])
+			var on := 1.0 if fmod(_t * 0.7 + np, 5.0) > 0.25 or sin(_t * 40.0 + np) > 0.0 else 0.25
+			(ne[0] as StandardMaterial3D).emission = (ne[1] as Color) * on
+	for sw: Array in _sweeps:
+		var node: Node3D = sw[0]
+		var base: Vector3 = sw[1]
+		node.rotation = base + Vector3(sin(_t * 0.23 + float(sw[2])) * float(sw[3]), sin(_t * 0.17 + float(sw[2]) * 1.9) * float(sw[3]) * 1.4, 0)
+	if not _scrollers.is_empty():
+		_scroll_z = wrapf(_scroll_z + delta * _scroll_speed, -SCROLL_SPAN * 0.5, SCROLL_SPAN * 0.5)
+		for i: int in range(_scrollers.size()):
+			_scrollers[i].position.z = _scroll_z + (i - 1) * SCROLL_SPAN
+	for fk: Array in _flocks:
+		var ang := float(fk[4]) + delta * float(fk[3])
+		fk[4] = ang
+		var c: Vector3 = fk[1]
+		var bird: Node3D = fk[0]
+		bird.position = c + Vector3(cos(ang), 0, sin(ang)) * float(fk[2])
+		bird.rotation.y = -ang + (PI if float(fk[3]) > 0.0 else 0.0)
 	if _lighthouse_beam != null:
 		_lighthouse_beam.rotate_y(delta * 0.9)
 	if not _blinkers.is_empty():
@@ -1350,6 +1678,8 @@ func update(delta: float, photosensitive: bool) -> void:
 			_flash = maxf(0.0, _flash - delta * (0.8 if photosensitive else 3.5))
 			var amt := _flash * (0.35 if photosensitive else 1.0)
 			env.environment.ambient_light_energy = float(theme["amb_e"]) + amt * 1.5
+			if _dome_mat != null:
+				_dome_mat.set_shader_parameter("flash", amt)
 	if crowd_mat != null:
 		var exv: Variant = crowd_mat.get_shader_parameter("excite")
 		var ex := float(exv) if exv != null else 0.0
