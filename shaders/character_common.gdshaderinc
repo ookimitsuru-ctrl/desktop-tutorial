@@ -1,5 +1,6 @@
 // キャラクター用シェーダーの本体（character.gdshader と character_ghost.gdshader が読み込む）。
-// COLOR.r = (パレット番号 + 0.5) / 16, COLOR.g = 材質, COLOR.b = AO
+// COLOR.r = (パレット番号 + 0.5) / 16, COLOR.g = 材質, COLOR.b = AO, COLOR.a = 部品ごとの色むら（機甲兵）
+// 機甲兵のモデル（tools/charmodel/gen_mech.py）: UV.x = 面の縁からの距離（m、1.0 = 情報なし）、UV.y = 1 なら面全体で補間した法線を使う
 // ALPHA を書くのは残像（GHOST）のときだけ。ALPHA を書くシェーダーは条件分岐の中でも半透明扱いになり、
 // 深度を書かずに描かれるため、本体では自分自身の前後関係が崩れる（後ろ髪の上に目が描かれる等）。
 uniform vec4 palette[12];
@@ -19,6 +20,9 @@ varying vec4 v_mat;   // 肌, 布, 髪, 革・金属 の重み（残りは光沢
 varying float v_ao;
 varying vec3 v_local;
 varying float v_spec_k;   // 直接光のハイライトの強さ（材質ごと）
+varying float v_edge;     // 面の縁からの距離（m）
+varying float v_round;    // 1 = 補間した法線をそのまま使う
+varying float v_tint;     // 部品ごとの乱数
 
 float hash3(vec3 p) {
 	p = fract(p * 0.3183099 + 0.1);
@@ -53,6 +57,9 @@ void vertex() {
 	v_spec_k = mech ? (v_mat.x * 0.30 + v_mat.y * 0.05 + v_mat.z * 0.70 + v_mat.w * 0.35 + gl * 0.6)
 			: (v_mat.x * 0.30 + v_mat.y * 0.08 + v_mat.z * 0.25 + v_mat.w * 0.50 + gl * 0.80);
 	v_local = VERTEX;
+	v_edge = mech ? UV.x : 1.0;
+	v_round = mech ? UV.y : 1.0;
+	v_tint = COLOR.a;
 }
 
 void fragment() {
@@ -69,20 +76,39 @@ void fragment() {
 	float metal = 0.0;
 	vec3 glow = vec3(0.0);
 	if (mech) {
-		// 塗装: 斑と細かな剥げ、下の方ほど泥汚れ。地金: 研磨の筋。レンズ: 発光
+		// 縁の丸み: 平らな面は、面の法線（画面上の微分から求める）を使い、縁の近くだけ「隣の面と平均した法線」へ寄せる。
+		// 板の角が丸く面取りされたように光を拾う
+		vec3 nf = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
+		vec3 ni = normalize(NORMAL);
+		if (dot(nf, ni) < 0.0) {
+			nf = -nf;
+		}
+		float wb = max(v_round, 1.0 - ss(0.0, 0.007, v_edge));
+		NORMAL = normalize(mix(nf, ni, wb));
+		float has_edge = step(v_edge, 0.5);
+		// 塗装: 斑、板ごとのわずかな色むら、縁に沿った薄い陰（スミ入れ）、雨だれの筋、下の方ほど泥汚れ
 		float mottle = 0.93 + 0.09 * n2;
-		// 剥げは地の色を少し明るく・灰色寄りにする程度（暗い塗装に白い点が浮かないように）
-		float chip = ss(0.90, 0.96, vnoise(v_local * 70.0)) * 0.5;
+		float panel = 0.93 + 0.14 * v_tint;
+		float cav = has_edge * (1.0 - ss(0.0015, 0.016, v_edge));
+		float streak = ss(0.55, 0.9, vnoise(v_local * vec3(55.0, 5.0, 55.0)));
 		float mud = ss(0.55, 0.05, v_local.y) * (0.35 + 0.4 * vnoise(v_local * 7.0));
-		vec3 paint = mix(base * mottle, mix(base, vec3(0.30, 0.30, 0.29), 0.5) * 1.15, chip);
+		vec3 paint = base * mottle * panel * (1.0 - 0.24 * cav) * (1.0 - 0.10 * streak);
+		// 剥げ: 縁は地金が出る（雑音で途切れさせる）。面の中にも小さな欠け
+		// 幅と有無を大きめの雑音で変える（点線のように規則的にならないように）
+		float wn = 0.3 * n + 0.7 * n2;
+		float wear = has_edge * (1.0 - ss(0.0, 0.0018 + 0.0055 * n2, v_edge)) * ss(0.43, 0.6, wn);
+		wear = max(wear, ss(0.91, 0.96, n) * 0.6) * v_mat.x;
+		vec3 steel = mix(base, vec3(0.52, 0.52, 0.50), 0.7);
+		paint = mix(paint, steel, wear);
 		paint = mix(paint, vec3(0.20, 0.17, 0.13), clamp(mud, 0.0, 0.6));
 		vec3 col = v_mat.x * paint + v_mat.y * base * (0.9 + 0.1 * n) + v_mat.z * base * (0.82 + 0.28 * nh)
-				+ v_mat.w * base * (0.88 + 0.14 * n2) + glossy * base * 0.25;
+				+ v_mat.w * base * (0.88 + 0.14 * n2) * (1.0 - 0.2 * cav) + glossy * base * 0.25;
 		base = mix(col, vec3(0.20, 0.17, 0.13), clamp(mud * 0.5 * (v_mat.z + v_mat.w), 0.0, 0.4));
-		rough = v_mat.x * 0.66 + v_mat.y * 0.92 + v_mat.z * 0.45 + v_mat.w * 0.62 + glossy * 0.45;
-		spec = v_mat.x * 0.22 + v_mat.y * 0.05 + v_mat.z * 0.5 + v_mat.w * 0.3 + glossy * 0.5;
-		metal = v_mat.z * 0.55 + v_mat.w * 0.2;
-		glow = v_base * glossy * lens_glow * 2.6;
+		rough = v_mat.x * mix(0.66, 0.5, wear) + v_mat.y * 0.92 + v_mat.z * 0.45 + v_mat.w * 0.62 + glossy * 0.45;
+		spec = v_mat.x * mix(0.22, 0.5, wear) + v_mat.y * 0.05 + v_mat.z * 0.5 + v_mat.w * 0.3 + glossy * 0.5;
+		metal = v_mat.x * wear * 0.6 + v_mat.z * 0.55 + v_mat.w * 0.2;
+		// レンズ・灯火: ゆっくり脈打つ
+		glow = v_base * glossy * lens_glow * 2.6 * (0.86 + 0.14 * sin(TIME * 2.6 + v_local.y * 8.0));
 	} else {
 		// 材質ごとの色ムラ（肌: わずかなムラ、布: 織り目、髪: 筋）
 		float tex = v_mat.x * (0.94 + 0.08 * n2) + v_mat.y * (0.90 + 0.12 * n) + v_mat.z * (0.85 + 0.25 * nh) + v_mat.w + glossy;

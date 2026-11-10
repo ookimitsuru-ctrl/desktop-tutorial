@@ -11,7 +11,7 @@ def _pad4(b, fill=b"\x00"):
     return b
 
 
-def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=(), compact=False):
+def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=(), compact=False, uvs=None):
     """morphs: [(名前, 頂点ごとの位置の差分)]。差分のある頂点だけを疎なアクセサで書く"""
     bones = rig["bones"]
     nb = len(bones)
@@ -39,6 +39,7 @@ def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=
 
     a_pos = add(verts.astype(np.float32), 34962, 5126, "VEC3", minmax=True)
     a_nrm = add(normals.astype(np.float32), 34962, 5126, "VEC3")
+    a_uv = add(uvs.astype(np.float32), 34962, 5126, "VEC2") if uvs is not None else None
     if compact:
         # 頂点色と重みを 1 バイトの正規化整数で（ファイルを小さく）
         a_col = add(np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8), 34962, 5121, "VEC4", normalized=True)
@@ -100,7 +101,7 @@ def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=
         "scene": 0,
         "scenes": [{"nodes": [arm]}],
         "nodes": nodes,
-        "meshes": [_mesh_entry(a_pos, a_nrm, a_col, a_jnt, a_wgt, a_idx, targets, [m[0] for m in morphs])],
+        "meshes": [_mesh_entry(a_pos, a_nrm, a_col, a_jnt, a_wgt, a_idx, targets, [m[0] for m in morphs], a_uv)],
         "materials": [{"name": "Body", "pbrMetallicRoughness": {"baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0.0, "roughnessFactor": 0.7}}],
         "skins": [{"joints": list(range(nb)), "inverseBindMatrices": a_ibm, "skeleton": roots[0]}],
         "accessors": accessors,
@@ -118,9 +119,11 @@ def write_glb(path, rig, verts, normals, faces, colors, joints, weights, morphs=
         f.write(bb)
 
 
-def _mesh_entry(a_pos, a_nrm, a_col, a_jnt, a_wgt, a_idx, targets, names):
+def _mesh_entry(a_pos, a_nrm, a_col, a_jnt, a_wgt, a_idx, targets, names, a_uv=None):
     prim = {"attributes": {"POSITION": a_pos, "NORMAL": a_nrm, "COLOR_0": a_col, "JOINTS_0": a_jnt, "WEIGHTS_0": a_wgt},
             "indices": a_idx, "material": 0}
+    if a_uv is not None:
+        prim["attributes"]["TEXCOORD_0"] = a_uv
     mesh = {"name": "Body", "primitives": [prim]}
     if targets:
         prim["targets"] = targets

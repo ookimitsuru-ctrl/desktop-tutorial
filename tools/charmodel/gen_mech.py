@@ -115,9 +115,25 @@ class Frame:
 
 
 class Mech:
+    """部品（凸包）を集めてメッシュにする。
+
+    頂点の属性:
+      NORMAL  平らな大きい面は「面の中心 = 面の法線、縁 = 隣の面と平均した法線」。シェーダーが縁の近くだけ後者を使い、角を丸く見せる。
+              丸い面（円柱の側面・ドーム）と小さい面は全体をなめらかにつなぐ
+      UV.x    面の縁からの距離（m）。縁の塗装の剥げと、縁に沿った汚れの線に使う。1.0 = 縁の情報なし
+      UV.y    1 = 面全体で補間した法線を使う（丸い面・小さい面）、0 = 縁の近くだけ使う（平らな大きい面）
+      COLOR   r = パレット番号、g = 材質、b = 簡易 AO、a = 部品ごとの色むら（乱数）
+    """
+
+    FAN_MIN = 0.011     # 面の中心から縁までがこれ以上ある面は、中心に頂点を足して縁からの距離を持たせる
+    TINY = 0.009        # 厚みがこれ未満の部品（ボルト・溝など）は縁の剥げを付けない
+    ROUND_DEG = 37.0    # 隣の面との角度がこれ以下の辺が 2 本以上ある面は丸い面とみなす
+
     def __init__(self, B):
         self.B = B
-        self.tris = []  # (3x3 頂点, slot, mt, bone, ao)
+        self.V, self.N, self.C, self.UV, self.J, self.F = [], [], [], [], [], []
+        self._seen = {}
+        self._rng = np.random.default_rng(20261110)
 
     def frame_world(self, origin=(0, 0, 0)):
         """モデル空間そのもの（部品の位置はワールド座標で指定する。正面は -Z、+X が右）"""
@@ -139,52 +155,139 @@ class Mech:
             o = -o
         return Frame(a, o, y, f)
 
-    def add(self, fr, pts, bone, slot, mt=M_PAINT, at=(0, 0, 0), R=None, ao=1.0, mirror_o=False):
+    def add(self, fr, pts, bone, slot, mt=M_PAINT, at=(0, 0, 0), R=None, ao=1.0, mirror_o=False, wear=True):
         p = np.asarray(pts, dtype=np.float64)
         if R is not None:
             p = p @ np.asarray(R).T
         p = p + np.asarray(at, dtype=np.float64)
         if mirror_o:
             p[:, 0] *= -1
-        w = fr.to_world(p)
+        self._hull(fr.to_world(p), self.B.b(bone), slot, mt, ao, wear)
+
+    # -- 頂点の追加（同じ属性の頂点は共有する）
+    def _vert(self, pos, nrm, slot, mt, ao, bi, uv, tint, share=True):
+        a = ao * (0.62 + 0.38 * (nrm[1] * 0.5 + 0.5))
+        if share:
+            key = (round(pos[0], 5), round(pos[1], 5), round(pos[2], 5), round(nrm[0], 3), round(nrm[1], 3), round(nrm[2], 3),
+                   slot, mt, bi, round(uv[0], 4), uv[1])
+            i = self._seen.get(key)
+            if i is not None:
+                return i
+        i = len(self.V)
+        if share:
+            self._seen[key] = i
+        self.V.append(pos)
+        self.N.append(nrm)
+        self.C.append(((slot + 0.5) / 16.0, mt, a, tint))
+        self.UV.append(uv)
+        self.J.append((bi, 0, 0, 0))
+        return i
+
+    def _hull(self, w, bi, slot, mt, ao, wear):
         hull = ConvexHull(w)
-        cen = w.mean(axis=0)
-        bi = self.B.b(bone)
-        for s in hull.simplices:
-            a, b, c = w[s[0]], w[s[1]], w[s[2]]
-            n = np.cross(b - a, c - a)
-            if np.dot(n, a - cen) < 0:
-                b, c = c, b
-            self.tris.append((np.stack([a, b, c]), slot, mt, bi, ao))
+        eq = hull.equations
+        # 同じ平面の三角形をまとめて多角形の面にする
+        groups = []
+        for si in range(len(eq)):
+            for g in groups:
+                r = eq[g[0]]
+                if np.dot(r[:3], eq[si, :3]) > 0.999995 and abs(r[3] - eq[si, 3]) < 2e-6:
+                    g.append(si)
+                    break
+            else:
+                groups.append([si])
+        faces = []
+        for g in groups:
+            n = eq[g[0], :3]
+            ids = np.unique(hull.simplices[g].ravel())
+            pc = w[ids].mean(axis=0)
+            u = np.cross(n, [1.0, 0, 0])
+            if np.linalg.norm(u) < 0.2:
+                u = np.cross(n, [0, 1.0, 0])
+            u /= np.linalg.norm(u)
+            v = np.cross(n, u)
+            rel = w[ids] - pc
+            ids = ids[np.argsort(np.arctan2(rel @ v, rel @ u))]   # 外から見て反時計回り
+            faces.append({"n": n, "ids": [int(x) for x in ids], "c": pc})
+        # 厚み（どれかの面から最も遠い点までの距離の最小）
+        thick = min(float(np.max(-(w[hull.vertices] @ e[:3] + e[3]))) for e in eq)
+        tiny = thick < self.TINY or not wear
+        # 辺の両側の面、頂点に集まる面
+        edge_faces, vert_faces = {}, {}
+        for fi, f in enumerate(faces):
+            ids = f["ids"]
+            for k in range(len(ids)):
+                a, b = ids[k], ids[(k + 1) % len(ids)]
+                edge_faces.setdefault((min(a, b), max(a, b)), []).append(fi)
+                vert_faces.setdefault(a, set()).add(fi)
+        cos_round = math.cos(math.radians(self.ROUND_DEG))
+        cos_join = math.cos(math.radians(50.0))
+        tint = float(self._rng.random())
+        for fi, f in enumerate(faces):
+            ids, n, pc = f["ids"], f["n"], f["c"]
+            m = len(ids)
+            if m < 3:
+                continue
+            soft = 0
+            for k in range(m):
+                a, b = ids[k], ids[(k + 1) % m]
+                for fj in edge_faces[(min(a, b), max(a, b))]:
+                    if fj != fi:
+                        c = float(np.dot(n, faces[fj]["n"]))
+                        if cos_round <= c < 0.9998:
+                            soft += 1
+            is_round = soft >= 2
+            # 面の中心から各辺までの距離
+            dist = []
+            for k in range(m):
+                a, b = w[ids[k]], w[ids[(k + 1) % m]]
+                e = b - a
+                el = np.linalg.norm(e)
+                dist.append(float(np.linalg.norm(np.cross(pc - a, e)) / el) if el > 1e-9 else 0.0)
+            # 頂点ごとの法線
+            vn = []
+            for vi in ids:
+                acc = np.zeros(3)
+                for fj in vert_faces[vi]:
+                    nj = faces[fj]["n"]
+                    if not is_round or float(np.dot(n, nj)) >= cos_join:
+                        acc += nj
+                ln = np.linalg.norm(acc)
+                vn.append(acc / ln if ln > 1e-9 else n)
+            if is_round:
+                vs = [self._vert(w[ids[k]], vn[k], slot, mt, ao, bi, (1.0, 1.0), tint) for k in range(m)]
+                for k in range(1, m - 1):
+                    self.F.append((vs[0], vs[k], vs[k + 1]))
+            elif tiny or max(dist) < self.FAN_MIN:
+                # 小さい面: 全体を丸める。縁の剥げは、大きい部品の面取り（縁そのもの）には付け、細かい部品には付けない
+                d = 1.0 if tiny else (0.0 if max(dist) < 0.006 else 0.0028)
+                vs = [self._vert(w[ids[k]], vn[k], slot, mt, ao, bi, (d, 1.0), tint) for k in range(m)]
+                for k in range(1, m - 1):
+                    self.F.append((vs[0], vs[k], vs[k + 1]))
+            else:
+                for k in range(m):
+                    if dist[k] < 1e-6:
+                        continue
+                    k2 = (k + 1) % m
+                    c0 = self._vert(pc, n, slot, mt, ao, bi, (dist[k], 0.0), tint, share=False)
+                    v0 = self._vert(w[ids[k]], vn[k], slot, mt, ao, bi, (0.0, 0.0), tint)
+                    v1 = self._vert(w[ids[k2]], vn[k2], slot, mt, ao, bi, (0.0, 0.0), tint)
+                    self.F.append((c0, v0, v1))
 
     def mesh(self):
-        V, N, C, J, W, F = [], [], [], [], [], []
-        seen = {}
-        for k, (t, slot, mt, bi, ao) in enumerate(self.tris):
-            n = np.cross(t[1] - t[0], t[2] - t[0])
-            ln = np.linalg.norm(n)
-            if ln < 1e-12:
-                continue
-            n = n / ln
-            # 簡易 AO: 下向きの面ほど暗く
-            a = ao * (0.62 + 0.38 * (n[1] * 0.5 + 0.5))
-            idx = []
-            for v in t:
-                # 同じ平面（同じ法線）の三角形どうしは頂点を共有する
-                key = (round(v[0], 5), round(v[1], 5), round(v[2], 5), round(n[0], 3), round(n[1], 3), round(n[2], 3), slot, mt, bi)
-                i = seen.get(key)
-                if i is None:
-                    i = len(V)
-                    seen[key] = i
-                    V.append(v)
-                    N.append(n)
-                    C.append(((slot + 0.5) / 16.0, mt, a, 1.0))
-                    J.append((bi, 0, 0, 0))
-                    W.append((1.0, 0.0, 0.0, 0.0))
-                idx.append(i)
-            F.append(tuple(idx))
-        return (np.array(V, dtype=np.float32), np.array(N, dtype=np.float32), np.array(F, dtype=np.uint32),
-                np.array(C, dtype=np.float32), np.array(J, dtype=np.uint8), np.array(W, dtype=np.float32))
+        V = np.array(self.V, dtype=np.float32)
+        F = np.array(self.F, dtype=np.uint32)
+        # 念のため: 面の向きを頂点の法線にそろえる
+        N = np.array(self.N, dtype=np.float32)
+        fv = V[F]
+        fn = np.cross(fv[:, 1] - fv[:, 0], fv[:, 2] - fv[:, 0])
+        flip = (fn * N[F].sum(axis=1)).sum(axis=1) < 0
+        F[flip] = F[flip][:, ::-1]
+        keep = np.linalg.norm(fn, axis=1) > 1e-12
+        F = F[keep]
+        W = np.zeros((len(V), 4), dtype=np.float32)
+        W[:, 0] = 1.0
+        return (V, N, F, np.array(self.C, dtype=np.float32), np.array(self.J, dtype=np.uint8), W, np.array(self.UV, dtype=np.float32))
 
 
 # ------------------------------------------------------------------ 部位
@@ -194,7 +297,7 @@ def bone_len(B, name):
 
 
 def plate(m, fr, bone, half, at, R=None, slot=ARMOR, mt=M_PAINT, c=0.25, top=(1.0, 1.0), bottom=(1.0, 1.0),
-          front=1, grooves=1, bolts=True, s=1.0, vents=0, trim=False):
+          front=1, grooves=1, bolts=True, s=1.0, vents=0, trim=False, rivets=0, glow=0):
     """細部の付いた装甲板: 本体の箱、前面の溝（パネルライン）、四隅のボルト、通気口のスリット、縁取り（trim）。
     front: 前面の向き（局所 z の符号。骨の座標系は +1、モデル空間は -1）"""
     hx, hy, hz = half
@@ -224,6 +327,18 @@ def plate(m, fr, bone, half, at, R=None, slot=ARMOR, mt=M_PAINT, c=0.25, top=(1.
         for ey in (-1, 1):
             y = ey * hy * 0.94
             m.add(fr, cbox(fx(y) * 0.92, 0.004 * s, 0.003 * s, c=0.2) + [0, y, fz(y)], bone, MARK, M_METAL, at=at, R=R)
+    # 上下の縁に沿ったリベットの列
+    for i in range(rivets):
+        t = (i + 1) / (rivets + 1) * 2.0 - 1.0
+        for ey in (-1, 1):
+            y = ey * hy * 0.78
+            m.add(fr, cbox(0.0045 * s, 0.0045 * s, 0.0026 * s, c=0.3) + [t * fx(y) * 0.78, y, fz(y)], bone, INNER, M_FRAME, at=at, R=R)
+    # 発光の線（動力の光）: 前面の傾きに合わせて縦に置く
+    if glow:
+        slope = math.atan(front * hz * (top[1] - bottom[1]) / (2.0 * hy))
+        for ex in ((1,) if glow == 1 else (-1, 1)):
+            strip = cbox(0.0036 * s, hy * 0.34, 0.0022 * s, c=0.2) @ rot(ax=slope).T
+            m.add(fr, strip + [ex * fx(0.0) * 0.62, -hy * 0.05, fz(0.0)], bone, LENS, M_LENS, at=at, R=R)
 
 
 def piston(m, fr, bone, a, b, r, s):
@@ -243,6 +358,42 @@ def piston(m, fr, bone, a, b, r, s):
     m.add(fr, cyl(r, r, ln * 0.55, n=8), bone, INNER, M_FRAME, at=a + y * ln * 0.28, R=R)
     m.add(fr, cyl(r * 0.55, r * 0.55, ln * 0.5, n=8), bone, METAL, M_METAL, at=a + y * ln * 0.72, R=R)
     m.add(fr, cyl(r * 1.25, r * 1.25, r * 1.6, n=8, axis="x"), bone, DARK, M_FRAME, at=a, R=R)
+
+
+def cable(m, fr, bone, pts, r, slot=HOSE, mt=M_RUBBER, n=8):
+    """ケーブル・配管: 点を順につなぐ円柱の列（継ぎ目に玉を置かず、少し重ねる）"""
+    pts = [np.asarray(q, dtype=np.float64) for q in pts]
+    for a, b in zip(pts[:-1], pts[1:]):
+        dv = b - a
+        ln = float(np.linalg.norm(dv))
+        if ln < 1e-6:
+            continue
+        y = dv / ln
+        u = np.array([1.0, 0, 0]) if abs(y[0]) < 0.9 else np.array([0, 0, 1.0])
+        x = np.cross(y, u)
+        x /= np.linalg.norm(x)
+        z = np.cross(x, y)
+        m.add(fr, cyl(r, r, ln + r * 1.2, n=n), bone, slot, mt, at=(a + b) * 0.5, R=np.stack([x, y, z], axis=1))
+
+
+SEG7 = {"0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc", "5": "afgcd", "6": "afgedc", "7": "abc", "8": "abcdefg", "9": "abcdfg"}
+
+
+def digits(m, fr, bone, text, at, h, s, xdir=-1.0, front=-1.0, slot=MARK):
+    """機体番号（7 セグメント風の数字、薄い箱）。at は 1 文字目の中心。xdir: 文字を進める向き（前から見て右へ = -1）"""
+    w = h * 0.5
+    t = h * 0.09
+    th = 0.0014 * s
+    for k, chd in enumerate(text):
+        cx = at[0] + xdir * k * w * 1.75
+        for seg in SEG7.get(chd, ""):
+            if seg in "adg":
+                half = (w * 0.5, t, th)
+                off = (0.0, {"a": h * 0.5, "g": 0.0, "d": -h * 0.5}[seg])
+            else:
+                half = (t, h * 0.25 - t * 0.4, th)
+                off = (xdir * w * 0.5 * (1 if seg in "bc" else -1), h * 0.25 * (1 if seg in "bf" else -1))
+            m.add(fr, cbox(*half, c=0.2), bone, slot, M_PAINT, at=[cx + off[0], at[1] + off[1], at[2] + front * th], wear=False)
 
 
 def build(B, d):
@@ -285,7 +436,7 @@ def build(B, d):
         m.add(W, cyl(cw * s * k, cw * 0.95 * s * k, 2 * chh * s, n=16), "Chest", ARMOR, M_PAINT, at=cc)
         hz = cc[2] - cw * 0.95 * s * k
     else:
-        plate(m, W, "Chest", (cw * s * k, chh * s, cd * s * k), cc, c=0.22, top=(0.95, 0.9), bottom=(0.95, 1.0), front=-1, grooves=0, s=s)
+        plate(m, W, "Chest", (cw * s * k, chh * s, cd * s * k), cc, c=0.22, top=(0.95, 0.9), bottom=(0.95, 1.0), front=-1, grooves=0, s=s, rivets=3)
         hz = cc[2] - cd * s * k
     # 胸の側面の装甲と通気口
     for sx in (-1, 1):
@@ -297,7 +448,15 @@ def build(B, d):
     for i in range(4):
         m.add(W, cbox(cw * 0.62 * s * k, 0.005 * s, 0.006 * s, c=0.2), "Chest", DARK, M_FRAME, at=[lc[0], lc[1] + (0.04 - i * 0.025) * s, lz - 0.002 * s])
     # ハッチ（盛り上がった板・取っ手・蝶番・覗き窓・ボルト）
-    plate(m, W, "Chest", (cw * 0.72 * s * k, 0.095 * s, 0.016 * s), [cc[0], cc[1] - 0.01 * s, hz - 0.012 * s], c=0.3, front=-1, grooves=1, s=s)
+    plate(m, W, "Chest", (cw * 0.72 * s * k, 0.095 * s, 0.016 * s), [cc[0], cc[1] - 0.01 * s, hz - 0.012 * s], c=0.3, front=-1, grooves=1, s=s, rivets=2)
+    # 機体番号（ハッチの左下。前から見て読める向き）
+    num = "".join(ch for ch in str(d.get("number", "")) if ch.isdigit())[-2:]
+    if num:
+        digits(m, W, "Chest", num, [cc[0] + cw * 0.6 * s * k, cc[1] - 0.062 * s, hz - 0.028 * s], 0.032 * s, s)
+    # 動力の光（胸の両脇の縦の線）と、上面の吊り金具
+    for sx in (-1, 1):
+        m.add(W, cbox(0.0038 * s, 0.045 * s, 0.003 * s, c=0.2), "Chest", LENS, M_LENS, at=[cc[0] + sx * cw * 0.86 * s * k, cc[1] - 0.005 * s, hz + 0.001 * s])
+        m.add(W, cbox(0.008 * s, 0.016 * s, 0.012 * s, c=0.3), "Chest", METAL, M_METAL, at=[cc[0] + sx * cw * 0.62 * s * k, cc[1] + chh * s + 0.006 * s, cc[2] - cd * 0.35 * s * k])
     m.add(W, cyl(0.015 * s, 0.015 * s, cw * 1.4 * s * k, n=8, axis="x"), "Chest", METAL, M_METAL, at=[cc[0], cc[1] + 0.1 * s, hz - 0.006 * s])
     for sx in (-1, 1):
         m.add(W, cbox(0.022 * s, 0.014 * s, 0.014 * s, c=0.3), "Chest", INNER, M_FRAME, at=[cc[0] + sx * cw * 0.55 * s * k, cc[1] + 0.1 * s, hz - 0.012 * s])
@@ -320,7 +479,15 @@ def build(B, d):
     bp = d.get("back", "pack")
     bc = chest + [0, 0.10 * s, (cd + 0.065) * s * k]
     if bp == "pack":
-        plate(m, W, "Chest", (0.16 * s * k, 0.135 * s, 0.075 * s), bc, slot=ARMOR2, front=1, grooves=2, vents=4, s=s)
+        plate(m, W, "Chest", (0.16 * s * k, 0.135 * s, 0.075 * s), bc, slot=ARMOR2, front=1, grooves=2, vents=4, s=s, rivets=3, glow=2)
+        # 推進器のノズル（背嚢の下）と、上面の取っ手
+        for sx in (-1, 1):
+            nz = bc + [sx * 0.085 * s * k, -0.165 * s, 0.02 * s]
+            m.add(W, cyl(0.04 * s, 0.026 * s, 0.07 * s, n=12), "Chest", METAL, M_METAL, at=nz)
+            m.add(W, cyl(0.03 * s, 0.03 * s, 0.006 * s, n=12), "Chest", DARK, M_FRAME, at=nz + [0, -0.034 * s, 0])
+            m.add(W, cyl(0.014 * s, 0.014 * s, 0.006 * s, n=8), "Chest", LENS, M_LENS, at=nz + [0, -0.036 * s, 0])
+        cable(m, W, "Chest", [bc + [-0.07 * s * k, 0.15 * s, 0.03 * s], bc + [-0.07 * s * k, 0.172 * s, 0.03 * s],
+                              bc + [0.07 * s * k, 0.172 * s, 0.03 * s], bc + [0.07 * s * k, 0.15 * s, 0.03 * s]], 0.007 * s, slot=METAL, mt=M_METAL, n=6)
         for sx in (-1, 1):
             m.add(W, cyl(0.024 * s, 0.028 * s, 0.11 * s, n=10), "Chest", METAL, M_METAL, at=bc + [sx * 0.105 * s * k, 0.18 * s, 0.02 * s])
             m.add(W, cyl(0.03 * s, 0.03 * s, 0.025 * s, n=10), "Chest", DARK, M_FRAME, at=bc + [sx * 0.105 * s * k, 0.24 * s, 0.02 * s])
@@ -333,7 +500,10 @@ def build(B, d):
                 m.add(W, cyl(0.061 * s, 0.061 * s, 0.012 * s, n=14), "Chest", DARK, M_FRAME, at=bc + [sx * 0.085 * s * k, yy * s, 0.01 * s])
         m.add(W, cbox(0.05 * s, 0.11 * s, 0.03 * s, c=0.3), "Chest", INNER, M_FRAME, at=bc + [0, 0, -0.03 * s])
     elif bp == "flat":
-        plate(m, W, "Chest", (0.14 * s * k, 0.125 * s, 0.04 * s), bc + [0, 0, -0.03 * s], slot=INNER, mt=M_FRAME, front=1, grooves=2, s=s)
+        plate(m, W, "Chest", (0.14 * s * k, 0.125 * s, 0.04 * s), bc + [0, 0, -0.03 * s], slot=INNER, mt=M_FRAME, front=1, grooves=2, s=s, rivets=2, glow=2)
+        nz = bc + [0, -0.15 * s, -0.02 * s]
+        m.add(W, cyl(0.036 * s, 0.024 * s, 0.06 * s, n=12), "Chest", METAL, M_METAL, at=nz)
+        m.add(W, cyl(0.012 * s, 0.012 * s, 0.006 * s, n=8), "Chest", LENS, M_LENS, at=nz + [0, -0.031 * s, 0])
     elif bp == "mantle":
         for i in range(3):
             plate(m, W, "Chest", (0.21 * s * k, 0.07 * s, 0.018 * s), bc + [0, 0.06 * s - i * 0.11 * s, 0.02 * s + i * 0.012 * s], R=rot(ax=0.12),
@@ -348,6 +518,7 @@ def build(B, d):
     for nm, sx in (("Left", -1), ("Right", 1)):
         _leg(m, B, nm, sx, s, k, d, feats)
     _features(m, B, s, k, d, feats, cc, hz, bc, cw, cd)
+    _details(m, B, s, k, d)
 
     # --- 揺れ物: 頭から背中へ垂れる配線（髪の骨）、腰の垂れ板（帯の骨）
     if d.get("hose"):
@@ -466,7 +637,7 @@ def _arm(m, B, nm, sx, s, k, d, feats):
     fa = d.get("forearm", "block")
     m.add(fr, cyl(0.036 * s * k, 0.034 * s * k, ln * 0.9, n=12), la, INNER, M_FRAME, at=(0, ln * 0.5, 0))
     if fa == "heavy":
-        plate(m, fr, la, (0.084 * s * k, ln * 0.44, 0.086 * s * k), (0.005 * s, ln * 0.52, 0), top=(0.9, 0.9), front=1, grooves=2, s=s)
+        plate(m, fr, la, (0.084 * s * k, ln * 0.44, 0.086 * s * k), (0.005 * s, ln * 0.52, 0), top=(0.9, 0.9), front=1, grooves=2, s=s, rivets=2, glow=1)
     elif fa == "blade":
         plate(m, fr, la, (0.062 * s * k, ln * 0.42, 0.066 * s * k), (0.0, ln * 0.52, 0), top=(0.9, 0.9), front=1, grooves=1, s=s)
         m.add(fr, cbox(0.009 * s, ln * 0.5, 0.034 * s, c=0.3, top=(1.0, 0.35)), la, ARMOR2, M_PAINT, at=(0.07 * s * k, ln * 0.55, 0.0))
@@ -476,9 +647,9 @@ def _arm(m, B, nm, sx, s, k, d, feats):
         plate(m, fr, la, (0.11 * s * k, ln * 0.58, 0.012 * s), (0.08 * s * k, ln * 0.5, 0.0), R=rot(ay=math.pi * 0.5), slot=ARMOR2,
               top=(0.85, 1.0), front=1, grooves=2, s=s)
     elif fa == "slim":
-        plate(m, fr, la, (0.055 * s * k, ln * 0.38, 0.058 * s * k), (0.0, ln * 0.5, 0), top=(0.85, 0.85), front=1, grooves=1, s=s)
+        plate(m, fr, la, (0.055 * s * k, ln * 0.38, 0.058 * s * k), (0.0, ln * 0.5, 0), top=(0.85, 0.85), front=1, grooves=1, s=s, glow=1)
     else:
-        plate(m, fr, la, (0.08 * s * k, ln * 0.44, 0.084 * s * k), (0.004 * s, ln * 0.52, 0), top=(0.9, 0.88), front=1, grooves=2, s=s)
+        plate(m, fr, la, (0.08 * s * k, ln * 0.44, 0.084 * s * k), (0.004 * s, ln * 0.52, 0), top=(0.9, 0.88), front=1, grooves=2, s=s, rivets=2, glow=1)
     m.add(fr, cbox(0.084 * s * k, 0.018 * s, 0.088 * s * k, c=0.3), la, DARK, M_FRAME, at=(0.004 * s, ln * 0.96, 0))
     if "hazard" in feats:
         for i in range(4):
@@ -537,7 +708,7 @@ def _leg(m, B, nm, sx, s, k, d, feats):
     sk = 1.12 if sh == "heavy" else (0.92 if sh == "slim" else 1.0)
     m.add(fr, cyl(0.046 * s * k, 0.044 * s * k, ln * 0.95, n=12), ll, INNER, M_FRAME, at=(0, ln * 0.5, 0))
     plate(m, fr, ll, (0.088 * s * k * sk, ln * 0.42, 0.098 * s * k * sk), (0.004 * s, ln * 0.55, 0.0), c=0.22,
-          top=(0.85, 0.82), bottom=(1.2, 1.18), front=1, grooves=2, s=s)
+          top=(0.85, 0.82), bottom=(1.2, 1.18), front=1, grooves=2, s=s, rivets=2, glow=2)
     # 脛の後ろの通気口と側面の板
     for i in range(4):
         m.add(fr, cbox(0.045 * s * k, 0.004 * s, 0.004 * s, c=0.2), ll, DARK, M_FRAME,
@@ -663,6 +834,52 @@ def _features(m, B, s, k, d, feats, cc, hz, bc, cw, cd):
         m.add(W, cbox(0.016 * s, 0.016 * s, 0.012 * s, c=0.3), "Hips", MARK, M_METAL, at=hips + [-0.19 * s * k, 0.05 * s, -0.09 * s], R=rot(ax=-0.35))
 
 
+def _details(m, B, s, k, d):
+    """全機共通の細部: 関節の軸、腕と脚の配管、足首のシリンダー、ふくらはぎの補助ノズル、頭の側面の感知器と後ろの排気口"""
+    for nm, sx in (("Left", -1), ("Right", 1)):
+        # 肘の軸と上腕の配管
+        ua = nm + "UpperArm"
+        fr = m.frame_bone(ua, side=sx)
+        ln = bone_len(B, ua)
+        m.add(fr, cyl(0.02 * s * k, 0.02 * s * k, 0.097 * s * k, n=8, axis="x"), ua, METAL, M_METAL, at=(0, ln, 0))
+        cable(m, fr, ua, [(-0.03 * s * k, ln * 0.12, 0.04 * s * k), (-0.045 * s * k, ln * 0.5, 0.062 * s * k), (-0.03 * s * k, ln * 0.9, 0.04 * s * k)], 0.008 * s)
+        # 手首の輪
+        la = nm + "LowerArm"
+        fr = m.frame_bone(la, side=sx)
+        ln = bone_len(B, la)
+        m.add(fr, cyl(0.04 * s * k, 0.04 * s * k, 0.014 * s, n=12), la, METAL, M_METAL, at=(0, ln * 0.995, 0))
+        # 膝の軸、足首のシリンダー、ふくらはぎの補助ノズル
+        ll = nm + "LowerLeg"
+        fr = m.frame_bone(ll, side=sx)
+        ln = bone_len(B, ll)
+        sk = 1.12 if d.get("shin", "roller") == "heavy" else (0.92 if d.get("shin", "roller") == "slim" else 1.0)
+        m.add(fr, cyl(0.022 * s * k, 0.022 * s * k, 0.112 * s * k, n=8, axis="x"), ll, METAL, M_METAL, at=(0, 0, 0))
+        for ox in (-1, 1):
+            piston(m, fr, ll, (ox * 0.045 * s * k, ln * 0.74, -0.085 * s * k * sk), (ox * 0.04 * s * k, ln * 1.0, -0.07 * s * k), 0.011 * s, s)
+        nz = np.array([0.0, ln * 0.3, -0.098 * s * k * sk])
+        m.add(fr, cyl(0.03 * s, 0.021 * s, 0.045 * s, n=10, axis="z"), ll, ARMOR2, M_PAINT, at=nz, R=rot(ax=-0.5))
+        m.add(fr, cyl(0.02 * s, 0.02 * s, 0.006 * s, n=10, axis="z"), ll, DARK, M_FRAME, at=nz + [0, 0.011 * s, -0.021 * s], R=rot(ax=-0.5))
+        # 太腿の後ろの配管
+        ul = nm + "UpperLeg"
+        fr = m.frame_bone(ul, side=sx)
+        ln = bone_len(B, ul)
+        cable(m, fr, ul, [(0.03 * s * k, ln * 0.2, -0.066 * s * k), (0.045 * s * k, ln * 0.55, -0.082 * s * k), (0.03 * s * k, ln * 0.92, -0.066 * s * k)], 0.009 * s)
+    # 頭: 側面の感知器（円盤と短い棒）、後ろの排気口、顎の装甲
+    W = m.frame_world()
+    head = B.j("Head")
+    hc = head + [0, 0.02 * s, -0.035 * s]
+    kind = d.get("head", "turret")
+    if kind != "visor":
+        for sx in (-1, 1):
+            ex = 0.094 * s if kind in ("turret", "mono") else 0.09 * s
+            m.add(W, cyl(0.024 * s, 0.024 * s, 0.022 * s, n=10, axis="x"), "Head", INNER, M_FRAME, at=hc + [sx * ex, 0.0, 0.012 * s])
+            m.add(W, cyl(0.012 * s, 0.012 * s, 0.03 * s, n=8, axis="x"), "Head", METAL, M_METAL, at=hc + [sx * ex, 0.0, 0.012 * s])
+    m.add(W, cbox(0.05 * s, 0.026 * s, 0.018 * s, c=0.3), "Head", DARK, M_FRAME, at=hc + [0, -0.005 * s, 0.092 * s])
+    for i in range(3):
+        m.add(W, cbox(0.036 * s, 0.003 * s, 0.003 * s, c=0.2), "Head", METAL, M_METAL, at=hc + [0, (-0.016 + i * 0.011) * s, 0.111 * s])
+    m.add(W, cbox(0.04 * s, 0.014 * s, 0.022 * s, c=0.3, bottom=(0.7, 0.8)), "Head", ARMOR2, M_PAINT, at=hc + [0, -0.062 * s, -0.062 * s])
+
+
 # ------------------------------------------------------------------ 出力
 
 def generate(cid, costume_id):
@@ -676,11 +893,11 @@ def generate(cid, costume_id):
             design.update(c.get("model", {}).get("mech", {}))
     B = Body(rig, model, cj.get("body", {}))
     m = build(B, design)
-    verts, normals, faces, colors, joints, weights = m.mesh()
+    verts, normals, faces, colors, joints, weights, uvs = m.mesh()
     out = ROOT / f"assets/characters/{cid}/{cid}_{costume_id}.glb"
     out.parent.mkdir(parents=True, exist_ok=True)
-    write_glb(out, rig, verts, normals, faces, colors, joints, weights, compact=True)
-    print(f"{cid}/{costume_id}: {len(faces)} tris, wrote {out.relative_to(ROOT)} ({out.stat().st_size // 1024} KB) in {time.time() - t0:.1f}s")
+    write_glb(out, rig, verts, normals, faces, colors, joints, weights, compact=True, uvs=uvs)
+    print(f"{cid}/{costume_id}: {len(faces)} tris {len(verts)} verts, wrote {out.relative_to(ROOT)} ({out.stat().st_size // 1024} KB) in {time.time() - t0:.1f}s")
 
 
 def main():
