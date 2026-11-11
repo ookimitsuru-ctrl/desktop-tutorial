@@ -306,7 +306,7 @@ func _on_event(e: Dictionary) -> void:
 			var gheavy := int(e["weight"]) >= SE.W_HEAVY
 			vfx.metal_sparks(gpos, (_pos(att, 0.3) - _pos(df, 0.0)) + Vector3(0, 0.8, 0), 0.45 if gheavy else 0.2)
 			fighters[df].on_block(gheavy)
-			AudioHub.sfx("guard_heavy" if int(e["weight"]) >= SE.W_HEAVY else "guard", -2.0)
+			AudioHub.sfx("guard_heavy" if int(e["weight"]) >= SE.W_HEAVY else "guard", 0.5)
 			cam.add_trauma(0.08)
 			InputHub.vibrate(att, 10, 0.3)
 			if bool(e["crush"]):
@@ -423,7 +423,7 @@ func _on_hit(e: Dictionary) -> void:
 		vfx.metal_sparks(p, sdir.normalized() * 0.8 + Vector3(0, 0.75, 0), [0.25, 0.45, 0.8, 0.9][clampi(w, 0, 3)] + (0.2 if ch else 0.0))
 		if w >= SE.W_HEAVY or ch:
 			cam.punch(1.0 if ch else 0.7)
-		AudioHub.sfx("hit_" + ["light", "medium", "heavy", "heavy"][clampi(w, 0, 3)], -1.0 if w >= SE.W_HEAVY else -3.0)
+		AudioHub.sfx("hit_" + ["light", "medium", "heavy", "heavy"][clampi(w, 0, 3)], 1.5 if w >= SE.W_HEAVY else 0.0)
 		if ch:
 			AudioHub.sfx("counter", -2.0)
 		cam.add_trauma([0.15, 0.25, 0.4, 0.38][clampi(w, 0, 3)] + (0.15 if ch else 0.0))
