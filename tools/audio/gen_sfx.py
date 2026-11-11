@@ -90,7 +90,7 @@ def finish(x, peak_db=-1.0, fade=0.01):
 def save(name, x, peak_db=-1.0):
     OUT.mkdir(parents=True, exist_ok=True)
     if name in ("slam", "land", "land_heavy", "wall_hit", "wall_break") or name.startswith("step_"):
-        x = punchy(x, 0.6)
+        x = punchy(x, 0.5, 2.2)
     sf.write(OUT / f"{name}.wav", finish(x, peak_db).astype(np.float32), SR, subtype="PCM_16")
 
 
@@ -159,55 +159,80 @@ def crush(x, drive):
     return sat(x / (np.max(np.abs(x)) + 1e-9), drive)
 
 
-def punchy(x, cut=0.72):
-    """スマホの小さなスピーカー向けの整音: 再生できない重低音を削り、金属の響く帯域を前に出してから軽く歪ませる
-    （重低音が大きいと、最大音量を合わせたときに肝心の金属音が小さくなる）"""
-    x = hp(x, 85)
-    x = x - cut * lp(x, 190)
-    x = x + 0.35 * bp(x, 1800, 6500)
-    return sat(x / (np.max(np.abs(x)) + 1e-9), 1.6)
+def punchy(x, cut=0.35, drive=2.0, crack=None, crack_amt=0.0):
+    """スマホの小さなスピーカー向けの整音: 再生できない超低音だけを削り、歪みで倍音を足して密度と重さを出す
+    （超低音が大きいと、最大音量を合わせたときに聞こえる帯域が小さくなる）"""
+    x = hp(x, 60)
+    x = x - cut * lp(x, 110)
+    y = sat(x / (np.max(np.abs(x)) + 1e-9), drive)
+    if crack is not None:
+        # 当たった瞬間の硬い破裂音は、歪ませた後に足す（歪みに埋もれて「こもった音」にならないように）
+        c = crack / (np.max(np.abs(crack)) + 1e-9) * crack_amt
+        y = mix(y, c)
+    return y
+
+
+def crack(dur, seed, lo, hi):
+    """硬い面どうしが当たった瞬間の破裂音（10 ms 前後の広い帯域の雑音）。これが無いと「こもった音」になる"""
+    r = np.random.default_rng(seed)
+    n = int(SR * dur)
+    return bp(r.standard_normal(n), lo, hi) * env(n, 0.0002, dur * 0.3)
+
+
+def knock(f0, dur, seed, n=10):
+    """硬い塊どうしが当たった鈍い響き: 少数の低い倍音がすぐに消える（金属のようには鳴り続けない）"""
+    return plate(f0, dur, seed, n, 0.65, 5.0)
+
+
+def boom(f0, f1, dur, drive):
+    """重さの芯: 音程が落ちる低い胴鳴りを強く歪ませ、150〜400 Hz に倍音を作る（小さなスピーカーでも重く聞こえる）"""
+    n = int(SR * dur)
+    return sat(sweep(f0, f1, dur) * env(n, 0.0015, dur * 0.3), drive)
 
 
 def hit(weight, var):
-    """機甲兵どうしの打撃: 鋼と鋼が激しくぶつかる音。鋭い衝突音 + 鋼板の響き + 胴の低い衝撃 + 跳ねる装甲の音"""
-    j = 1 + var * 0.07
+    """打撃: 硬くて重いものどうしがぶつかる音。短く硬い破裂音 + すぐ消える鈍い響き + 重い胴鳴り + 砕ける音"""
+    j = 1 + var * 0.06
     sd = {"light": 100, "medium": 200, "heavy": 300}[weight] + var * 7
     if weight == "light":
-        x = mix(strike(0.03, sd) * 1.0, plate(640 * j, 0.32, sd + 1, 30, 1.25) * 1.0, plate(1480 * j, 0.2, sd + 2, 16, 1.3) * 0.45,
-                thump(120 * j, 0.1, 2.6) * 0.75, sat(sweep(300 * j, 110, 0.09) * env(int(SR * 0.09), 0.001, 0.03), 3.0) * 0.6)
-        return reverb(crush(x, 2.4), 0.25, 0.1)
+        ck = mix(crack(0.0256, sd, 900, 6500), knock(900 * j, 0.05, sd + 5, 8) * 0.5)
+        x = mix(knock(340 * j, 0.13, sd + 1) * 0.8, boom(300 * j, 95, 0.14, 3.5) * 1.1,
+                thump(135 * j, 0.13, 3.2) * 1.0, lp(noise(0.06), 1400) * env(int(SR * 0.06), 0.001, 0.015) * 0.5)
+        return reverb(punchy(x, 0.5, 2.2, ck, 1.0), 0.18, 0.06)
     if weight == "medium":
-        x = mix(strike(0.045, sd) * 1.1, plate(410 * j, 0.55, sd + 1, 36, 1.2) * 1.0, plate(960 * j, 0.35, sd + 2, 20, 1.3) * 0.5,
-                thump(88 * j, 0.2, 3.0) * 1.0, sat(sweep(220 * j, 70, 0.2) * env(int(SR * 0.2), 0.001, 0.07), 3.5) * 0.8,
-                np.sin(2 * np.pi * 50 * t(0.3)) * env(int(SR * 0.3), 0.002, 0.1) * 0.6, clank(sd + 3, 900, 2, 0.14) * 0.3)
-        return reverb(crush(x, 2.8), 0.4, 0.14)
-    x = mix(strike(0.07, sd, 1200, 11000) * 1.2, plate(250 * j, 0.95, sd + 1, 40, 1.15) * 1.0, plate(590 * j, 0.6, sd + 2, 26, 1.25) * 0.6,
-            plate(1350 * j, 0.3, sd + 4, 14, 1.3) * 0.3,
-            thump(68 * j, 0.38, 3.4) * 1.15, sat(sweep(180 * j, 48, 0.4) * env(int(SR * 0.4), 0.001, 0.13), 4.5) * 0.9,
-            sat(sweep(46, 30, 0.6) * env(int(SR * 0.6), 0.003, 0.22), 1.8) * 0.8,
-            lp(noise(0.3), 1800) * env(int(SR * 0.3), 0.001, 0.07) * 0.5, clank(sd + 3, 700, 4, 0.32) * 0.38)
-    return reverb(crush(x, 3.2), 0.6, 0.2)
+        ck = mix(crack(0.038400000000000004, sd, 800, 6000), knock(700 * j, 0.07, sd + 5, 8) * 0.5)
+        x = mix(knock(250 * j, 0.19, sd + 1) * 0.85, boom(240 * j, 62, 0.26, 4.2) * 1.2,
+                thump(105 * j, 0.24, 3.8) * 1.0, np.sin(2 * np.pi * 52 * t(0.32)) * env(int(SR * 0.32), 0.002, 0.11) * 0.4,
+                lp(noise(0.16), 1500) * env(int(SR * 0.16), 0.001, 0.035) * 0.6)
+        return reverb(punchy(x, 0.5, 2.6, ck, 1.0), 0.26, 0.09)
+    ck = mix(crack(0.064, sd, 700, 5500), knock(560 * j, 0.1, sd + 5, 10) * 0.55)
+    x = mix(knock(175 * j, 0.3, sd + 1, 12) * 0.9, knock(430 * j, 0.16, sd + 2, 8) * 0.35,
+            boom(200 * j, 44, 0.48, 5.0) * 1.3, thump(86 * j, 0.42, 4.2) * 1.0,
+            sat(sweep(48, 30, 0.6) * env(int(SR * 0.6), 0.003, 0.22), 1.8) * 0.45,
+            lp(noise(0.34), 1300) * env(int(SR * 0.34), 0.001, 0.075) * 0.75,
+            lp(noise(0.6), 700) * env(int(SR * 0.6), 0.02, 0.16) * 0.3)
+    return reverb(punchy(x, 0.5, 3.0, ck, 1.0), 0.42, 0.14)
 
 
 def counter():
-    """カウンター: 重い打撃に、装甲が裂けるような高い金属の悲鳴を重ねる"""
-    tt = t(0.7)
-    shriek = plate(1900, 0.7, 901, 22, 1.4, 5.0) * env(len(tt), 0.001, 0.2)
-    return reverb(mix(hit("heavy", 2) * 1.0, shriek * 0.4, strike(0.09, 902, 900, 12000) * 0.6, thump(52, 0.5, 3.4) * 0.7,
-                      clank(903, 1100, 4, 0.35) * 0.3), 0.6, 0.2)
+    """カウンター: 強い打撃に、もう一段深い衝撃と砕ける音を重ねる"""
+    return reverb(mix(hit("heavy", 2) * 1.0, strike(0.05, 902, 700, 5000) * 0.35, boom(150, 36, 0.6, 5.0) * 0.6,
+                      lp(noise(0.5), 1100) * env(int(SR * 0.5), 0.004, 0.12) * 0.4), 0.5, 0.15)
 
 
 def guard(heavy, var):
-    """ガード: 装甲で受け止める「ガキィン」。打撃より高く、長く鳴る"""
-    j = 1 + var * 0.08
+    """ガード: 硬い面で受け止める「ゴツッ」。打撃より短く、締まった音"""
+    j = 1 + var * 0.07
     sd = (500 if heavy else 400) + var * 7
     if heavy:
-        x = mix(strike(0.04, sd) * 0.9, plate(520 * j, 0.7, sd + 1, 36, 1.35) * 1.0, plate(1240 * j, 0.5, sd + 2, 22, 1.4) * 0.6,
-                thump(110 * j, 0.16, 2.8) * 0.7, clank(sd + 3, 1300, 2, 0.12) * 0.25)
-        return reverb(crush(x, 2.2), 0.4, 0.14)
-    x = mix(strike(0.025, sd) * 0.8, plate(820 * j, 0.42, sd + 1, 30, 1.4) * 1.0, plate(1900 * j, 0.28, sd + 2, 16, 1.4) * 0.5,
-            thump(150 * j, 0.08, 2.4) * 0.45)
-    return reverb(crush(x, 2.0), 0.25, 0.1)
+        ck = mix(crack(0.0416, sd, 900, 6500), knock(820 * j, 0.07, sd + 5, 8) * 0.6)
+        x = mix(knock(310 * j, 0.17, sd + 1) * 1.0, boom(260 * j, 90, 0.18, 3.6) * 1.0,
+                thump(125 * j, 0.17, 3.2) * 0.9, lp(noise(0.08), 1800) * env(int(SR * 0.08), 0.001, 0.02) * 0.5)
+        return reverb(punchy(x, 0.5, 2.2, ck, 1.0), 0.22, 0.08)
+    ck = mix(crack(0.0256, sd, 1000, 7000), knock(1100 * j, 0.05, sd + 5, 8) * 0.6)
+    x = mix(knock(440 * j, 0.11, sd + 1) * 1.0, boom(320 * j, 130, 0.1, 3.0) * 0.8,
+            thump(165 * j, 0.09, 2.8) * 0.7)
+    return punchy(x, 0.5, 2.0, ck, 1.0)
 
 
 def swish(heavy, var):
@@ -279,13 +304,13 @@ def splash(dur=0.9):
 
 def main():
     for k in range(4):
-        save(f"hit_light_{k + 1}", punchy(hit("light", k)), -1.5)
-        save(f"hit_medium_{k + 1}", punchy(hit("medium", k)), -0.8)
-        save(f"hit_heavy_{k + 1}", punchy(hit("heavy", k)), -0.3)
-    save("counter", punchy(counter()), -0.5)
+        save(f"hit_light_{k + 1}", hit("light", k), -1.5)
+        save(f"hit_medium_{k + 1}", hit("medium", k), -0.8)
+        save(f"hit_heavy_{k + 1}", hit("heavy", k), -0.3)
+    save("counter", counter(), -0.5)
     for k in range(3):
-        save(f"guard_{k + 1}", punchy(guard(False, k)), -2.0)
-        save(f"guard_heavy_{k + 1}", punchy(guard(True, k)), -1.0)
+        save(f"guard_{k + 1}", guard(False, k), -2.0)
+        save(f"guard_heavy_{k + 1}", guard(True, k), -1.0)
         save(f"swish_{k + 1}", swish(False, k), -9.0)
         save(f"swish_heavy_{k + 1}", swish(True, k), -6.0)
     save("evade", whoosh(0.25, 400, 1600, flutter=28), -8.0)
@@ -293,17 +318,17 @@ def main():
     save("throw_break", mix(hp(noise(0.006), 3000) * env(int(SR * 0.006), 0.0005, 0.002), chime([2480, 3720], 0.25) * 0.5,
                             bp(noise(0.12), 1500, 7000) * env(int(SR * 0.12), 0.001, 0.03)), -1.5)
     save("slam", reverb(mix(thud(0.6, 95, 28, 0.9) * 1.2, bp(noise(0.3), 200, 2000) * env(int(SR * 0.3), 0.002, 0.08) * 0.6,
-                            thump(62, 0.5, 3.0) * 0.8, plate(170, 1.0, 601, 40, 1.1) * 0.8, strike(0.06, 602, 1000, 9000) * 0.7,
-                            clank(603, 600, 5, 0.4) * 0.4), 0.5, 0.2), -0.5)
+                            thump(62, 0.5, 3.0) * 0.8, knock(160, 0.34, 601, 12) * 0.9, strike(0.05, 602, 500, 3500) * 0.6, boom(190, 40, 0.5, 5.0) * 1.0,
+                            lp(noise(0.5), 900) * env(int(SR * 0.5), 0.01, 0.14) * 0.4), 0.5, 0.2), -0.5)
     save("launch", mix(whoosh(0.3, 300, 1800) * 0.7, thud(0.15, 140, 70, 0.2) * 0.6), -4.0)
-    save("land", mix(thud(0.25, 120, 45, 0.7), plate(300, 0.35, 611, 24, 1.1) * 0.5, strike(0.02, 612) * 0.3), -3.0)
-    save("land_heavy", reverb(mix(thud(0.45, 100, 32, 0.9), plate(210, 0.7, 621, 32, 1.1) * 0.6, strike(0.04, 622) * 0.4,
-                                  clank(623, 700, 3, 0.25) * 0.3), 0.35, 0.15), -1.0)
+    save("land", mix(thud(0.25, 120, 45, 0.7), knock(260, 0.14, 611) * 0.6, strike(0.02, 612, 600, 4000) * 0.3, boom(220, 70, 0.18, 3.5) * 0.7), -3.0)
+    save("land_heavy", reverb(mix(thud(0.45, 100, 32, 0.9), knock(190, 0.24, 621, 12) * 0.7, strike(0.04, 622, 500, 3500) * 0.4, boom(190, 48, 0.36, 4.5) * 0.9,
+                                  lp(noise(0.3), 1000) * env(int(SR * 0.3), 0.005, 0.08) * 0.4), 0.35, 0.15), -1.0)
     save("tech", mix(bp(noise(0.05), 600, 3000) * env(int(SR * 0.05), 0.001, 0.015), pad(np.zeros(int(SR * 0.08)), int(SR * 0.08)),
                      ), -7.0)
     save("wall_hit", reverb(mix(thud(0.45, 120, 40, 0.6), bp(noise(0.15), 300, 3000) * env(int(SR * 0.15), 0.001, 0.04),
-                                thump(75, 0.35, 2.8) * 0.7, plate(230, 0.9, 631, 38, 1.15) * 0.8, strike(0.05, 632, 1200, 10000) * 0.7,
-                                clank(633, 800, 4, 0.3) * 0.35), 0.45, 0.2), -0.5)
+                                thump(75, 0.35, 2.8) * 0.7, knock(200, 0.3, 631, 12) * 0.9, strike(0.05, 632, 500, 4000) * 0.7, boom(210, 46, 0.42, 5.0) * 1.0,
+                                lp(noise(0.4), 1100) * env(int(SR * 0.4), 0.005, 0.1) * 0.45), 0.45, 0.2), -0.5)
     save("wall_break", crumble(1.2), -0.5)
     save("ringout", mix(whoosh(0.7, 2000, 250) * 0.6, pad(np.zeros(int(SR * 0.45)), int(SR * 0.45))), -5.0)
     save("ringout_harbor", splash(1.0), -2.0)
@@ -324,7 +349,7 @@ def main():
     save("ui_vs", mix(hit("heavy", 1), whoosh(0.6, 200, 2400) * 0.5), -1.0)
     # 足音（重い機体の一歩）と、損傷時の漏電
     for k in range(3):
-        save(f"step_{k + 1}", mix(thud(0.16, 95 + 12 * k, 42, 0.5), plate(260 + 45 * k, 0.2, 641 + k, 18, 1.1) * 0.3,
+        save(f"step_{k + 1}", mix(thud(0.16, 95 + 12 * k, 42, 0.5), knock(200 + 30 * k, 0.1, 641 + k, 8) * 0.35,
                                   bp(noise(0.05), 800, 3500) * env(int(SR * 0.05), 0.001, 0.012) * 0.25), -5.0)
     tz = t(0.16)
     save("zap", bp(noise(0.16) * (np.sin(2 * np.pi * 95 * tz) > 0.2) * env(len(tz), 0.001, 0.06), 1800, 9000)
