@@ -31,6 +31,8 @@ var _slow := 0
 var _slow_div := 1
 var _slow_count := 0
 var _swish: Array[int] = [-1, -1]
+## PV の撮影用: 出来事が起きるたびに呼ばれる（撮影監督が画面上の位置を記録する）
+var event_tap: Callable = Callable()
 var _ended := false
 var _end_timer := 0.0
 var training := false
@@ -268,6 +270,8 @@ func _contact(att: int, def: int, level: int) -> Vector3:
 
 
 func _on_event(e: Dictionary) -> void:
+	if event_tap.is_valid():
+		event_tap.call(e)
 	var kind := String(e["kind"])
 	match kind:
 		"round_start":

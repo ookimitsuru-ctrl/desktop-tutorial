@@ -246,7 +246,33 @@ func _setup_match() -> Dictionary:
 	var hud: Node = match_node.get("hud")
 	(hud as CanvasLayer).visible = bool(sh.get("hud", true))
 	match_node.set("pv_ticks", 0)
+	match_node.set("event_tap", Callable(self, "_tap"))
 	return {"seed": Game.seed_value, "at": at, "event_tick": int(found.get("tick", -1))}
+
+
+## 試合中の出来事を、ショット内のフレームと画面上の位置つきで記録する（編集で擬音や集中線を置く位置に使う）
+func _tap(e: Dictionary) -> void:
+	var kind := String(e.get("kind", ""))
+	if not ["hit", "block", "launch", "wall_hit", "wall_broken", "landed", "ringout", "throw", "round_end"].has(kind):
+		return
+	var j := f - PRE - 1
+	if j < 0 or log_rows.is_empty():
+		return
+	var fighters: Array = match_node.get("fighters")
+	var who := int(e.get("defender", e.get("player", 0)))
+	var fv := fighters[clampi(who, 0, 1)] as FighterView
+	var cr: CameraRig = match_node.get("cam")
+	var wp := fv.head_world - Vector3(0, 0.3, 0)
+	if kind == "hit" or kind == "block":
+		var ov := fighters[1 - clampi(who, 0, 1)] as FighterView
+		wp = wp.lerp(ov.head_world - Vector3(0, 0.3, 0), 0.3)
+	var sp := cr.unproject_position(wp)
+	var vs := get_viewport().get_visible_rect().size
+	var row: Dictionary = log_rows[log_rows.size() - 1]
+	if not row.has("events"):
+		row["events"] = []
+	(row["events"] as Array).append({"kind": kind, "j": j, "x": sp.x / vs.x, "y": sp.y / vs.y, "weight": int(e.get("weight", 0)),
+		"ch": bool(e.get("ch", false)), "ko": bool(e.get("ko", false)), "throw": bool(e.get("throw", false))})
 
 
 func _update_match(j: int) -> void:
