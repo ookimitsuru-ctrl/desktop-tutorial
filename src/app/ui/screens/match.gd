@@ -235,6 +235,9 @@ func _input_for(i: int) -> int:
 	var src: Variant = sources[i]
 	if src is AIController:
 		return (src as AIController).next_input(world)
+	if src is Callable:
+		# 外部の入力源（QA ハーネスなど）。引数は SimWorld、戻り値は InputBits の u16
+		return int((src as Callable).call(world))
 	var player_idx := i
 	if Game.p_cpu[0] > 0 and i == 1:
 		player_idx = 0
