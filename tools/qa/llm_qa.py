@@ -95,6 +95,14 @@ class Qa:
         self.waiting_llm = False
         self.tail = collections.deque(maxlen=60)
         self.cur_match = 0
+        if a.carry:
+            # 前回の網羅（試行回数）を引き継ぎ、手薄なところから試す
+            prev = json.loads(pathlib.Path(a.carry).read_text())
+            for m in prev["matches"]:
+                sc = m["scenario"]
+                for c in sc["chars"]:
+                    self.cov_char[c] += 1
+                self.cov_stage[sc["stage"]] += 1
 
     def say(self, *x):
         s = time.strftime("%H:%M:%S ") + " ".join(str(i) for i in x)
@@ -138,8 +146,9 @@ class Qa:
         if self.llm is not None:
             try:
                 self.waiting_llm = True
-                ch = "(" + "|".join(f'"\\"{c}\\""' for c in chars) + ")"
-                st = "(" + "|".join(f'"\\"{s}\\""' for s in STAGES) + ")"
+                # 選択肢は試行回数の少ないものに絞る（小さなモデルは「少ないものを選べ」だけでは偏る）
+                ch = "(" + "|".join(f'"\\"{c}\\""' for c in least) + ")"
+                st = "(" + "|".join(f'"\\"{s}\\""' for s in least_st) + ")"
                 g = f'root ::= "{{\\"a\\":" {ch} ",\\"b\\":" {ch} ",\\"stage\\":" {st} ",\\"cpu\\":" [1-8] "}}"'
                 sysmsg = "You are the QA lead of a robot fighting game. Pick the next match to test. Prefer the least-tested robots and stages. Reply with JSON only."
                 usr = (f"Tests so far - robots: {dict(self.cov_char)}; stages: {dict(self.cov_stage)}.\n"
@@ -348,6 +357,7 @@ def main():
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--seed", type=int, default=20261111)
     ap.add_argument("--no-llm", action="store_true")
+    ap.add_argument("--carry", default="", help="前回の summary.json（網羅を引き継ぐ）")
     a = ap.parse_args()
     Qa(a).run()
 
