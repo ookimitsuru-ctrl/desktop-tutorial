@@ -17,8 +17,10 @@ Hermes Agent --(OpenAI-compatible API: http://127.0.0.1:8000/v1)--> kapitsa serv
 ## Requirements
 
 - Apple silicon Mac (M1 or newer), macOS 14 or later
-- Kapitsa: `brew install nace-ai/tap/kapitsa` (or the install script from https://github.com/PGDAO/kapitsa)
+- Kapitsa installed (`kapitsa` on `PATH`). Install steps: https://github.com/PGDAO/kapitsa
 - Hermes Agent installed (`hermes` on `PATH`)
+
+Both are assumed to be installed already. The scripts check for them and do not install anything.
 
 Model choice (`KAPITSA_MODEL`):
 
