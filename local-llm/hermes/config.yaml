@@ -1,0 +1,19 @@
+# Hermes Agent model configuration pointing at the local Ollama server.
+# Copy to ~/.hermes/config.yaml (scripts/setup.sh does this for you).
+# Secrets (if any) belong in ~/.hermes/.env, not here.
+
+model:
+  # Must match the model name created by scripts/setup.sh (AGENT_MODEL_NAME).
+  default: qwen-agent
+  # "custom" = generic OpenAI-compatible endpoint.
+  provider: custom
+  # Ollama's OpenAI-compatible root. Hermes appends /chat/completions itself.
+  base_url: http://127.0.0.1:11434/v1
+  # Keep in sync with num_ctx in ollama/Modelfile.
+  context_length: 65536
+
+# Local models are less reliable on hard tasks. Uncomment to add a cloud
+# fallback (requires that provider's API key in ~/.hermes/.env).
+# fallback_providers:
+#   - provider: openrouter
+#     model: qwen/qwen3.6-35b-a3b
