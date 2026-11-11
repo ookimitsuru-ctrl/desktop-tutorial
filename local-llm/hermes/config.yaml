@@ -4,12 +4,17 @@
 # Secrets (if any) belong in ~/.hermes/.env, not here.
 
 model:
-  default: "35b"
+  # Kapitsa's API name for the model (plain name = default 4bit variant).
+  # setup.sh overwrites this with the id the server reports via /v1/models.
+  default: "qwen3.6-35b-a3b"
   # "custom" = generic OpenAI-compatible endpoint.
   provider: custom
   # Kapitsa's OpenAI-compatible root (kapitsa serve default port 8000).
   # Hermes appends /chat/completions itself.
   base_url: http://127.0.0.1:8000/v1
+  # kapitsa serve needs no key unless started with --api-key. Hermes docs
+  # suggest a placeholder for keyless local servers.
+  api_key: "no-key-required"
   # Keep in sync with `--context` in scripts/serve.sh.
   context_length: 131072
 

@@ -58,8 +58,10 @@ Re-running `setup.sh` is safe. An existing `~/.hermes/config.yaml` is backed up 
 curl http://127.0.0.1:8000/v1/models
 curl http://127.0.0.1:8000/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"35b","messages":[{"role":"user","content":"ping"}],"max_tokens":32}'
+  -d '{"model":"qwen3.6-35b-a3b","messages":[{"role":"user","content":"ping"}],"max_tokens":32}'
 ```
+
+The model name in API requests is `qwen3.6-35b-a3b`, or `qwen3.6-35b-a3b:<variant>` for a non-default variant (for example `qwen3.6-35b-a3b:6bit`). Short aliases such as `35b` are CLI-only according to the Kapitsa docs.
 
 ## Notes
 
