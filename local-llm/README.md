@@ -1,58 +1,69 @@
-# Local LLM: Hermes Agent + Ollama + Qwen3.6-35B-A3B
+# Local LLM: Hermes Agent + Kapitsa + Qwen3.6-35B-A3B
 
-Runs Qwen3.6-35B-A3B locally through Ollama and uses Hermes Agent as the client.
+Runs Qwen3.6-35B-A3B locally with the Kapitsa inference server (Apple silicon) and uses Hermes Agent as the client.
 
 ```
-Hermes Agent  --(OpenAI-compatible API, :11434/v1)-->  Ollama  -->  qwen3.6:35b-a3b (agent-tuned as "qwen-agent")
+Hermes Agent --(OpenAI-compatible API: http://127.0.0.1:8000/v1)--> kapitsa serve --> Qwen3.6-35B-A3B
 ```
 
 ## Layout
 
 | Path | Purpose |
 | --- | --- |
-| `ollama/Modelfile` | Builds the agent model: sets `num_ctx 65536` (Hermes needs ≥ 64K) and sampling params |
-| `hermes/config.yaml` | Hermes model block: `provider: custom`, `base_url` → local Ollama |
-| `scripts/setup.sh` | Pulls the model, builds `qwen-agent`, smoke-tests the API, installs the Hermes config |
+| `scripts/serve.sh` | Starts `kapitsa serve` for the 35B model on 127.0.0.1:8000 with a 128K context (blocking; run in its own terminal) |
+| `scripts/setup.sh` | Pulls the model, checks the server, reads the model id it reports, smoke-tests the API, installs the Hermes config |
+| `hermes/config.yaml` | Hermes model block: `provider: custom`, `base_url` → Kapitsa |
 
-## Prerequisites
+## Requirements
 
-- Ollama installed (`ollama serve` running)
+- Apple silicon Mac (M1 or newer), macOS 14 or later
+- Kapitsa: `brew install nace-ai/tap/kapitsa` (or the install script from https://github.com/PGDAO/kapitsa)
 - Hermes Agent installed (`hermes` on `PATH`)
-- Roughly 20 GB free disk and memory for the model; more for long contexts. Sources disagree on the exact figure, so measure on your machine.
+
+Model choice (`KAPITSA_MODEL`):
+
+| Variant | Download | Suggested Mac |
+| --- | --- | --- |
+| `35b:4bit` (default) | 22.1 GB | 32–36 GB unified memory |
+| `35b:6bit` | 30.7 GB | 48 GB or more |
+| `35b:8bit` | 39.4 GB | 64 GB or more |
+| `35b:16gb` | 10.8 GB | 16–24 GB (2-bit) |
+
+Run `kapitsa doctor` to see what fits your machine.
 
 ## Setup
 
+Terminal 1:
+```bash
+cd local-llm
+./scripts/serve.sh
+```
+
+Terminal 2:
 ```bash
 cd local-llm
 ./scripts/setup.sh
 hermes
 ```
 
-Overridable variables: `BASE_MODEL`, `AGENT_MODEL_NAME`, `HERMES_HOME`, `OLLAMA_HOST_URL`.
+Overridable variables: `KAPITSA_MODEL`, `KAPITSA_CONTEXT`, `KAPITSA_PORT` (serve), `KAPITSA_BASE`, `HERMES_HOME` (setup).
 
-Re-running the script is safe. An existing `~/.hermes/config.yaml` is backed up before it is replaced.
+Re-running `setup.sh` is safe. An existing `~/.hermes/config.yaml` is backed up before it is replaced.
 
 ## Checks
 
 ```bash
-# Model is registered
-ollama list | grep qwen-agent
-
-# API responds
-curl http://127.0.0.1:11434/v1/chat/completions \
+curl http://127.0.0.1:8000/v1/models
+curl http://127.0.0.1:8000/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"qwen-agent","messages":[{"role":"user","content":"ping"}]}'
-
-# Hermes is using the custom endpoint (check what it reports after saving)
-hermes config show   # or inspect ~/.hermes/config.yaml
+  -d '{"model":"35b","messages":[{"role":"user","content":"ping"}],"max_tokens":32}'
 ```
 
-## Notes and known issues
+## Notes
 
-- **Model tag:** `qwen3.6:35b-a3b` comes from a third-party guide. Run `ollama search qwen3.6` (or check the Ollama library) and override with `BASE_MODEL=...` if the tag differs.
-- **Provider name:** Use `provider: custom` with an explicit `base_url`. Some reports say `provider: ollama` is not recognized.
-- **Routing:** One report says Hermes fell back to OpenRouter despite a local `base_url`. After setup, confirm which provider handles requests.
-- **Config location:** Settings are read from `config.yaml`. Older guides that rely on `OPENAI_BASE_URL` / `LLM_MODEL` in `.env` may no longer apply.
-- **Thinking mode:** Qwen3.6 thinks by default, which adds latency to every agent step. If responses are slow, consider disabling thinking for the agent model.
-- **Tool calling:** Only use models that support tool calling. Local models are weaker on complex multi-step tasks, so a cloud fallback can be enabled in `hermes/config.yaml`.
-- **Backend:** The request mentioned "Kapitsa" as a backend. No such tool could be found, so this setup uses Ollama. Replace the `base_url` and the `ollama/` directory if a different backend is used.
+- **Context:** Hermes rejects models below 64K context. `serve.sh` uses 128K, and `config.yaml` sets `context_length: 131072` to match. Change both together.
+- **Thinking mode:** Qwen3.6 thinks by default, which adds latency to each agent step. Kapitsa supports turning it off per request (`"reasoning_effort": "none"` on Chat Completions). Hermes does not expose this setting in its config, so this repo cannot turn it off for the agent yet.
+- **Provider:** Use `provider: custom` with an explicit `base_url`. Hermes has no built-in Kapitsa provider.
+- **Hermes integration is unverified.** Kapitsa's docs list Claude Code, Codex, opencode and pi as agent integrations, but not Hermes. The setup above follows the generic OpenAI-compatible path that Hermes documents for local servers.
+- **Routing:** One report says Hermes fell back to OpenRouter even with a local `base_url`. After setup, confirm which provider handles requests.
+- **Platform:** Kapitsa only runs on Apple silicon macOS. These scripts were checked for syntax only, on Linux. They have not been run against a real Kapitsa server.

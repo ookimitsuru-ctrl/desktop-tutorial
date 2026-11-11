@@ -1,16 +1,17 @@
-# Hermes Agent model configuration pointing at the local Ollama server.
-# Copy to ~/.hermes/config.yaml (scripts/setup.sh does this for you).
+# Hermes Agent model configuration pointing at the local Kapitsa server.
+# Copy to ~/.hermes/config.yaml (scripts/setup.sh does this for you and
+# replaces `default` with the model id that Kapitsa actually reports).
 # Secrets (if any) belong in ~/.hermes/.env, not here.
 
 model:
-  # Must match the model name created by scripts/setup.sh (AGENT_MODEL_NAME).
-  default: qwen-agent
+  default: "35b"
   # "custom" = generic OpenAI-compatible endpoint.
   provider: custom
-  # Ollama's OpenAI-compatible root. Hermes appends /chat/completions itself.
-  base_url: http://127.0.0.1:11434/v1
-  # Keep in sync with num_ctx in ollama/Modelfile.
-  context_length: 65536
+  # Kapitsa's OpenAI-compatible root (kapitsa serve default port 8000).
+  # Hermes appends /chat/completions itself.
+  base_url: http://127.0.0.1:8000/v1
+  # Keep in sync with `--context` in scripts/serve.sh.
+  context_length: 131072
 
 # Local models are less reliable on hard tasks. Uncomment to add a cloud
 # fallback (requires that provider's API key in ~/.hermes/.env).
