@@ -23,6 +23,7 @@ const ROWS := [
 	["show_fps", [false, true]],
 	["power_save", [false, true]],
 	["camera_shake", [0, 50, 100]],
+	["comic_words", [true, false]],
 	["text_size", ["standard", "large", "xlarge"]],
 	["cat_sound", ""],
 	["vol_master", [0, 20, 40, 60, 80, 100]],

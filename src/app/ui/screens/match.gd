@@ -10,6 +10,7 @@ var stage_view: StageView
 var fighters: Array[FighterView] = []
 var cam: CameraRig
 var vfx: Vfx
+var words: ComicWords
 var hud: HUD
 var touch: TouchControls
 var touch_layer: CanvasLayer
@@ -83,6 +84,9 @@ func _ready() -> void:
 	fighters[1].other = fighters[0]
 	vfx = Vfx.new()
 	vfx.photosensitive = bool(Settings.g("photosensitive"))
+	words = ComicWords.new()
+	words.enabled = bool(Settings.g("comic_words"))
+	add_child(words)
 	add_child(vfx)
 	cam = CameraRig.new()
 	cam.shake_scale = float(Settings.g("camera_shake")) / 100.0
@@ -331,11 +335,14 @@ func _on_event(e: Dictionary) -> void:
 		"throw_clash":
 			vfx.hit(_pos(0, 1.2).lerp(_pos(1, 1.2), 0.5), "break")
 			AudioHub.sfx("throw_break", 0.0)
+			_word("crash", _pos(0, 1.3).lerp(_pos(1, 1.3), 0.5), 0.55)
 		"launch":
 			AudioHub.sfx("launch", -3.0)
 		"landed":
 			var lp := int(e["player"])
 			vfx.dust(_pos(lp, 0.05), 18, stage_view.ground_color)
+			if bool(e["heavy"]):
+				_word("splat", _pos(lp, 0.5), 0.5)
 			AudioHub.sfx("land_heavy" if bool(e["heavy"]) else "land", -2.0)
 			cam.add_trauma(0.12)
 		"tech":
@@ -346,11 +353,13 @@ func _on_event(e: Dictionary) -> void:
 			cam.add_trauma(0.45)
 			cam.punch(0.6)
 			vfx.metal_sparks(_pos(wp, 1.0), Vector3.UP, 0.8)
+			_word("crash", _pos(wp, 1.2), 0.8)
 			vfx.dust(_pos(wp, 1.0), 14, Color(0.85, 0.82, 0.78))
 			AudioHub.sfx("wall_hit", 0.0)
 			hud.callout(1 - wp, DataDB.t("hud_wall"), UITheme.GOLD)
 		"wall_broken":
 			stage_view.on_wall_broken(int(e["edge"]))
+			_word("crash", _pos(int(e["player"]), 1.2), 1.0)
 			vfx.dust(_pos(int(e["player"]), 1.0), 32, Color(0.7, 0.68, 0.64))
 			cam.add_trauma(0.6)
 			AudioHub.sfx("wall_break", 2.0)
@@ -404,6 +413,25 @@ func _on_damage_spark(pos: Vector3) -> void:
 	AudioHub.sfx("zap", -12.0, 0.15)
 
 
+## アメコミ風の擬音を、ワールド座標 pos のそばに出す
+func _word(word: String, pos: Vector3, power: float, side: float = 0.0) -> void:
+	if words == null or cam == null or cam.is_position_behind(pos):
+		return
+	words.spawn(word, cam.unproject_position(pos), power, side)
+
+
+## 打撃の擬音: 手技は POW / BAM / WHAM、足技は THWAP / THUD、吹き飛ばす強打と KO は SMASH、カウンターは ZLONK
+func _hit_word(e: Dictionary, w: int, ch: bool) -> String:
+	if bool(e.get("ko", false)) or w >= 3:
+		return "smash"
+	if ch:
+		return "zlonk"
+	var limb := int(e.get("limb", SE.LIMB_PUNCH))
+	if limb == SE.LIMB_KICK or limb == SE.LIMB_KNEE:
+		return "thud" if w >= SE.W_HEAVY else "thwap"
+	return ["pow", "bam", "wham"][clampi(w, 0, 2)]
+
+
 func _on_hit(e: Dictionary) -> void:
 	var att := int(e["attacker"])
 	var df := int(e["defender"])
@@ -418,6 +446,7 @@ func _on_hit(e: Dictionary) -> void:
 	if is_throw:
 		vfx.dust(_pos(df, 0.05), 24, stage_view.ground_color)
 		AudioHub.sfx("slam", 2.0)
+		_word("slam", _pos(df, 0.7), 0.85)
 		cam.add_trauma(0.5)
 	else:
 		vfx.hit(p, kind)
@@ -427,6 +456,9 @@ func _on_hit(e: Dictionary) -> void:
 		vfx.metal_sparks(p, sdir.normalized() * 0.8 + Vector3(0, 0.75, 0), [0.25, 0.45, 0.8, 0.9][clampi(w, 0, 3)] + (0.2 if ch else 0.0))
 		if w >= SE.W_HEAVY or ch:
 			cam.punch(1.0 if ch else 0.7)
+		var ko := bool(e.get("ko", false))
+		_word(_hit_word(e, w, ch), p, 1.0 if ko else ([0.2, 0.45, 0.75, 0.9][clampi(w, 0, 3)] + (0.15 if ch else 0.0)),
+			signf(cam.unproject_position(_pos(df, 1.0)).x - cam.unproject_position(_pos(att, 1.0)).x))
 		AudioHub.sfx("hit_" + ["light", "medium", "heavy", "heavy"][clampi(w, 0, 3)], 1.5 if w >= SE.W_HEAVY else 0.0)
 		if ch:
 			AudioHub.sfx("counter", -2.0)

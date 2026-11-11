@@ -33,6 +33,7 @@ const DEFAULTS := {
 	"vol_voice": 85,
 	"vol_announcer": 85,
 	"photosensitive": false,
+	"comic_words": true,
 	"colorblind": "off",
 	"stagger_gauge": true,
 	"replay_autosave": true,

@@ -95,6 +95,7 @@ ring_legend,赤 = リングアウト　黄 = 柵　白 = 壁　破線 = 破壊�
 set_assist_escape,投げ抜け簡易化（オフライン）,Easy Throw Escape (offline)
 set_button_scale,ボタンの大きさ(%),Button Size (%)
 set_camera_shake,カメラの揺れ(%),Camera Shake (%)
+set_comic_words,打撃の文字演出（POW! など）,Comic Sound Words
 set_intros,登場・勝利演出,Intros
 set_language,言語,Language
 set_photosensitive,光過敏配慮,Photosensitivity Mode
