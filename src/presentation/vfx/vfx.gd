@@ -12,6 +12,9 @@ var _next := 0
 var _dusts: Array[CPUParticles3D] = []
 var _dnext := 0
 var photosensitive := false
+const BURSTS := 8
+var _bursts: Array[CPUParticles3D] = []
+var _bnext := 0
 
 
 func _ready() -> void:
@@ -30,6 +33,47 @@ func _ready() -> void:
 		_sparks.append(m)
 		_life.append(0.0)
 		_dur.append(0.2)
+	# 金属の火花: 細い棒を速度の向きにそろえて飛ばす（重力で落ち、色が冷めていく）
+	var bm := StandardMaterial3D.new()
+	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	bm.vertex_color_use_as_albedo = true
+	bm.albedo_color = Color(1, 1, 1)
+	bm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	for b: int in range(BURSTS):
+		var bp := CPUParticles3D.new()
+		bp.emitting = false
+		bp.one_shot = true
+		bp.amount = 16
+		bp.lifetime = 0.45
+		bp.explosiveness = 1.0
+		bp.local_coords = false
+		var bx := BoxMesh.new()
+		bx.size = Vector3(0.012, 0.11, 0.012)
+		bx.material = bm
+		bp.mesh = bx
+		bp.set_particle_flag(CPUParticles3D.PARTICLE_FLAG_ALIGN_Y_TO_VELOCITY, true)
+		bp.spread = 48.0
+		bp.initial_velocity_min = 1.8
+		bp.initial_velocity_max = 6.5
+		bp.gravity = Vector3(0, -11.0, 0)
+		bp.damping_min = 0.5
+		bp.damping_max = 2.0
+		bp.scale_amount_min = 0.5
+		bp.scale_amount_max = 1.3
+		bp.lifetime_randomness = 0.5
+		var bc := Curve.new()
+		bc.add_point(Vector2(0, 1.0))
+		bc.add_point(Vector2(1, 0.15))
+		bp.scale_amount_curve = bc
+		var bg := Gradient.new()
+		bg.set_color(0, Color(1.0, 0.97, 0.85))
+		bg.add_point(0.35, Color(1.0, 0.7, 0.25))
+		bg.set_color(bg.get_point_count() - 1, Color(0.5, 0.1, 0.02))
+		bp.color_ramp = bg
+		bp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(bp)
+		_bursts.append(bp)
 	var dust_mat := ShaderMaterial.new()
 	dust_mat.shader = load("res://shaders/vfx_dust.gdshader")
 	for j: int in range(DUSTS):
@@ -104,6 +148,20 @@ func hit(pos: Vector3, kind: String) -> void:
 			_spark(pos, 0.7, Color(0.9, 0.95, 1.0), 0, 0.2, 10)
 		"evade":
 			_spark(pos, 0.7, Color(0.6, 0.9, 1.0, 0.6), 1, 0.25, 0)
+
+
+## 金属の火花。dir = 飛ぶ向き、power = 0〜1（数と勢い）、tint = 色味（電気の火花は青白く）
+func metal_sparks(pos: Vector3, dir: Vector3, power: float, tint: Color = Color(1, 1, 1)) -> void:
+	var p := _bursts[_bnext]
+	_bnext = (_bnext + 1) % BURSTS
+	p.global_position = pos
+	p.direction = dir.normalized() if dir.length_squared() > 1e-6 else Vector3.UP
+	p.amount = clampi(int(6.0 + power * 22.0), 4, 28)
+	p.initial_velocity_min = 1.2 + power * 1.5
+	p.initial_velocity_max = 3.5 + power * 5.0
+	p.color = tint
+	p.restart()
+	p.emitting = true
 
 
 func dust(pos: Vector3, amount: int, color: Color) -> void:

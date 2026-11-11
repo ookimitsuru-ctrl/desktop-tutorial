@@ -6,6 +6,9 @@ const FP_TO_F := 1.0 / 65536.0
 const VFOV := 32.0
 
 var trauma := 0.0
+# 強打の瞬間に画角を一瞬だけ詰める（ばねで戻る）
+var _punch := 0.0
+var _punch_v := 0.0
 var shake_scale := 1.0
 var _pos := Vector3(0, 1.6, 6)
 var _target := Vector3(0, 1.0, 0)
@@ -28,6 +31,10 @@ func _ready() -> void:
 
 func add_trauma(t: float) -> void:
 	trauma = clampf(trauma + t, 0.0, 1.0)
+
+
+func punch(amount: float) -> void:
+	_punch_v -= amount * 38.0 * shake_scale
 
 
 func snap() -> void:
@@ -81,6 +88,9 @@ func update_cam(w: SimWorld, delta: float) -> void:
 	var k := 1.0 - exp(-delta * (5.5 if mode == "fight" else 3.0))
 	_pos = _pos.lerp(desired, k)
 	_target = _target.lerp(tgt, 1.0 - exp(-delta * 7.0))
+	_punch_v += (-_punch * 260.0 - _punch_v * 22.0) * minf(delta, 0.033)
+	_punch = clampf(_punch + _punch_v * minf(delta, 0.033), -3.5, 1.5)
+	fov = VFOV + _punch
 	var shake_off := Vector3.ZERO
 	var rot_z := 0.0
 	if trauma > 0.0:

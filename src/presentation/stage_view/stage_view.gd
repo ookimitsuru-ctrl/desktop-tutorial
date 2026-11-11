@@ -34,6 +34,7 @@ var _flames: Array = []
 var _neons: Array = []
 ## [ノード, 基準の回転, 位相, 振れ幅]: 夜空を掃くサーチライト
 var _sweeps: Array = []
+var _ribbons: Array[ShaderMaterial] = []
 ## 流れる景色（川下りの岸）。同じ内容を 3 つ並べて流し、端で巻き戻す
 var _scrollers: Array[Node3D] = []
 var _scroll_z := 0.0
@@ -56,7 +57,7 @@ const THEMES := {
 		"floor": 0, "floor_c": Color(0.2, 0.38, 0.75), "line_c": Color(0.92, 0.93, 0.95), "alt_c": Color(0.1, 0.1, 0.12),
 		"fence_c": Color(0.12, 0.13, 0.18), "pad_c": Color(0.75, 0.15, 0.12), "outside": "floor", "outside_c": Color(0.06, 0.06, 0.08),
 		"rim": Color(0.75, 0.85, 1.0), "glow": 0.9, "dust": Color(0.75, 0.78, 0.85),
-		"skyfx": {"stars": 0.7, "moon": 0.035, "cover": 0.25, "lit": Color(0.10, 0.11, 0.17), "dark": Color(0.04, 0.045, 0.08), "wind": Vector2(0.006, 0.002), "glow": 0.25},
+		"skyfx": {"stars": 0.0, "cover": 0.0, "glow": 0.0},
 	},
 	"harbor": {
 		"sky": [Color(0.015, 0.02, 0.04), Color(0.09, 0.1, 0.16), Color(0.01, 0.015, 0.03)],
@@ -246,7 +247,7 @@ func _mat(c: Color, rough: float = 0.8, metal: float = 0.0) -> StandardMaterial3
 		if _quality >= 2:
 			m.normal_enabled = true
 			m.normal_texture = TEX_BUMP
-			m.normal_scale = 0.3
+			m.normal_scale = 0.22
 	return m
 
 
@@ -639,6 +640,33 @@ func _props(sid: String, sdef: StageDef, quality: int) -> void:
 				_box(Vector3(0.1, 0.1, lp.distance_to(lp2)), mid + Vector3(0, 0.45, 0), _mat(Color(0.2, 0.21, 0.24), 0.5, 0.6), null, yaw3)
 				var bc := Color(0.7, 0.12, 0.1) if k3 % 2 == 0 else Color(0.1, 0.22, 0.6)
 				_banner(mid + Vector3(0, -0.1, 0), 2.6, 4.2, bc, Color(0.95, 0.82, 0.3), yaw3 + PI * 0.5, true, null, 0.35)
+			# 客席の前を一周する電光の帯と、客席の後ろから天井を掃く色付きの光
+			for side3: int in range(4):
+				var yaw4 := side3 * PI * 0.5
+				var bas3 := Basis(Vector3.UP, yaw4)
+				var rb := MeshInstance3D.new()
+				var rq := QuadMesh.new()
+				rq.size = Vector2(22.0, 0.55)
+				rb.mesh = rq
+				var rm := ShaderMaterial.new()
+				rm.shader = load("res://shaders/led_ribbon.gdshader")
+				rm.set_shader_parameter("len", 22.0)
+				rm.set_shader_parameter("phase", side3 * 3.7)
+				rb.material_override = rm
+				rb.transform = Transform3D(bas3 * Basis(Vector3.UP, PI), bas3 * Vector3(0, 0.62, 10.78))
+				add_child(rb)
+				_ribbons.append(rm)
+				for q3: int in range(2):
+					var sp3 := bas3 * Vector3(-9.0 + q3 * 18.0, 3.9, 17.6)
+					var cc := [Color(0.35, 0.55, 1.0), Color(1.0, 0.35, 0.3), Color(1.0, 0.85, 0.5)][(side3 + q3) % 3] as Color
+					var pv3 := _cone(sp3, sp3 + bas3 * Vector3(0.25 - q3 * 0.5, 1.0, -0.45), 26.0, 2.2, cc, 0.11)
+					_sweeps.append([pv3, pv3.rotation, side3 * 1.7 + q3 * 2.9, 0.28])
+				# 客席の最上段の後ろの壁と通路の灯り
+				_box(Vector3(36, 5.0, 0.4), bas3 * Vector3(0, 5.2, 18.6), _mat(Color(0.035, 0.04, 0.06)), null, yaw4)
+				for q4: int in range(7):
+					var lm := _box(Vector3(0.5, 0.12, 0.05), bas3 * Vector3(-13.5 + q4 * 4.5, 4.4, 18.36), _mat(Color(1.0, 0.8, 0.5)), null, yaw4)
+					(lm.material_override as StandardMaterial3D).emission_enabled = true
+					(lm.material_override as StandardMaterial3D).emission = Color(1.0, 0.75, 0.4) * 2.2
 			_box(Vector3(8, 4.5, 0.3), Vector3(0, 9.5, -17), _mat(Color(0.05, 0.05, 0.08)))
 			var screen := MeshInstance3D.new()
 			var sq := QuadMesh.new()
@@ -1599,6 +1627,15 @@ func _rain(c: Color, amount: int, grav: Vector3, life: float, size: Vector2) -> 
 	m.albedo_color = c
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y if size.y > size.x * 2.0 else BaseMaterial3D.BILLBOARD_ENABLED
 	q.material = m
+	if is_equal_approx(size.x, size.y):
+		# 雪・砂ぼこり: 四角い板ではなく、縁のぼけた丸い粒にする
+		q.size = size * 1.7
+		var sm := ShaderMaterial.new()
+		sm.shader = load("res://shaders/vfx_dust.gdshader")
+		sm.set_shader_parameter("color", c)
+		q.material = sm
+		p.scale_amount_min = 0.5
+		p.scale_amount_max = 1.3
 	p.mesh = q
 	add_child(p)
 	return p
@@ -1685,3 +1722,5 @@ func update(delta: float, photosensitive: bool) -> void:
 		var ex := float(exv) if exv != null else 0.0
 		if ex > 0.0:
 			crowd_mat.set_shader_parameter("excite", maxf(0.0, ex - delta * 0.4))
+		for rbm: ShaderMaterial in _ribbons:
+			rbm.set_shader_parameter("excite", float(exv) if exv != null else 0.0)

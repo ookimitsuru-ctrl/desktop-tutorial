@@ -73,7 +73,12 @@ func _ready() -> void:
 		fv.set_material_param("rim_color", stage_view.rim_color)
 		fv.set_material_param("rim_dir", stage_view.rim_dir)
 		fv.set_material_param("wetness", stage_view.wetness)
+		fv.max_hp = maxi(1, world.f[i].hp)
+		fv.stepped.connect(_on_step.bind(i))
+		fv.sparked.connect(_on_damage_spark)
 		fighters.append(fv)
+	fighters[0].other = fighters[1]
+	fighters[1].other = fighters[0]
 	vfx = Vfx.new()
 	vfx.photosensitive = bool(Settings.g("photosensitive"))
 	add_child(vfx)
@@ -296,7 +301,11 @@ func _on_event(e: Dictionary) -> void:
 		"block":
 			var att := int(e["attacker"])
 			var df := int(e["defender"])
-			vfx.hit(_contact(att, df, int(e["level"])), "guard")
+			var gpos := _contact(att, df, int(e["level"]))
+			vfx.hit(gpos, "guard")
+			var gheavy := int(e["weight"]) >= SE.W_HEAVY
+			vfx.metal_sparks(gpos, (_pos(att, 0.3) - _pos(df, 0.0)) + Vector3(0, 0.8, 0), 0.45 if gheavy else 0.2)
+			fighters[df].on_block(gheavy)
 			AudioHub.sfx("guard_heavy" if int(e["weight"]) >= SE.W_HEAVY else "guard", -2.0)
 			cam.add_trauma(0.08)
 			InputHub.vibrate(att, 10, 0.3)
@@ -331,6 +340,8 @@ func _on_event(e: Dictionary) -> void:
 		"wall_hit":
 			var wp := int(e["player"])
 			cam.add_trauma(0.45)
+			cam.punch(0.6)
+			vfx.metal_sparks(_pos(wp, 1.0), Vector3.UP, 0.8)
 			vfx.dust(_pos(wp, 1.0), 14, Color(0.85, 0.82, 0.78))
 			AudioHub.sfx("wall_hit", 0.0)
 			hud.callout(1 - wp, DataDB.t("hud_wall"), UITheme.GOLD)
@@ -375,6 +386,20 @@ func _on_event(e: Dictionary) -> void:
 		mode_ctrl.call("on_event", e)
 
 
+## 足が着いた: 足音、強い踏み込みは土煙とわずかな揺れ
+func _on_step(pos: Vector3, strength: float, _player: int) -> void:
+	AudioHub.sfx("step", lerpf(-17.0, -7.0, strength), 0.08)
+	if strength >= 0.55:
+		vfx.dust(pos, int(4.0 + strength * 8.0), stage_view.ground_color)
+		cam.add_trauma(0.03 * strength)
+
+
+## 損傷した機体の漏電
+func _on_damage_spark(pos: Vector3) -> void:
+	vfx.metal_sparks(pos, Vector3(randf_range(-0.6, 0.6), 1.0, randf_range(-0.6, 0.6)), 0.25, Color(0.65, 0.85, 1.0))
+	AudioHub.sfx("zap", -12.0, 0.15)
+
+
 func _on_hit(e: Dictionary) -> void:
 	var att := int(e["attacker"])
 	var df := int(e["defender"])
@@ -392,11 +417,17 @@ func _on_hit(e: Dictionary) -> void:
 		cam.add_trauma(0.5)
 	else:
 		vfx.hit(p, kind)
+		# 装甲が削れる火花: 攻撃の進む向きへ、上向きに散る
+		var sdir := _pos(df, 0.0) - _pos(att, 0.0)
+		sdir.y = 0.0
+		vfx.metal_sparks(p, sdir.normalized() * 0.8 + Vector3(0, 0.75, 0), [0.25, 0.45, 0.8, 0.9][clampi(w, 0, 3)] + (0.2 if ch else 0.0))
+		if w >= SE.W_HEAVY or ch:
+			cam.punch(1.0 if ch else 0.7)
 		AudioHub.sfx("hit_" + ["light", "medium", "heavy", "heavy"][clampi(w, 0, 3)], -1.0 if w >= SE.W_HEAVY else -3.0)
 		if ch:
 			AudioHub.sfx("counter", -2.0)
 		cam.add_trauma([0.15, 0.25, 0.4, 0.38][clampi(w, 0, 3)] + (0.15 if ch else 0.0))
-	fighters[df].on_hit(w >= SE.W_HEAVY or ch)
+	fighters[df].on_hit(w >= SE.W_HEAVY or ch, _pos(att, 0.0))
 	if w >= SE.W_HEAVY:
 		AudioHub.duck(0.35)
 		stage_view.excite_crowd(0.6)

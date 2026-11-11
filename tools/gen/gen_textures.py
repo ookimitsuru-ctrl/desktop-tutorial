@@ -52,9 +52,9 @@ def main():
     rgb = np.stack([g * (1.0 + 0.012 * (warm - 0.5)), g, g * (1.0 - 0.02 * (warm - 0.5))], axis=-1)
     Image.fromarray((np.clip(rgb, 0, 1) * 255 + 0.5).astype(np.uint8), "RGB").save(OUT / "grunge.png", optimize=True)
     # --- 凹凸: なだらかなうねり + 粒 + 小さなへこみ
-    h = 0.55 * spectral(11, 1.7, lo=5.0, hi=120.0) + 0.3 * spectral(12, 0.9, lo=30.0, hi=160.0)
+    h = 0.7 * spectral(11, 1.9, lo=4.0, hi=48.0) + 0.12 * spectral(12, 1.2, lo=20.0, hi=64.0)
     pits = np.clip((unit(spectral(13, 1.0, lo=20.0, hi=70.0)) - 0.9) * 10.0, 0.0, 1.0)
-    h = h - 1.6 * pits
+    h = h - 0.35 * pits
     k = 2.2   # 凹凸の強さ
     dx = (np.roll(h, -1, axis=1) - np.roll(h, 1, axis=1)) * k
     dy = (np.roll(h, -1, axis=0) - np.roll(h, 1, axis=0)) * k

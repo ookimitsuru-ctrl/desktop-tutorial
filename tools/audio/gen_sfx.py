@@ -260,6 +260,13 @@ def main():
     save("ui_move", mix(hp(noise(0.012), 2500) * env(int(SR * 0.012), 0.0005, 0.003), chime([2200], 0.04) * 0.3), -14.0)
     save("ui_back", chime([880, 660], 0.15), -10.0)
     save("ui_vs", mix(hit("heavy", 1), whoosh(0.6, 200, 2400) * 0.5), -1.0)
+    # 足音（重い機体の一歩）と、損傷時の漏電
+    for k in range(3):
+        save(f"step_{k + 1}", mix(thud(0.16, 95 + 12 * k, 42, 0.5), clang(210 + 35 * k, 0.14, 0.4) * 0.22,
+                                  bp(noise(0.05), 800, 3500) * env(int(SR * 0.05), 0.001, 0.012) * 0.25), -5.0)
+    tz = t(0.16)
+    save("zap", bp(noise(0.16) * (np.sin(2 * np.pi * 95 * tz) > 0.2) * env(len(tz), 0.001, 0.06), 1800, 9000)
+         + np.sin(2 * np.pi * 2900 * tz) * env(len(tz), 0.001, 0.02) * 0.15, -8.0)
     print("sfx done:", len(list(OUT.glob("*.wav"))))
 
 

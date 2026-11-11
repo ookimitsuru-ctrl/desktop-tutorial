@@ -34,10 +34,35 @@ void fragment() {
 	float rough = 0.8;
 	float edge_d = ring_half - max(abs(p.x), abs(p.y));
 	if (pattern == 0) {
-		col *= 0.92 + 0.08 * fbm(p * 3.0);
-		float ln = ss(0.06, 0.03, abs(edge_d - 0.35)) + ss(0.035, 0.015, abs(length(p) - 2.0));
-		col = mix(col, line_color.rgb, clamp(ln, 0.0, 1.0));
-		rough = 0.65;
+		// 闘技場のマット: 帆布の織り目、パネルの継ぎ目、中央の紋、外周の帯、照明の当たる中央が明るい
+		float r = length(p);
+		float weave = 0.5 * noise2(p * vec2(140.0, 18.0)) + 0.5 * noise2(p * vec2(18.0, 140.0));
+		col *= 0.9 + 0.1 * fbm(p * 2.2) + 0.05 * (weave - 0.5);
+		vec2 pg = fract(p / 2.0);
+		float seam = 1.0 - ss(0.0, 0.012, min(min(pg.x, 1.0 - pg.x), min(pg.y, 1.0 - pg.y)));
+		col *= 1.0 - 0.22 * seam;
+		// 中央の円: 内側は一段濃く
+		col = mix(col, col * 0.72 + alt_color.rgb * 0.1, 1.0 - ss(1.93, 1.97, r));
+		float ln = ss(0.06, 0.03, abs(edge_d - 0.35)) + ss(0.045, 0.02, abs(r - 2.0)) + ss(0.02, 0.008, abs(r - 2.25));
+		// 紋: 二重の輪と、外へ向く 8 本の楔
+		float ang = atan(p.y, p.x);
+		float wedge = step(0.72, cos(ang * 8.0)) * ss(0.55, 0.6, r) * ss(1.5, 1.45, r);
+		float inner = ss(0.03, 0.012, abs(r - 0.5)) + ss(0.03, 0.012, abs(r - 1.6));
+		ln += (wedge * 0.55 + inner) ;
+		// 開始位置の印
+		ln += ss(0.04, 0.02, abs(abs(p.x) - 1.25)) * step(abs(p.y), 0.45) * 0.8;
+		col = mix(col, line_color.rgb, clamp(ln, 0.0, 1.0) * 0.85);
+		// 外周の帯（濃い色に斜めの警告縞）
+		float band = ss(0.36, 0.33, edge_d);
+		float stripe = step(0.5, fract((p.x + p.y) * 1.4));
+		vec3 bandc = mix(alt_color.rgb * 1.6, vec3(0.85, 0.62, 0.1), stripe * 0.75);
+		col = mix(col, bandc * (0.85 + 0.15 * fbm(p * 5.0)), band);
+		// 擦れた跡
+		float scuff = ss(0.62, 0.8, fbm(p * 1.3 + 11.0)) * ss(0.3, 0.7, noise2(p * vec2(30.0, 6.0)));
+		col = mix(col, col * 1.25 + 0.03, scuff * 0.35);
+		// 照明の当たり（中央が明るく、端へ落ちる）
+		col *= mix(1.18, 0.62, ss(1.0, ring_half * 1.15, r));
+		rough = 0.5 + 0.2 * weave;
 	} else if (pattern == 1) {
 		float n = fbm(p * 1.5);
 		col *= 0.75 + 0.35 * n;
