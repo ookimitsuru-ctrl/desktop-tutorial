@@ -176,3 +176,8 @@
 - `tools/qa/llm_qa.py`: OpenAI 互換サーバー（LM Studio / Ollama / llama-server）に接続できるようにした（`--endpoint`）。出力は JSON スキーマで絞り、未対応の項目は順に外して再試行する。ローカル GGUF は ChatML を自前で組み、Qwen3.x の思考は空ブロックで飛ばす。行動は候補に文字を振って選ばせる（出力トークンが少ない）。
 - `tools/validate/llm_play.gd`: 描画ありで動かしたとき、画面を縮小して「真っ黒・真っ白・一色のまま」を検出し、各試合の最初の画面を `shots/` に保存する。`--ticks` で 1 描画フレームあたりの進行を変えられる。
 - 描画は `--render xvfb`（仮想ディスプレイ + ソフトウェア Vulkan、モバイル描画の経路）か `--render native`（手元の画面と GPU）。
+
+## 2026-11-12 — QA: Qwen3.6-35B-A3B (2bit) 1時間・描画モード
+- Qwen3.6-35B-A3B-UD-IQ2_M を llama-cpp で駆動、xvfb + ソフトウェアVulkan（モバイルレンダラ）で60分。
+- 13試合 / 56,403フレーム / LLM判断313回（失敗0）。異常0・エンジンエラー0・クラッシュ0・決定論不一致0。画面の黒/白/単色検出も0。
+- 制約: 実機(Android)・Mac上のモデルは未使用。音は未検証。Macでは `--endpoint http://localhost:1234/v1 --llm-model <name> --render native` で同ハーネスを実行可能。
