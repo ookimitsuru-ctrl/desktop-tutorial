@@ -7,8 +7,14 @@ LLM の役目（どちらも文法で出力を絞る）:
 Python 側の役目: 試験の準備（衣装・色・画質・設定の乱択）、Godot の出力の監視（スクリプトエラー・クラッシュ・無応答）、
 異常の集計と報告書、固まったときの再起動。異常の再現データ（入力列）は Godot が試合ごとに保存する。
 
-使い方: python3 tools/qa/llm_qa.py --minutes 60 --model <gguf> --out <出力ディレクトリ> [--no-llm]
-  --no-llm: LLM を使わず乱択（ハーネスの動作確認用）
+使い方（どれか 1 つ）:
+  # この環境: GGUF を直接読む（llama-cpp-python が必要）。描画あり（仮想ディスプレイ + ソフトウェア Vulkan）
+  python3 tools/qa/llm_qa.py --minutes 60 --model <gguf> --render xvfb --ticks 3 --plan-len 6 --out <出力先>
+  # 手元の Mac など: すでに動いている OpenAI 互換サーバー（LM Studio / Ollama / llama-server）を使い、手元の画面と GPU で描画
+  python3 tools/qa/llm_qa.py --minutes 60 --endpoint http://localhost:1234/v1 --llm-model qwen3.6-35b-a3b \
+      --godot /Applications/Godot.app/Contents/MacOS/Godot --render native --ticks 2 --plan-len 6 --out qa_out
+  # LLM なし（ハーネスの動作確認）: --no-llm
+  --render headless は描画なし（速い）。--carry <前回の summary.json> で網羅を引き継ぐ。
 """
 import argparse
 import collections
@@ -35,36 +41,127 @@ ACTION_HELP = {
     "jab": "P", "kick": "K", "tap_guard": "tap G", "mash": "random mash", "mash_all": "hold P+K+G", "alt_all": "rapid P+K+G re-press",
     "throw": "P+G throw", "throw6": "6P+G throw", "throw4": "4P+G throw",
 }
-IGNORE = re.compile(r"ALSA|snd_|resources still in use at exit|ObjectDB instances leaked|init_output_device|"
+IGNORE = re.compile(r"All audio drivers failed|ALSA|snd_|resources still in use at exit|ObjectDB instances leaked|init_output_device|"
                     r"audio_server|audio_driver_alsa|status < 0|ERR_CANT_OPEN|Orphan StringName|leaked at exit|"
                     r"drivers/alsa|cleanup \(core/object|clear \(core/io/resource|Condition \"status")
 ERRLINE = re.compile(r"^(SCRIPT ERROR|ERROR|USER ERROR|WARNING|USER WARNING|Parse Error|Invalid|Cannot)\b")
 
 
+LETTERS = "ABCDEFGHIJKLMNOP"
+
+
+def extract_json(text):
+    """思考ブロックや前後の文字を除いて、最初の JSON オブジェクトを取り出す"""
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S)
+    i = text.find("{")
+    if i < 0:
+        raise ValueError("no json: " + text[:80])
+    depth = 0
+    for j in range(i, len(text)):
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(text[i:j + 1])
+    raise ValueError("unterminated json: " + text[:80])
+
+
 class Llm:
-    def __init__(self, path, threads):
+    """llama-cpp-python で GGUF を直接読む（この環境用）。出力は GBNF の文法で絞る"""
+
+    def __init__(self, path, threads, ctx=2048):
         from llama_cpp import Llama, LlamaGrammar
         self.Grammar = LlamaGrammar
-        self.m = Llama(model_path=path, n_ctx=2048, n_threads=threads, n_batch=256, verbose=False)
+        self.m = Llama(model_path=path, n_ctx=ctx, n_threads=threads, n_batch=256, verbose=False)
         self.tokens = 0
         self.secs = 0.0
         self.calls = 0
+        self.prompt_tokens = 0
         self._g = {}
+        self.name = pathlib.Path(path).name
 
-    def grammar(self, text):
-        if text not in self._g:
-            self._g[text] = self.Grammar.from_string(text)
-        return self._g[text]
+    def _grammar(self, gbnf):
+        if gbnf not in self._g:
+            self._g[gbnf] = self.Grammar.from_string(gbnf)
+        return self._g[gbnf]
 
-    def ask(self, system, user, grammar, max_tokens=64, temp=0.9):
+    def ask(self, system, user, spec, max_tokens=64, temp=0.9):
+        """spec = {"gbnf": 文法, "schema": JSON スキーマ}"""
+        # ChatML を自前で組む。Qwen3.x は思考が既定なので、空の思考ブロックを置いて飛ばす
+        prompt = (f"<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{user}<|im_end|>\n"
+                  "<|im_start|>assistant\n<think>\n\n</think>\n\n")
+        # ハイブリッド（再帰状態をもつ）モデルは途中からの再利用が使えないので、毎回まっさらにする
+        try:
+            self.m.reset()
+            self.m._ctx.kv_cache_clear()
+        except Exception:
+            try:
+                self.m._ctx.memory_clear(True)
+            except Exception:
+                pass
         t0 = time.time()
-        r = self.m.create_chat_completion(
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            grammar=self.grammar(grammar), max_tokens=max_tokens, temperature=temp, top_p=0.95, seed=random.randint(0, 1 << 30))
+        r = self.m.create_completion(prompt, grammar=self._grammar(spec["gbnf"]), max_tokens=max_tokens, temperature=temp, top_p=0.95,
+                                     seed=random.randint(0, 1 << 30), stop=["<|im_end|>"])
         self.secs += time.time() - t0
         self.calls += 1
         self.tokens += r["usage"]["completion_tokens"]
-        return r["choices"][0]["message"]["content"]
+        self.prompt_tokens += r["usage"]["prompt_tokens"]
+        return extract_json(r["choices"][0]["text"])
+
+
+class RemoteLlm:
+    """OpenAI 互換のサーバー（LM Studio / Ollama / llama-server など）につなぐ。出力は response_format の JSON スキーマで絞る"""
+
+    def __init__(self, endpoint, model, api_key="", timeout=180):
+        self.url = endpoint.rstrip("/") + "/chat/completions"
+        self.model = model
+        self.key = api_key
+        self.timeout = timeout
+        self.tokens = 0
+        self.secs = 0.0
+        self.calls = 0
+        self.prompt_tokens = 0
+        self.name = f"{model} @ {endpoint}"
+        # 受け付けられた組み合わせを覚える（サーバーによって未対応の項目がある）
+        self.variants = [("schema", True), ("schema", False), ("none", False)]
+        self.variant = 0
+
+    def _post(self, body):
+        import urllib.request
+        req = urllib.request.Request(self.url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        if self.key:
+            req.add_header("Authorization", "Bearer " + self.key)
+        with urllib.request.urlopen(req, timeout=self.timeout) as r:
+            return json.loads(r.read())
+
+    def ask(self, system, user, spec, max_tokens=64, temp=0.9):
+        t0 = time.time()
+        last = None
+        for vi in range(self.variant, len(self.variants)):
+            kind, think_off = self.variants[vi]
+            body = {"model": self.model, "temperature": temp, "top_p": 0.95, "max_tokens": max(max_tokens, 64) if kind == "none" else max_tokens,
+                    "messages": [{"role": "system", "content": system + (" /no_think" if think_off or kind == "none" else "")},
+                                 {"role": "user", "content": user}]}
+            if kind == "schema":
+                body["response_format"] = {"type": "json_schema", "json_schema": {"name": "answer", "strict": True, "schema": spec["schema"]}}
+            if think_off:
+                body["chat_template_kwargs"] = {"enable_thinking": False}
+            try:
+                r = self._post(body)
+                msg = r["choices"][0]["message"]
+                text = msg.get("content") or ""
+                out = extract_json(text)
+                self.variant = vi
+                u = r.get("usage", {})
+                self.tokens += u.get("completion_tokens", 0)
+                self.prompt_tokens += u.get("prompt_tokens", 0)
+                self.secs += time.time() - t0
+                self.calls += 1
+                return out
+            except Exception as e:   # 400 や未対応の項目、JSON でない返事 → 次の組み合わせへ
+                last = e
+        raise RuntimeError(f"all request variants failed: {last}")
 
 
 class Qa:
@@ -73,7 +170,12 @@ class Qa:
         self.out = pathlib.Path(a.out)
         (self.out / "repro").mkdir(parents=True, exist_ok=True)
         self.rng = random.Random(a.seed)
-        self.llm = None if a.no_llm else Llm(a.model, a.threads)
+        if a.no_llm:
+            self.llm = None
+        elif a.endpoint:
+            self.llm = RemoteLlm(a.endpoint, a.llm_model, a.api_key)
+        else:
+            self.llm = Llm(a.model, a.threads)
         self.deadline = time.time() + a.minutes * 60
         self.actions = []
         self.chars = []
@@ -111,7 +213,16 @@ class Qa:
 
     # ---------------------------------------------------------- Godot
     def start_godot(self):
-        cmd = ["godot", "--headless", "--path", str(ROOT), "--fixed-fps", "60", "res://tools/validate/llm_play.tscn", "--", "--out", str(self.out)]
+        g = self.a.godot
+        scene = ["res://tools/validate/llm_play.tscn", "--", "--out", str(self.out), "--ticks", str(self.a.ticks)]
+        if self.a.render == "headless":
+            cmd = [g, "--headless", "--path", str(ROOT), "--fixed-fps", "60"] + scene
+        elif self.a.render == "xvfb":
+            # 仮想ディスプレイ + ソフトウェアの Vulkan（実機と同じモバイル描画の経路を通す。GPU の実測にはならない）
+            cmd = ["xvfb-run", "-a", "-s", "-screen 0 640x360x24", g, "--path", str(ROOT), "--rendering-driver", "vulkan",
+                   "--rendering-method", "mobile", "--resolution", "640x360", "--fixed-fps", "60"] + scene
+        else:   # native: 手元の画面と GPU でそのまま描画する（Mac など）
+            cmd = [g, "--path", str(ROOT), "--rendering-method", "mobile", "--resolution", "960x540", "--fixed-fps", "60"] + scene
         self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         self.last_line = time.time()
 
@@ -147,15 +258,20 @@ class Qa:
             try:
                 self.waiting_llm = True
                 # 選択肢は試行回数の少ないものに絞る（小さなモデルは「少ないものを選べ」だけでは偏る）
-                ch = "(" + "|".join(f'"\\"{c}\\""' for c in least) + ")"
-                st = "(" + "|".join(f'"\\"{s}\\""' for s in least_st) + ")"
-                g = f'root ::= "{{\\"a\\":" {ch} ",\\"b\\":" {ch} ",\\"stage\\":" {st} ",\\"cpu\\":" [1-8] "}}"'
+                alt = lambda xs: "(" + "|".join(f'"\\"{x}\\""' for x in xs) + ")"
+                gbnf = f'root ::= "{{\\"a\\":" {alt(least)} ",\\"b\\":" {alt(least)} ",\\"stage\\":" {alt(least_st)} ",\\"cpu\\":" [1-8] "}}"'
+                schema = {"type": "object", "properties": {"a": {"type": "string", "enum": least}, "b": {"type": "string", "enum": least},
+                                                           "stage": {"type": "string", "enum": least_st}, "cpu": {"type": "integer", "minimum": 1, "maximum": 8}},
+                          "required": ["a", "b", "stage", "cpu"], "additionalProperties": False}
                 sysmsg = "You are the QA lead of a robot fighting game. Pick the next match to test. Prefer the least-tested robots and stages. Reply with JSON only."
                 usr = (f"Tests so far - robots: {dict(self.cov_char)}; stages: {dict(self.cov_stage)}.\n"
-                       f"Least tested robots: {least}. Least tested stages: {least_st}.\nChoose robots a and b, a stage and the CPU level (1-8) of the opponent.")
-                j = json.loads(self.llm.ask(sysmsg, usr, g, 48, 0.8))
+                       f"Choose robots a and b from {least}, a stage from {least_st} and the CPU level (1-8) of the opponent.")
+                j = self.llm.ask(sysmsg, usr, {"gbnf": gbnf, "schema": schema}, 48, 0.8)
                 a, b, stage, cpu = j["a"], j["b"], j["stage"], int(j["cpu"])
+                if a not in chars or b not in chars or stage not in STAGES:
+                    raise ValueError("out of range")
             except Exception as e:
+                a = b = stage = None
                 self.llm_fail += 1
                 self.say("scenario LLM failed:", e)
             finally:
@@ -180,26 +296,31 @@ class Qa:
         cand += self.rng.sample(rest, min(3, len(rest)))
         self.rng.shuffle(cand)
         plan = None
+        n = self.a.plan_len
         if self.llm is not None:
             try:
                 self.waiting_llm = True
-                act = "(" + "|".join(f'"\\"{k}\\""' for k in cand) + ")"
-                g = f'root ::= "{{\\"plan\\":[" {act} "," {act} "," {act} "]}}"'
+                letters = LETTERS[:len(cand)]
+                lt = '"\\"" [' + letters[0] + "-" + letters[-1] + '] "\\""'
+                gbnf = 'root ::= "{\\"plan\\":[" ' + " \",\" ".join([lt] * n) + ' "]}"'
+                schema = {"type": "object", "properties": {"plan": {"type": "array", "minItems": n, "maxItems": n,
+                                                                    "items": {"type": "string", "enum": list(letters)}}},
+                          "required": ["plan"], "additionalProperties": False}
                 sysmsg = ("You control robot P1 in a 3D fighting game to find bugs by trying varied, unusual and rapid inputs. "
-                          "Given the state and a list of candidate actions, choose 3 actions to run in sequence (about 0.4 s each). "
+                          f"Given the state and lettered candidate actions, choose {n} letters: the actions run in sequence (about 0.4 s each). "
                           "Attack when the opponent is close (dist below 1.5), approach when far, guard when the opponent is attacking, "
-                          "and try risky things near the ring edge. Reply with JSON only.")
+                          "and try risky things near the ring edge. Reply with JSON only, like {\"plan\":[\"A\",\"C\"]}.")
                 usr = (f"State: {json.dumps(st, separators=(',', ':'))}\nCandidates: "
-                       + "; ".join(f"{k} = {ACTION_HELP.get(k, k)}" for k in cand))
-                txt = self.llm.ask(sysmsg, usr, g, 40, 1.0)
-                plan = json.loads(txt)["plan"]
+                       + "; ".join(f"{LETTERS[i]} = {ACTION_HELP.get(k, k)}" for i, k in enumerate(cand)))
+                j = self.llm.ask(sysmsg, usr, {"gbnf": gbnf, "schema": schema}, 12 + 5 * n, 1.0)
+                plan = [cand[LETTERS.index(x)] for x in j["plan"] if x in LETTERS[:len(cand)]]
             except Exception as e:
                 self.llm_fail += 1
                 self.say("decide LLM failed:", e)
             finally:
                 self.waiting_llm = False
         if not plan:
-            plan = [self.rng.choice(cand) for _ in range(3)]
+            plan = [self.rng.choice(cand) for _ in range(n)]
         for k in plan:
             self.use[k] += 1
         self.decisions += 1
@@ -211,6 +332,7 @@ class Qa:
         if t == "hello":
             self.actions = [k for k in msg["actions"]]
             self.chars = msg["chars"]
+            self.gpu = msg.get("gpu", "")
             return None
         if t == "scenario":
             if time.time() > self.deadline:
@@ -306,7 +428,8 @@ class Qa:
         tot_frames = sum(m["frames"] for m in self.matches)
         lines = ["# ローカル LLM による QA 報告", ""]
         lines.append(f"- 実行時間: {self.a.minutes} 分（目標）、試合 {len(self.matches)} 試合、合計 {tot_frames} フレーム（{tot_frames / 3600:.1f} 分相当）")
-        lines.append(f"- LLM の判断: {self.decisions} 回（行動）、失敗 {self.llm_fail} 回。" + (f"平均 {self.llm.secs / max(1, self.llm.calls):.2f} 秒 / 回、{self.llm.tokens / max(0.001, self.llm.secs):.1f} トークン/秒" if self.llm else "（LLM なし: 乱択）"))
+        lines.append(f"- LLM の判断: {self.decisions} 回（行動）、失敗 {self.llm_fail} 回。" + (f"モデル {self.llm.name}、平均 {self.llm.secs / max(1, self.llm.calls):.2f} 秒 / 回、出力 {self.llm.tokens / max(0.001, self.llm.secs):.1f} トークン/秒、入力 平均 {self.llm.prompt_tokens / max(1, self.llm.calls):.0f} トークン" if self.llm else "（LLM なし: 乱択）"))
+        lines.append(f"- 描画: {self.a.render}、1 フレームあたり {self.a.ticks} tick" + (f"、{self.gpu}" if getattr(self, 'gpu', '') else ""))
         lines.append(f"- 再起動: {self.restarts} 回、クラッシュ・無応答: {len(self.crashes)} 件")
         lines.append(f"- 異常（不変条件違反）: {len(self.anoms)} 件、エンジンのエラー行（種類）: {len(self.errors)} 件")
         lines.append(f"- 決定論の不一致: {sum(1 for m in self.matches if not m['deterministic'])} 試合")
@@ -357,6 +480,13 @@ def main():
     ap.add_argument("--threads", type=int, default=4)
     ap.add_argument("--seed", type=int, default=20261111)
     ap.add_argument("--no-llm", action="store_true")
+    ap.add_argument("--endpoint", default="", help="OpenAI 互換サーバーの URL（例 http://localhost:1234/v1）。指定すると --model は使わない")
+    ap.add_argument("--llm-model", default="", help="サーバー側のモデル名（例 qwen3.6-35b-a3b）")
+    ap.add_argument("--api-key", default=os.environ.get("QA_API_KEY", ""))
+    ap.add_argument("--godot", default="godot", help="Godot の実行ファイル")
+    ap.add_argument("--render", choices=["headless", "xvfb", "native"], default="headless")
+    ap.add_argument("--ticks", type=int, default=1, help="1 描画フレームあたりの tick 数（描画ありでは 2 が目安）")
+    ap.add_argument("--plan-len", type=int, default=3, help="LLM 1 回の判断で選ぶ行動の数")
     ap.add_argument("--carry", default="", help="前回の summary.json（網羅を引き継ぐ）")
     a = ap.parse_args()
     Qa(a).run()

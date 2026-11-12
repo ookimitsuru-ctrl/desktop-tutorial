@@ -23,6 +23,8 @@ var stuck_limits := {}
 var st_names := {}
 var actions := {}
 var out_dir := ""
+var ticks_per_frame := 1
+var rendered := false
 
 var _mode := "start"
 var _scn: Dictionary = {}
@@ -47,6 +49,13 @@ var _perf: Array = []
 var _decisions := 0
 var _stopping := false
 var _leave_wait := 0
+var _last_shot_frame := -1000
+var _bad_black := 0
+var _bad_white := 0
+var _bad_flat := 0
+var _lum_sum := 0.0
+var _lum_n := 0
+var _shot_taken := false
 var _last_usec := 0
 var _prev_blocked := false
 
@@ -59,9 +68,13 @@ func _ready() -> void:
 	for i: int in range(args.size() - 1):
 		if args[i] == "--out":
 			out_dir = args[i + 1]
+		elif args[i] == "--ticks":
+			ticks_per_frame = maxi(1, args[i + 1].to_int())
 	if out_dir == "":
 		out_dir = "user://qa"
 	DirAccess.make_dir_recursive_absolute(out_dir + "/repro")
+	DirAccess.make_dir_recursive_absolute(out_dir + "/shots")
+	rendered = DisplayServer.get_name() != "headless"
 	var se_script: GDScript = load("res://src/sim/match/se.gd")
 	var consts := se_script.get_script_constant_map()
 	for k: String in consts:
@@ -71,7 +84,7 @@ func _ready() -> void:
 		SE.ST_DOWN: 900, SE.ST_GETUP: 300, SE.ST_TECH: 300, SE.ST_THROWN: 420, SE.ST_THROWING: 420, SE.ST_CLASH: 300,
 		SE.ST_PARRIED: 300, SE.ST_MOVE: 420, SE.ST_EVADE: 200}
 	_build_actions()
-	print("@QA " + JSON.stringify({"t": "hello", "actions": actions.keys(), "chars": DataDB.characters(), "pid": OS.get_process_id()}))
+	print("@QA " + JSON.stringify({"t": "hello", "actions": actions.keys(), "chars": DataDB.characters(), "pid": OS.get_process_id(), "rendered": rendered, "renderer": str(ProjectSettings.get_setting("rendering/renderer/rendering_method", "")), "gpu": RenderingServer.get_video_adapter_name() if rendered else ""}))
 
 
 # ------------------------------------------------------------------ 行動の表
@@ -253,6 +266,55 @@ func _to_i32(v: int) -> int:
 	return c - 0x100000000 if c >= 0x80000000 else c
 
 
+## 描画ありのときだけ: 画面を 64x36 に縮めて、真っ黒・真っ白・一色のまま固まっていないかを調べる
+## （NaN による白い光の玉、シェーダーの失敗による黒や一色の画面など。ヘッドレスでは見えないもの）
+func _frame_check() -> void:
+	if not rendered or _world.phase != SE.PH_FIGHT or _world.frame - _last_shot_frame < 40:
+		return
+	_last_shot_frame = _world.frame
+	var tex := get_viewport().get_texture()
+	if tex == null:
+		return
+	var full := tex.get_image()
+	if full == null or full.is_empty():
+		return
+	if not _shot_taken:
+		_shot_taken = true
+		full.save_jpg("%s/shots/m%03d.jpg" % [out_dir, _match_no], 0.85)
+	var img := full.duplicate() as Image
+	img.resize(64, 36, Image.INTERPOLATE_NEAREST)
+	var sum := 0.0
+	var sum2 := 0.0
+	var white := 0
+	var n := img.get_width() * img.get_height()
+	for y: int in range(img.get_height()):
+		for x: int in range(img.get_width()):
+			var c := img.get_pixel(x, y)
+			var l := c.r * 0.299 + c.g * 0.587 + c.b * 0.114
+			sum += l
+			sum2 += l * l
+			if c.r > 0.97 and c.g > 0.97 and c.b > 0.97:
+				white += 1
+	var mean := sum / n
+	var sd := sqrt(maxf(0.0, sum2 / n - mean * mean))
+	var wf := float(white) / n
+	_lum_sum += mean
+	_lum_n += 1
+	_bad_black = _bad_black + 1 if mean < 0.03 else 0
+	_bad_white = _bad_white + 1 if wf > 0.30 else 0
+	_bad_flat = _bad_flat + 1 if sd < 0.012 else 0
+	var why := ""
+	if _bad_black == 3:
+		why = "frame_black"
+	elif _bad_white == 2:
+		why = "frame_white"
+	elif _bad_flat == 3:
+		why = "frame_uniform"
+	if why != "":
+		_anom(why, {"mean": snappedf(mean, 0.001), "std": snappedf(sd, 0.001), "white": snappedf(wf, 0.001)})
+		full.save_jpg("%s/shots/m%03d_f%d_%s.jpg" % [out_dir, _match_no, _world.frame, why], 0.85)
+
+
 func _replay_check(m: Node) -> Dictionary:
 	var rec: ReplayRecorder = m.get("recorder")
 	var g := Game
@@ -287,7 +349,7 @@ func _process(_delta: float) -> void:
 			if SceneRouter.current != null and not bool(SceneRouter.get("_busy")) and SceneRouter.current.get("recorder") != null:
 				_match = SceneRouter.current
 				_world = _match.get("world")
-				_match.set("pv_ticks", 1)
+				_match.set("pv_ticks", ticks_per_frame)
 				(_match.get("sources") as Array)[0] = Callable(self, "_make_input")
 				_match.set("event_tap", Callable(self, "_tap"))
 				_mode = "play"
@@ -300,6 +362,7 @@ func _process(_delta: float) -> void:
 			_prev_blocked = _frame_blocked
 			_frame_blocked = false
 			_check(_match, _world)
+			_frame_check()
 			if _stopping:
 				_end_match(true)
 			elif _world.phase == SE.PH_MATCH_END:
@@ -343,6 +406,13 @@ func _begin(r: Dictionary) -> void:
 	_blocked_usec = 0
 	_cur_name = ""
 	_last_usec = 0
+	_last_shot_frame = -1000
+	_bad_black = 0
+	_bad_white = 0
+	_bad_flat = 0
+	_lum_sum = 0.0
+	_lum_n = 0
+	_shot_taken = false
 	print("qa: match %d %s vs %s on %s cpu=%d seed=%d" % [_match_no, Game.p_char[0], Game.p_char[1], Game.stage, int(r["cpu"]), Game.seed_value])
 	SceneRouter.goto("match", {"mode": Game.mode}, 0.0)
 	_mode = "wait_scene"
@@ -371,7 +441,7 @@ func _end_match(aborted: bool) -> void:
 	var res := {
 		"match": _match_no, "frames": _world.frame, "winner": _world.match_winner, "rounds": _world.round_no, "aborted": aborted,
 		"anomalies": _anoms.size(), "events": _ev_count, "deterministic": bool(det["ok"]), "decisions": _decisions,
-		"script_ms_p95": snappedf(p95, 0.01), "script_ms_max": snappedf(pmax, 0.01), "repro": base,
+		"mean_luma": snappedf(_lum_sum / maxf(1.0, float(_lum_n)), 0.001), "script_ms_p95": snappedf(p95, 0.01), "script_ms_max": snappedf(pmax, 0.01), "repro": base,
 		"objects": int(Performance.get_monitor(Performance.OBJECT_COUNT)), "nodes": int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
 		"orphans": int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)), "mem_mb": snappedf(Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, 0.1),
 	}
