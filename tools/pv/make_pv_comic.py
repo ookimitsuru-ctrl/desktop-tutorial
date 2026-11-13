@@ -5,7 +5,7 @@ pv_director.tscn が撮った素材（raw.avi）とログ（各ショットの�
 150BPM の拍に合わせて 1 フレームずつ合成し、BGM と効果音を付けて MP4 にする。
 
 使い方: python3 tools/pv/make_pv_comic.py <raw.avi> <raw_log.json> <出力.mp4> [作業ディレクトリ]
-環境変数: PV_PLAIN=1（減色・網点・輪郭線の加工をしない）、PV_BGM=<150BPM の音源>
+環境変数: PV_EDIT=long と PV_SHOTS=<ショット一覧>（1 カット約 5 秒の長回し版）、PV_PLAIN=1（減色・網点・輪郭線の加工をしない）、PV_BGM=<150BPM の音源>
 必要: ffmpeg, numpy, Pillow, opencv-python-headless, soundfile
 """
 import json
@@ -564,6 +564,76 @@ def build(fo):
     return e
 
 
+# ------------------------------------------------------------------ 長回し版（1 カット約 5 秒 × 9）
+
+HIT_WORDS = [("POW!", "fire"), ("KRAK!", "red"), ("WHAM!", "blue"), ("BAM!", "green"), ("THWAK!", "gold"), ("SMASH!", "fire"),
+             ("KLANG!", "blue"), ("BOOM!", "red"), ("ZWAK!", "gold"), ("KRUNCH!", "green")]
+
+
+def auto_marks(fo, shot, j0, n, counter, stage=""):
+    """ショット内の出来事から、止め絵にするもの（時間順）と、音だけ鳴らすものを選ぶ"""
+    evs = [e for e in fo.log[shot].get("events", []) if j0 + 8 <= e["j"] < j0 + n - 12]
+    cand = []
+    for e in evs:
+        k = e["kind"]
+        if k == "wall_hit":
+            cand.append((e["j"], 5, e, "KRASH!", "gold", 12, "wall_hit", 260))
+        elif k == "ringout":
+            e2 = dict(e)
+            e2["j"] = e["j"] + 10
+            snd = f"ringout_{stage}" if (SFX / f"ringout_{stage}.wav").exists() else "ringout"
+            cand.append((e2["j"], 6, e2, "SPLASH!", "blue", 14, snd, 250))
+        elif k == "hit" and e.get("ko"):
+            cand.append((e["j"], 7, e, "KA-BOOM!", "fire", 20, "counter", 270))
+        elif k == "hit" and e.get("throw"):
+            cand.append((e["j"], 4, e, "SLAM!", "red", 12, "slam", 260))
+        elif k == "hit":
+            heavy = int(e.get("weight", 0)) >= 2
+            cand.append((e["j"], 3 if heavy else 1, e, None, None, 10 if heavy else 5, "hit_heavy_%d" if heavy else "hit_medium_%d", 240 if heavy else 190))
+    # 強い出来事から順に、近すぎるもの（16 フレーム以内）を避けて最大 4 つ
+    chosen = []
+    for c in sorted(cand, key=lambda c: (-c[1], c[0])):
+        if len(chosen) < 4 and all(abs(c[0] - o[0]) >= 16 for o in chosen):
+            chosen.append(c)
+    chosen.sort(key=lambda c: c[0])
+    marks = []
+    for c in chosen:
+        _j, _pr, e, text, style, hold, snd, size = c
+        if text is None:
+            text, style = HIT_WORDS[counter[0] % len(HIT_WORDS)]
+            counter[0] += 1
+        if "%d" in snd:
+            snd = snd % (counter[0] % 4 + 1)
+        marks.append((e, text, style, hold, snd, size))
+    used = {id(c[2]) for c in chosen}
+    quiet = [e for e in evs if e["kind"] == "hit" and id(e) not in used and all(abs(e["j"] - c[0]) >= 4 for c in chosen)]
+    return marks, quiet
+
+
+def build_long(fo):
+    shots = json.loads(pathlib.Path(os.environ["PV_SHOTS"]).read_text())
+    e = Edit(fo)
+    n = 150
+    counter = [0]
+    for sh in shots:
+        name = sh["name"]
+        if sh["type"] != "match":
+            e.play(name, 6, n, zoom_to=(0.5, 0.42, 1.12), strength=1.0)
+            continue
+        ea = int(sh.get("event_at", 20))
+        SHOT_EVENT_AT[name] = ea
+        j0 = max(0, ea - 36)
+        marks, quiet = auto_marks(fo, name, j0, n, counter, sh.get("stage", ""))
+        t0 = e.t()
+        e.long(name, j0, n, marks)
+        # 止めなかった打撃は音だけ（止め絵で伸びた分だけ後ろへずらす）
+        for q in quiet:
+            shift = sum(m[3] - 1 for m in marks if m[0]["j"] < q["j"])
+            e.sounds.append((t0 + (q["j"] - j0 + shift) / FPS, "hit_medium_%d" % (q["j"] % 4 + 1), 0.7))
+    e.fade_out(30)
+    return e
+
+
 def render_audio(e, path):
     sr = 44100
     out = np.zeros((int(sr * 45.0), 2), dtype=np.float64)
@@ -598,7 +668,7 @@ def main():
     work = pathlib.Path(sys.argv[4] if len(sys.argv) > 4 else pathlib.Path(out).parent / "pv_comic_work")
     work.mkdir(parents=True, exist_ok=True)
     fo = Footage(raw, log_path, work)
-    e = build(fo)
+    e = build_long(fo) if os.environ.get("PV_EDIT") == "long" else build(fo)
     only = [int(x) for x in sys.argv[5].split(",")] if len(sys.argv) > 5 else None
     if only:
         for n in only:

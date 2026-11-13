@@ -1,0 +1,297 @@
+[
+ {
+  "name": "hero",
+  "type": "showcase",
+  "c": "toma",
+  "costume": "a",
+  "color": 0,
+  "anim": "rest",
+  "len": 160,
+  "fade_in": 1.4,
+  "key": 1.4,
+  "cam": {
+   "dist0": 5.2,
+   "dist1": 3.3,
+   "h0": 0.08,
+   "h1": 0.17,
+   "look_h": 0.58,
+   "yaw0": -26,
+   "yaw1": -6
+  }
+ },
+ {
+  "name": "g1",
+  "type": "match",
+  "c": [
+   "bjorn",
+   "toma"
+  ],
+  "stage": "arena",
+  "find": {
+   "kind": "hit",
+   "eq": {
+    "weight": 2
+   },
+   "after": 300
+  },
+  "len": 176,
+  "event_at": 44,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.8,
+  "costume": [
+   "a",
+   "b"
+  ],
+  "color": [
+   0,
+   1
+  ],
+  "rounds": 2
+ },
+ {
+  "name": "g3",
+  "type": "match",
+  "c": [
+   "toma",
+   "yuelan"
+  ],
+  "stage": "ruins",
+  "find": {
+   "kind": "launch",
+   "after": 300,
+   "then": {
+    "kind": "hit",
+    "min": {
+     "combo": 3
+    },
+    "within": 100
+   }
+  },
+  "len": 176,
+  "event_at": 40,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.4,
+  "costume": [
+   "a",
+   "a"
+  ],
+  "color": [
+   0,
+   0
+  ],
+  "rounds": 2
+ },
+ {
+  "name": "g4",
+  "type": "match",
+  "c": [
+   "bjorn",
+   "lena"
+  ],
+  "stage": "temple",
+  "find": {
+   "kind": "throw",
+   "after": 300
+  },
+  "len": 176,
+  "event_at": 50,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.5,
+  "costume": [
+   "a",
+   "b"
+  ],
+  "color": [
+   0,
+   1
+  ],
+  "rounds": 2
+ },
+ {
+  "name": "s1",
+  "type": "match",
+  "c": [
+   "adrien",
+   "gensai"
+  ],
+  "stage": "skyline",
+  "find": {
+   "kind": "hit",
+   "eq": {
+    "weight": 2
+   },
+   "after": 300
+  },
+  "len": 176,
+  "event_at": 44,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.5,
+  "costume": [
+   "a",
+   "a"
+  ],
+  "color": [
+   0,
+   1
+  ],
+  "rounds": 2
+ },
+ {
+  "name": "g5",
+  "type": "match",
+  "c": [
+   "adrien",
+   "ravi"
+  ],
+  "stage": "fort",
+  "find": {
+   "kind": "wall_hit",
+   "after": 200
+  },
+  "len": 176,
+  "event_at": 50,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.3,
+  "costume": [
+   "a",
+   "a"
+  ],
+  "color": [
+   0,
+   0
+  ],
+  "rounds": 2
+ },
+ {
+  "name": "n4",
+  "type": "match",
+  "c": [
+   "yuelan",
+   "bjorn"
+  ],
+  "stage": "harbor",
+  "find": {
+   "kind": "hit",
+   "eq": {
+    "weight": 2
+   },
+   "after": 420
+  },
+  "len": 176,
+  "event_at": 44,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.7,
+  "rounds": 2,
+  "costume": [
+   "a",
+   "a"
+  ],
+  "color": [
+   0,
+   1
+  ]
+ },
+ {
+  "name": "g6",
+  "type": "match",
+  "c": [
+   "zaw",
+   "mariel"
+  ],
+  "stage": "raft",
+  "find": {
+   "kind": "ringout",
+   "after": 200
+  },
+  "len": 176,
+  "event_at": 64,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.2,
+  "costume": [
+   "b",
+   "a"
+  ],
+  "color": [
+   1,
+   0
+  ],
+  "rounds": 2
+ },
+ {
+  "name": "ko",
+  "type": "match",
+  "c": [
+   "lena",
+   "zaw"
+  ],
+  "stage": "lighthouse",
+  "find": {
+   "kind": "hit",
+   "flags": [
+    "ko"
+   ],
+   "after": 200
+  },
+  "len": 190,
+  "event_at": 70,
+  "speed": [
+   [
+    0,
+    2
+   ]
+  ],
+  "hud": false,
+  "zoom": -0.2,
+  "costume": [
+   "a",
+   "a"
+  ],
+  "color": [
+   0,
+   1
+  ],
+  "rounds": 1
+ }
+]

@@ -35,6 +35,7 @@ func _ready() -> void:
 	Settings.data["replay_autosave"] = false
 	Settings.data["camera_shake"] = 100
 	Settings.data["photosensitive"] = false
+	Settings.data["comic_words"] = false  # 擬音は編集で付ける
 	var raw := FileAccess.get_file_as_string(OS.get_environment("PV_SHOTS"))
 	shots = JSON.parse_string(raw)
 	only = Array(OS.get_environment("PV_ONLY").split(",", false))
