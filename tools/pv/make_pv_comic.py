@@ -5,10 +5,12 @@ pv_director.tscn が撮った素材（raw.avi）とログ（各ショットの�
 150BPM の拍に合わせて 1 フレームずつ合成し、BGM と効果音を付けて MP4 にする。
 
 使い方: python3 tools/pv/make_pv_comic.py <raw.avi> <raw_log.json> <出力.mp4> [作業ディレクトリ]
+環境変数: PV_PLAIN=1（減色・網点・輪郭線の加工をしない）、PV_BGM=<150BPM の音源>
 必要: ffmpeg, numpy, Pillow, opencv-python-headless, soundfile
 """
 import json
 import math
+import os
 import pathlib
 import subprocess
 import sys
@@ -86,7 +88,9 @@ DOTS = np.sqrt((_u - np.floor(_u) - 0.5) ** 2 + (_v - np.floor(_v) - 0.5) ** 2) 
 
 
 def comic(img, strength=1.0):
-    """写真のような絵を、色面 + インクの輪郭線 + 影の網点にする"""
+    """写真のような絵を、色面 + インクの輪郭線 + 影の網点にする。PV_PLAIN=1 なら加工せずゲームの絵のまま返す"""
+    if os.environ.get("PV_PLAIN"):
+        return img
     small = cv2.resize(img, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
     flat = cv2.bilateralFilter(small, 7, 60, 7)
     flat = cv2.bilateralFilter(flat, 7, 60, 7)
@@ -563,7 +567,8 @@ def build(fo):
 def render_audio(e, path):
     sr = 44100
     out = np.zeros((int(sr * 45.0), 2), dtype=np.float64)
-    bgm, bsr = sf.read(str(ROOT / "assets/audio/bgm/bgm_arena.ogg"))
+    # 編集は 150BPM の拍に合わせてある。PV_BGM で 150BPM の別の音源を渡せる
+    bgm, bsr = sf.read(os.environ.get("PV_BGM", str(ROOT / "assets/audio/bgm/bgm_arena.ogg")))
     assert bsr == sr
     n = min(len(bgm), len(out))
     out[:n] += bgm[:n] * 0.62
