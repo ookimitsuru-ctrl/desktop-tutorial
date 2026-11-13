@@ -137,16 +137,21 @@ export class Driver {
     let cap = 999, lift = 0;
     if (cars) {
       const myOff = c.d;
-      let ahead = null, aGap = 1e9, behind = null, bGap = 1e9, sideBy = false;
+      let ahead = null, aGap = 1e9, behind = null, bGap = 1e9, sideBy = false, block = null, blGap = 1e9;
       for (let k = 0; k < cars.length; k++) {
         const o = cars[k];
         if (o === c || o.inPit || o.out) continue;
         const gap = T.sDiff(o.s, c.s);
-        if (Math.abs(gap) > 70) continue;
+        if (Math.abs(gap) > 95) continue;
         // 立体交差の上下は無関係
         const dx = o.x - c.x, dy = o.y - c.y;
-        if (dx * dx + dy * dy > 90 * 90) continue;
+        if (dx * dx + dy * dy > 110 * 110) continue;
         if (gap > 0 && gap < aGap) { aGap = gap; ahead = o; }
+        // 自分の進路上にいる最も近い車 (隣の列の車に隠れた前走車を見落とさない)
+        if (gap > 0 && gap < blGap) {
+          const l1 = o.d - myOff, l2 = (o.d - L.off[o.i]) - (myOff - L.off[c.i]);
+          if (Math.abs(l1) < 2.3 || Math.abs(l2) < 2.3 || (info?.caution && gap > 4)) { blGap = gap; block = o; }
+        }
         if (gap <= 0 && -gap < bGap) { bGap = -gap; behind = o; }
         // 横並び: 間隔を確保
         if (Math.abs(gap) < 6.5) {
@@ -186,14 +191,16 @@ export class Driver {
             }
           }
         }
-        // 進路が重なっている時は、前車が急減速しても止まれる速度に抑える
-        if (Math.abs(lat) < 2.3 && aGap < 60) {
-          const room = Math.max(0, aGap - (5.4 + v * 0.035));
-          cap = Math.min(cap, Math.sqrt(ov * ov + 2 * (6.2 * this.profileMu) * room));
-          if (aGap < 25 && Math.abs(L.curv[c.i]) > 0.004) cap = Math.min(cap, this.profile[c.i] * 0.985 + 1);
-          if (aGap < 5.2) cap = Math.min(cap, ov - 1.5);
-        }
       } else if (this.passT <= 0) this.passSide = 0;
+      // 進路上の車に追突しない速度に抑える (前車が急減速しても止まれること)
+      if (block && blGap < 90) {
+        const ov = Math.max(0, block.vx);
+        const room = Math.max(0, blGap - (5.4 + v * 0.035) - (info?.caution ? 3 : 0));
+        const decel = (Math.abs(L.curv[c.i]) > 0.004 ? 4.2 : 6.2) * this.profileMu;
+        cap = Math.min(cap, Math.sqrt(ov * ov + 2 * decel * room));
+        if (blGap < 25 && Math.abs(L.curv[c.i]) > 0.004) cap = Math.min(cap, this.profile[c.i] * 0.985 + 1);
+        if (blGap < 5.2) cap = Math.min(cap, ov - 1.5);
+      }
       if ((!ahead || aGap > 30) && !sideBy) { if (this.passT <= 0) this.offsetTarget *= (1 - Math.min(1, dt * 0.9)); }
       if (sideBy) cap = Math.min(cap, Math.max(20, this.profile[c.i] * 0.95));
       // 防御: 直線で後ろから迫られたらイン側へ一度だけ動く
@@ -249,6 +256,7 @@ export class Driver {
     let vt = this.profile[pi] * (1 + this.err);
     const offAbs = Math.abs(this.offset);
     if (offAbs > 0.7 && Math.abs(L.curv[pi]) > 0.004) vt *= 1 - Math.min(0.12, offAbs * 0.028);
+    if (info?.caution && Math.abs(L.curv[pi]) > 0.003) vt *= 0.93; // スタート直後の混戦では無理をしない
     if (c.offCount >= 2) vt = Math.min(vt, 30);
     const stuck = c.offCount >= 2 && v < 8;
     vt = Math.min(vt, cap);

@@ -235,7 +235,7 @@ export class Session {
         else if (this.state === 'green' && this.stateT < e.ai.reaction && !e.started) { c.throttle = 0; c.brake = 1; }
         else {
           e.started = true;
-          const info = { blue: e.blue, vmax: e.finished ? 45 : (e.retired ? 0.01 : undefined) };
+          const info = { blue: e.blue, vmax: e.finished ? 45 : (e.retired ? 0.01 : undefined), caution: this.mode === 'race' && this.raceTime < 40 };
           e.ai.update(dt, this.wet, this.cars, info);
           if (e.finished) { c.throttle = Math.min(c.throttle, 0.5); }
         }
@@ -335,6 +335,14 @@ export class Session {
           if (lapDiff > T.length * 0.6) {
             const gap = T.sDiff(e.car.s, o.car.s);
             if (gap > 0 && gap < 28) { e.blue = true; break; }
+          }
+        }
+        // 大きく損傷した車は後続に道を譲る
+        if (!e.blue && !e.pit && e.car.dmgF + e.car.dmgR + e.car.dmgS > 0.3) {
+          for (const o of this.entries) {
+            if (o === e || o.out || o.pit) continue;
+            const gap = T.sDiff(e.car.s, o.car.s);
+            if (gap > 1 && gap < 22 && o.car.dmgF + o.car.dmgR + o.car.dmgS < 0.2) { e.blue = true; break; }
           }
         }
       }
