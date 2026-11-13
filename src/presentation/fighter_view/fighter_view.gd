@@ -47,6 +47,8 @@ var _foot_cool: Array[float] = [0.0, 0.0]
 var other: FighterView = null
 var head_world := Vector3(0, 1.5, 0)
 var trail: LimbTrail
+## 手足の軌跡を出すか（PV の撮影では消す）
+static var trails_enabled := true
 var smoke: CPUParticles3D
 var _spark_wait := 1.0
 var max_hp := 1000
@@ -360,7 +362,7 @@ func _steps(p: FighterState, xf: Transform3D, delta: float) -> void:
 
 ## 技の最中、速く動く手足の先に軌跡を出す
 func _trails(p: FighterState, xf: Transform3D, step_dt: float) -> void:
-	var emit := p.state == SE.ST_MOVE or p.state == SE.ST_THROWING
+	var emit := trails_enabled and (p.state == SE.ST_MOVE or p.state == SE.ST_THROWING)
 	for k: int in range(4):
 		var b: int = LIMBS[k]
 		var g := pe.global[b]

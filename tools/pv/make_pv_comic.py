@@ -5,7 +5,7 @@ pv_director.tscn が撮った素材（raw.avi）とログ（各ショットの�
 150BPM の拍に合わせて 1 フレームずつ合成し、BGM と効果音を付けて MP4 にする。
 
 使い方: python3 tools/pv/make_pv_comic.py <raw.avi> <raw_log.json> <出力.mp4> [作業ディレクトリ]
-環境変数: PV_EDIT=long と PV_SHOTS=<ショット一覧>（1 カット約 5 秒の長回し版）、PV_PLAIN=1（減色・網点・輪郭線の加工をしない）、PV_BGM=<150BPM の音源>
+環境変数: PV_EDIT=long と PV_SHOTS=<ショット一覧>（1 カット約 5 秒の長回し版）、PV_NO_LINES=1（集中線なし）、PV_PLAIN=1（減色・網点・輪郭線の加工をしない）、PV_BGM=<150BPM の音源>
 必要: ffmpeg, numpy, Pillow, opencv-python-headless, soundfile
 """
 import json
@@ -336,7 +336,7 @@ class Edit:
                 amp = max(0, 14 - k * 3) * big
                 sh = (int(rng.uniform(-amp, amp)), int(rng.uniform(-amp, amp)))
                 pil = single(img, sh)
-                if k >= 1:
+                if k >= 1 and not os.environ.get("PV_NO_LINES"):
                     pil.paste(lines, sh, lines)
                     ImageDraw.Draw(pil).line([(x + sh[0], y + sh[1]) for x, y in FULL + [FULL[0]]], fill=INK, width=BORDER)
                     # 枠の外は紙に戻す
