@@ -240,7 +240,7 @@
    "after": 200
   },
   "len": 176,
-  "event_at": 64,
+  "event_at": 120,
   "speed": [
    [
     0,
@@ -257,7 +257,8 @@
    1,
    0
   ],
-  "rounds": 2
+  "rounds": 2,
+  "j0": 0
  },
  {
   "name": "ko",

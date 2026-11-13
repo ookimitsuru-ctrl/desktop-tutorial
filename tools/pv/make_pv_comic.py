@@ -61,7 +61,10 @@ class Footage:
         if n not in self._cache:
             if len(self._cache) > 40:
                 self._cache.clear()
-            self._cache[n] = cv2.imread(str(self.dir / f"{n:05d}.jpg"))[:, :, ::-1].copy()
+            im = cv2.imread(str(self.dir / f"{n:05d}.jpg"))[:, :, ::-1]
+            if im.shape[:2] != (H, W):
+                im = cv2.resize(im, (W, H), interpolation=cv2.INTER_LANCZOS4)
+            self._cache[n] = im.copy()
         return self._cache[n]
 
     def event(self, shot, kinds=("hit",), near=None, pick="first"):
@@ -622,7 +625,7 @@ def build_long(fo):
             continue
         ea = int(sh.get("event_at", 20))
         SHOT_EVENT_AT[name] = ea
-        j0 = max(0, ea - 36)
+        j0 = int(sh.get("j0", max(0, ea - 36)))
         marks, quiet = auto_marks(fo, name, j0, n, counter, sh.get("stage", ""))
         t0 = e.t()
         e.long(name, j0, n, marks)
