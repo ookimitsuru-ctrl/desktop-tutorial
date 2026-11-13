@@ -641,7 +641,8 @@ def render_audio(e, path):
     bgm, bsr = sf.read(os.environ.get("PV_BGM", str(ROOT / "assets/audio/bgm/bgm_arena.ogg")))
     assert bsr == sr
     n = min(len(bgm), len(out))
-    out[:n] += bgm[:n] * 0.62
+    vol = float(os.environ.get("PV_VOL", "1.0"))  # 全体の音量（控えめにするなら 0.6 など）
+    out[:n] += bgm[:n] * 0.62 * vol
     for t, name, vol in e.sounds:
         p = SFX / f"{name}.wav"
         if not p.exists():
@@ -654,7 +655,7 @@ def render_audio(e, path):
         a = int(max(0.0, t) * sr)
         b = min(len(out), a + len(x))
         if b > a:
-            out[a:b] += x[: b - a] * vol * 0.95
+            out[a:b] += x[: b - a] * vol * 0.95 * float(os.environ.get("PV_SFX", "1.0")) * float(os.environ.get("PV_VOL", "1.0"))
     fade = int(sr * 1.4)
     out[-fade:] *= np.linspace(1, 0, fade)[:, None]
     fi = int(sr * 0.2)
