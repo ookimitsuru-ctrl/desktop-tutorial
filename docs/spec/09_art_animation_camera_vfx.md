@@ -242,7 +242,7 @@ AI 実装者が数値で直接アニメーションを書けるよう、**キー
 | `guard_spark` | Blocked | 青白の弧（防御側の前面に盾形）＋小さな火花 | 8F |
 | `evade_ghost` | EvadeSucceeded | 回避した側の残像（半透明の簡易シェーダーで2体、0.1秒間隔） | 18F |
 | `throw_break` | ThrowEscaped / ThrowClash | 2人の間に白いリング | 12F |
-| `limb_trail` | 重い技・浮かせ技の持続 | 攻撃部位のリボントレイル | 8〜10F |
+| `limb_trail` | （v1.4 で廃止） | — | — |
 | `dust_step` / `dust_land` | ダッシュ・着地・ダウン | 床の土煙（ステージ材質で色を変える: 砂、雪、水しぶき、木屑） | 20〜40F |
 | `ground_impact` | 大ダウン攻撃・叩きつけ投げ | 床のひび割れデカール（5秒でフェード）＋土煙 | — |
 | `wall_hit` / `wall_break` | WallHit / WallBroken | 破片・粉塵。破壊時は大量の破片（演出用物理） | 30〜90F |

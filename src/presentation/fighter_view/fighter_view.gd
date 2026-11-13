@@ -9,7 +9,6 @@ signal stepped(pos: Vector3, strength: float)
 signal sparked(pos: Vector3)
 
 const FP_TO_F := 1.0 / 65536.0
-const LIMBS := [Rig.B.L_HAND, Rig.B.R_HAND, Rig.B.L_FOOT, Rig.B.R_FOOT]
 const CHAINS := [[Rig.B.HAIR1, Rig.B.HAIR2, Rig.B.HAIR3], [Rig.B.SASH1, Rig.B.SASH2]]
 
 var model: CharacterModel
@@ -46,9 +45,6 @@ var _foot_down: Array[bool] = [true, true]
 var _foot_cool: Array[float] = [0.0, 0.0]
 var other: FighterView = null
 var head_world := Vector3(0, 1.5, 0)
-var trail: LimbTrail
-## 手足の軌跡を出すか（PV の撮影では消す）
-static var trails_enabled := true
 var smoke: CPUParticles3D
 var _spark_wait := 1.0
 var max_hp := 1000
@@ -89,12 +85,6 @@ func setup(p_char: String, costume: String, color_idx: int, p_cd: CharDef, p_sid
 			(g.material as ShaderMaterial).set_shader_parameter("rim_intensity", 1.2)
 		ghosts.append(g)
 		ghost_life.append(0.0)
-	trail = LimbTrail.new()
-	add_child(trail)
-	var cols: Array = cj.get("colors", [{}])
-	var cdict: Dictionary = cols[clampi(color_idx, 0, cols.size() - 1)]
-	var ac := Color.from_string(String(cdict.get("accent", "#FFC070")), Color(1.0, 0.75, 0.45))
-	trail.color = ac.lerp(Color(1.0, 0.9, 0.75), 0.45)
 	# 損傷時の煙（体力が減ると胸から立ちのぼる）
 	smoke = CPUParticles3D.new()
 	smoke.emitting = false
@@ -221,7 +211,6 @@ func sync(w: SimWorld, i: int, delta: float) -> void:
 	var xf := global_transform
 	head_world = xf * pe.global[Rig.B.HEAD].origin
 	_steps(p, xf, delta)
-	_trails(p, xf, step_dt)
 	_damage(p, xf, delta)
 	# 影
 	shadow.global_position = Vector3(pos.x, 0.012, pos.z) + _hips_offset()
@@ -358,21 +347,6 @@ func _steps(p: FighterState, xf: Transform3D, delta: float) -> void:
 				_bob_v -= 0.22 * st
 				var wp := xf * Vector3(fp.x, 0.0, fp.z)
 				stepped.emit(Vector3(wp.x, 0.03, wp.z), st)
-
-
-## 技の最中、速く動く手足の先に軌跡を出す
-func _trails(p: FighterState, xf: Transform3D, step_dt: float) -> void:
-	var emit := trails_enabled and (p.state == SE.ST_MOVE or p.state == SE.ST_THROWING)
-	for k: int in range(4):
-		var b: int = LIMBS[k]
-		var g := pe.global[b]
-		var tip_local := lib.rig.tips[b] - lib.rig.joints[b]
-		var dirn := tip_local.normalized()
-		# 手は拳の幅、足は足首からつま先まで
-		var a := xf * (g * (dirn * (-0.02 if k < 2 else 0.0)))
-		var e := xf * (g * (dirn * (0.17 if k < 2 else 0.2)))
-		trail.feed(k, a, e, emit, step_dt)
-	trail.rebuild()
 
 
 ## 損傷: 体力が 3 割を切ると煙、さらに減ると火花
@@ -525,5 +499,3 @@ func reset_springs() -> void:
 	_bob = 0.0
 	_bob_v = 0.0
 	_off_on = false
-	if trail != null:
-		trail.clear()
