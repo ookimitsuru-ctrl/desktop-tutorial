@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "id": "adrien",
+  "name": [
+    "ラピエール",
+    "Rapiere"
+  ],
+  "style": [
+    "サバット",
+    "Savate"
+  ],
+  "difficulty": 3,
+  "weight_class": "middle",
+  "body": {
+    "height": "1.88",
+    "shoulder": "1.0",
+    "hip": "0.98",
+    "arm": "1.02",
+    "leg": "1.07",
+    "torso": "0.98"
+  },
+  "physics": {
+    "push_radius": "0.30",
+    "float_factor": "1.02",
+    "hurt_mul": "1.00",
+    "throw_range": "0.90"
+  },
+  "movement": {
+    "walk_f": "1.55",
+    "walk_b": "1.35",
+    "dash_f": [
+      18,
+      "1.50"
+    ],
+    "dash_b": [
+      20,
+      "1.35"
+    ],
+    "run": "4.7",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.24",
+    "depth": "0.48",
+    "crouch": "0.04",
+    "turn": "36",
+    "guard": "mid",
+    "lean": "2"
+  },
+  "stances": [
+    {
+      "id": "garde",
+      "name": [
+        "ガルド",
+        "Garde"
+      ],
+      "max_frames": 0,
+      "low_profile": false,
+      "pose": {
+        "root": [
+          0,
+          0.015,
+          0
+        ],
+        "hand_l": [
+          0.0,
+          0.04,
+          0.05
+        ],
+        "hand_r": [
+          0.0,
+          0.03,
+          0.03
+        ],
+        "foot_l": [
+          0,
+          0.03,
+          0.04
+        ],
+        "chest": [
+          -3,
+          0,
+          0
+        ]
+      }
+    }
+  ],
+  "model": {
+    "build": "lean",
+    "skin": "#EAC7AE",
+    "hair": "short",
+    "face": {
+      "jaw": "0.55",
+      "brow": "0.5",
+      "nose": "0.7"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "visor",
+      "shoulder": "box",
+      "chest": "slim",
+      "back": "pack",
+      "forearm": "slim",
+      "shin": "slim",
+      "antenna": "twin",
+      "skirt": "none",
+      "features": [
+        "plume",
+        "spurs",
+        "shinguards"
+      ],
+      "number": "09"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#1F2A4D",
+      "secondary": "#E6E6EA",
+      "accent": "#B3262B",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#8A9096",
+      "secondary": "#5A6068",
+      "accent": "#1F2A4D",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#1F2A4D",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#5A1A24",
+      "secondary": "#2A2A2E",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#E6E6EA",
+      "secondary": "#1F2A4D",
+      "accent": "#B3262B",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "skyline",
+  "rival": "bjorn",
+  "voice": {
+    "pitch": "0.95",
+    "type": "male_mid",
+    "rough": "0.08"
+  },
+  "side_throw": "adrien_side_pg",
+  "back_throw": "adrien_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "近衛型",
+        "Guard"
+      ],
+      "model": {
+        "outfit": [
+          "shirt",
+          "pants",
+          "suspenders",
+          "shoes"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "決闘型",
+        "Duelist"
+      ],
+      "model": {
+        "outfit": [
+          "singlet",
+          "pants",
+          "shoes"
+        ],
+        "mech": {
+          "shoulder": "layered",
+          "head": "mono"
+        }
+      }
+    }
+  ],
+  "machine": "RF-09",
+  "win_pose": 0,
+  "pilot": [
+    "アドリアン・ルフェーヴル",
+    "Adrien Lefèvre"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "moves": [
+    {"id": "wake_k", "cmd": "K", "from": ["down"], "name": ["起き上がり中段蹴り", "Rising Mid Kick"], "cat": "down_attack",
+     "lv": "mid", "limb": "kick", "dmg": 60, "f": [20, 3, 22], "adv": [-14, "KD", "KD"], "w": "medium", "hr": "knockback",
+     "trk": "full", "anim": {"t": "wakeup", "low": false}},
+    {"id": "wake_2k", "cmd": "2K", "from": ["down"], "name": ["起き上がり下段蹴り", "Rising Low Kick"], "cat": "down_attack",
+     "lv": "low", "limb": "kick", "dmg": 50, "f": [22, 3, 24], "adv": [-17, 2, 4], "w": "medium", "hr": "low",
+     "trk": "full", "anim": {"t": "wakeup", "low": true}}
+  ]
+}

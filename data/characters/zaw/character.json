@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "id": "zaw",
+  "name": [
+    "ナーガ",
+    "Naga"
+  ],
+  "style": [
+    "ラウェイ",
+    "Lethwei"
+  ],
+  "difficulty": 2,
+  "weight_class": "middle",
+  "body": {
+    "height": "1.72",
+    "shoulder": "1.02",
+    "hip": "0.98",
+    "arm": "1.0",
+    "leg": "0.98",
+    "torso": "1.0"
+  },
+  "physics": {
+    "push_radius": "0.30",
+    "float_factor": "1.00",
+    "hurt_mul": "0.97",
+    "throw_range": "0.90"
+  },
+  "movement": {
+    "walk_f": "1.50",
+    "walk_b": "1.20",
+    "dash_f": [
+      18,
+      "1.35"
+    ],
+    "dash_b": [
+      20,
+      "1.05"
+    ],
+    "run": "4.5",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.30",
+    "depth": "0.38",
+    "crouch": "0.06",
+    "turn": "22",
+    "guard": "high",
+    "lean": "4"
+  },
+  "model": {
+    "build": "lean",
+    "skin": "#B9855E",
+    "hair": "buzz",
+    "face": {
+      "jaw": "0.65",
+      "brow": "0.7",
+      "nose": "0.55"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "twin",
+      "shoulder": "slim",
+      "chest": "slim",
+      "back": "flat",
+      "forearm": "block",
+      "shin": "roller",
+      "antenna": "none",
+      "wraps": true,
+      "features": [
+        "knuckles",
+        "spikes",
+        "shinguards"
+      ],
+      "number": "22"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#A08A5A",
+      "secondary": "#7E6B44",
+      "accent": "#B3262B",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A2A",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#B3262B",
+      "secondary": "#3A2A22",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFD23A",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#3E5A3A",
+      "secondary": "#2F4430",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A2A",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#2B2B2E",
+      "secondary": "#4A4A50",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A2A",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "temple",
+  "rival": "toma",
+  "voice": {
+    "pitch": "0.88",
+    "type": "male_low",
+    "rough": "0.15"
+  },
+  "side_throw": "zaw_side_pg",
+  "back_throw": "zaw_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "軽格闘型",
+        "Striker"
+      ],
+      "model": {
+        "outfit": [
+          "shorts",
+          "wraps"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "長距離型",
+        "Long Range"
+      ],
+      "model": {
+        "outfit": [
+          "jacket_short",
+          "shorts",
+          "wraps"
+        ],
+        "recolor": {
+          "jacket_short": {
+            "primary": "tertiary"
+          }
+        },
+        "mech": {
+          "shoulder": "asym",
+          "head": "array",
+          "back": "pack"
+        }
+      }
+    }
+  ],
+  "machine": "RF-22",
+  "win_pose": 2,
+  "pilot": [
+    "ゾー・ミン",
+    "Zaw Min"
+  ]
+}

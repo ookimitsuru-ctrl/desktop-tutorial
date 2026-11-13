@@ -1,0 +1,67 @@
+{
+  "character": "yuelan",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 195,
+      "id": "yuelan_c_3p_2_1",
+      "route": [
+        "yuelan_3p",
+        "yuelan_3k"
+      ],
+      "starter": "yuelan_3p",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 185,
+      "id": "yuelan_c_wsp_2_1",
+      "route": [
+        "yuelan_wsp",
+        "yuelan_3k"
+      ],
+      "starter": "yuelan_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 1,
+      "expected_damage": 218,
+      "id": "yuelan_c_46p_2_1",
+      "route": [
+        "yuelan_46p",
+        "yuelan_46p"
+      ],
+      "starter": "yuelan_46p",
+      "timing": [
+        0,
+        51
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

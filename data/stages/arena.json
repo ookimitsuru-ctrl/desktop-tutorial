@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "arena",
+  "name": [
+    "大闘技場",
+    "Grand Arena"
+  ],
+  "ring": {
+    "vertices": [
+      [
+        "-6.0",
+        "-6.0"
+      ],
+      [
+        "6.0",
+        "-6.0"
+      ],
+      [
+        "6.0",
+        "6.0"
+      ],
+      [
+        "-6.0",
+        "6.0"
+      ]
+    ],
+    "edges": [
+      {
+        "type": "fence",
+        "height": "0.80"
+      },
+      {
+        "type": "fence",
+        "height": "0.80"
+      },
+      {
+        "type": "fence",
+        "height": "0.80"
+      },
+      {
+        "type": "fence",
+        "height": "0.80"
+      }
+    ],
+    "start": [
+      [
+        "-1.20",
+        "0"
+      ],
+      [
+        "1.20",
+        "0"
+      ]
+    ]
+  },
+  "look": {
+    "theme": "arena"
+  },
+  "audio": {
+    "bgm": "bgm_arena",
+    "ambience": "amb_crowd"
+  },
+  "ground": "mat"
+}

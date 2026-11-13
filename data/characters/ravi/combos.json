@@ -1,0 +1,73 @@
+{
+  "character": "ravi",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 209,
+      "id": "ravi_c_wsp_2_1",
+      "route": [
+        "ravi_wsp",
+        "ravi_6k"
+      ],
+      "starter": "ravi_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 204,
+      "id": "ravi_c_3p_2_1",
+      "route": [
+        "ravi_3p",
+        "ravi_6k"
+      ],
+      "starter": "ravi_3p",
+      "timing": [
+        0,
+        50
+      ],
+      "wall": false,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 2,
+      "expected_damage": 238,
+      "id": "ravi_c_pk2_g_4_1",
+      "route": [
+        "ravi_pk2_g",
+        "ravi_3k",
+        "ravi_2p",
+        "ravi_1p"
+      ],
+      "starter": "ravi_pk2_g",
+      "timing": [
+        0,
+        50,
+        45,
+        42
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

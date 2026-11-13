@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "id": "lena",
+  "name": [
+    "ストリジ",
+    "Strizh"
+  ],
+  "style": [
+    "システマ",
+    "Systema"
+  ],
+  "difficulty": 3,
+  "weight_class": "light",
+  "body": {
+    "height": "1.68",
+    "shoulder": "0.90",
+    "hip": "1.02",
+    "arm": "0.97",
+    "leg": "1.03",
+    "torso": "0.96",
+    "hair_chain": true,
+    "hair_len": "0.34"
+  },
+  "physics": {
+    "push_radius": "0.27",
+    "float_factor": "0.93",
+    "hurt_mul": "0.96",
+    "throw_range": "0.85"
+  },
+  "movement": {
+    "walk_f": "1.70",
+    "walk_b": "1.40",
+    "dash_f": [
+      17,
+      "1.55"
+    ],
+    "dash_b": [
+      19,
+      "1.30"
+    ],
+    "run": "4.7",
+    "evade": 20
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.26",
+    "depth": "0.42",
+    "crouch": "0.09",
+    "turn": "34",
+    "guard": "low",
+    "lean": "4"
+  },
+  "stances": [
+    {
+      "id": "relax",
+      "name": [
+        "脱力",
+        "Relax"
+      ],
+      "max_frames": 60,
+      "low_profile": true,
+      "crouch": true,
+      "pose": {
+        "chest": [
+          16,
+          0,
+          0
+        ],
+        "hips": [
+          8,
+          0,
+          0
+        ],
+        "head": [
+          -10,
+          0,
+          0
+        ],
+        "hand_l": [
+          0.04,
+          -0.3,
+          0.02
+        ],
+        "hand_r": [
+          -0.02,
+          -0.28,
+          0.06
+        ],
+        "fist_l": 0.1,
+        "fist_r": 0.1
+      }
+    }
+  ],
+  "model": {
+    "build": "slim",
+    "female": true,
+    "skin": "#EBCDB7",
+    "hair": "ponytail",
+    "face": {
+      "jaw": "0.35",
+      "brow": "0.35",
+      "nose": "0.4"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "visor",
+      "shoulder": "slim",
+      "chest": "slim",
+      "back": "flat",
+      "forearm": "slim",
+      "shin": "slim",
+      "antenna": "none",
+      "hose": true,
+      "skirt": "none",
+      "features": [
+        "radar",
+        "pouches"
+      ],
+      "number": "31"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#5B6670",
+      "secondary": "#47515A",
+      "accent": "#C8CED4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#C8CED4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#D9DCDF",
+      "secondary": "#A9AFB5",
+      "accent": "#2A2E33",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#2A2E33",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#2B2E33",
+      "secondary": "#1E2125",
+      "accent": "#B3262B",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF4A3A",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#55603A",
+      "secondary": "#454E2F",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "fort",
+  "rival": "adrien",
+  "voice": {
+    "pitch": "0.92",
+    "type": "female_low",
+    "rough": "0.05"
+  },
+  "side_throw": "lena_side_pg",
+  "back_throw": "lena_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "偵察型",
+        "Recon"
+      ],
+      "model": {
+        "outfit": [
+          "turtleneck",
+          "jacket_short",
+          "cargo",
+          "gloves_open",
+          "boots"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "突撃型",
+        "Assault"
+      ],
+      "model": {
+        "outfit": [
+          "tank",
+          "pants",
+          "wraps",
+          "sneakers"
+        ],
+        "recolor": {
+          "tank": {
+            "primary": "metal"
+          },
+          "pants": {
+            "secondary": "tertiary"
+          }
+        },
+        "mech": {
+          "shoulder": "box",
+          "head": "twin",
+          "back": "pack"
+        }
+      }
+    }
+  ],
+  "machine": "RF-31",
+  "win_pose": 2,
+  "pilot": [
+    "レナ・ヴォルコワ",
+    "Lena Volkova"
+  ]
+}

@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "id": "ravi",
+  "name": [
+    "ガルダ",
+    "Garuda"
+  ],
+  "style": [
+    "カラリパヤット",
+    "Kalaripayattu"
+  ],
+  "difficulty": 5,
+  "weight_class": "middle",
+  "body": {
+    "height": "1.75",
+    "shoulder": "0.98",
+    "hip": "0.98",
+    "arm": "1.0",
+    "leg": "1.02",
+    "torso": "0.98",
+    "sash_chain": true
+  },
+  "physics": {
+    "push_radius": "0.29",
+    "float_factor": "0.98",
+    "hurt_mul": "0.92",
+    "throw_range": "0.90"
+  },
+  "movement": {
+    "walk_f": "1.40",
+    "walk_b": "1.20",
+    "dash_f": [
+      19,
+      "1.30"
+    ],
+    "dash_b": [
+      20,
+      "1.15"
+    ],
+    "run": "4.5",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.32",
+    "depth": "0.50",
+    "crouch": "0.14",
+    "turn": "30",
+    "guard": "open",
+    "lean": "8"
+  },
+  "stances": [
+    {
+      "id": "lion",
+      "name": [
+        "獅子",
+        "Lion"
+      ],
+      "max_frames": 0,
+      "low_profile": false,
+      "crouch": true,
+      "pose": {
+        "chest": [
+          22,
+          0,
+          0
+        ],
+        "head": [
+          -14,
+          0,
+          0
+        ],
+        "hand_l": [
+          -0.04,
+          -0.18,
+          0.16
+        ],
+        "hand_r": [
+          0.06,
+          -0.24,
+          0.14
+        ],
+        "fist_l": 0.1,
+        "fist_r": 0.1
+      }
+    },
+    {
+      "id": "snake",
+      "name": [
+        "蛇",
+        "Serpent"
+      ],
+      "max_frames": 0,
+      "low_profile": true,
+      "crouch": true,
+      "pose": {
+        "root": [
+          0,
+          -0.42,
+          0
+        ],
+        "hips": [
+          22,
+          0,
+          0
+        ],
+        "chest": [
+          30,
+          0,
+          0
+        ],
+        "head": [
+          -30,
+          0,
+          0
+        ],
+        "hand_l": [
+          -0.02,
+          -0.8,
+          0.3
+        ],
+        "hand_r": [
+          0.1,
+          -0.76,
+          0.12
+        ],
+        "fist_l": 0.0,
+        "fist_r": 0.0
+      }
+    },
+    {
+      "id": "elephant",
+      "name": [
+        "象",
+        "Elephant"
+      ],
+      "max_frames": 0,
+      "low_profile": false,
+      "pose": {
+        "root": [
+          0,
+          -0.12,
+          0
+        ],
+        "foot_l": [
+          -0.1,
+          0,
+          0
+        ],
+        "foot_r": [
+          0.1,
+          0,
+          0
+        ],
+        "hand_l": [
+          -0.1,
+          -0.22,
+          0.06
+        ],
+        "hand_r": [
+          0.12,
+          -0.24,
+          0.1
+        ],
+        "chest": [
+          -4,
+          0,
+          0
+        ],
+        "fist_l": 0.0,
+        "fist_r": 0.0
+      }
+    }
+  ],
+  "model": {
+    "build": "lean",
+    "skin": "#9C6B47",
+    "hair": "short",
+    "beard": "short",
+    "face": {
+      "jaw": "0.55",
+      "brow": "0.55",
+      "nose": "0.6"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "array",
+      "shoulder": "round",
+      "chest": "round",
+      "back": "tanks",
+      "forearm": "block",
+      "shin": "roller",
+      "antenna": "twin",
+      "flap": true,
+      "features": [
+        "wings",
+        "beak",
+        "scales"
+      ],
+      "number": "14"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#C27A22",
+      "secondary": "#7A2A22",
+      "accent": "#E6DCC4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#E6DCC4",
+      "secondary": "#7A2A22",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#4E5832",
+      "secondary": "#7A2A22",
+      "accent": "#C27A22",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#C27A22",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#2A2A2E",
+      "secondary": "#C27A22",
+      "accent": "#E6DCC4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46FF8A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "ruins",
+  "rival": "toma",
+  "voice": {
+    "pitch": "0.92",
+    "type": "male_calm",
+    "rough": "0.05"
+  },
+  "side_throw": "ravi_side_pg",
+  "back_throw": "ravi_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "汎用型",
+        "General"
+      ],
+      "model": {
+        "outfit": [
+          "dhoti",
+          "sash",
+          "armbands"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "軽量型",
+        "Light"
+      ],
+      "model": {
+        "outfit": [
+          "kurta",
+          "pants_loose",
+          "sash"
+        ],
+        "mech": {
+          "shoulder": "slim",
+          "back": "flat",
+          "head": "twin"
+        }
+      }
+    }
+  ],
+  "machine": "RF-14",
+  "win_pose": 1,
+  "pilot": [
+    "ラヴィ・ナーヤル",
+    "Ravi Nair"
+  ]
+}

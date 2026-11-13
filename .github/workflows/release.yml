@@ -1,0 +1,107 @@
+name: release
+
+# タグ v*（例: v1.0.0）を push すると、署名済みのリリース APK を作って GitHub Releases に添付する。
+# 必要な Secrets（リポジトリの Settings → Secrets and variables → Actions）:
+#   RELEASE_KEYSTORE_BASE64   リリース用キーストアを base64 にしたもの
+#   RELEASE_KEYSTORE_PASSWORD キーストアのパスワード
+#   RELEASE_KEY_ALIAS         鍵の別名
+# 手順は docs/RELEASE.md を参照。
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Load versions
+        run: grep -E '^[A-Z_]+=' tools/versions.env >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Check secrets
+        env:
+          KS: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS" ]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 が未設定です。docs/RELEASE.md の手順で Secrets を登録してください。"
+            exit 1
+          fi
+
+      - name: Download Godot and export templates
+        run: |
+          V="${GODOT_VERSION}-${GODOT_RELEASE}"
+          mkdir -p ~/godot
+          curl -sSL -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${V}_linux.x86_64 ~/godot/godot
+          curl -sSL -o /tmp/tpl.tpz "https://github.com/godotengine/godot/releases/download/${V}/Godot_v${V}_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}"
+          unzip -q /tmp/tpl.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates/android_* /tmp/tpl/templates/version.txt "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}/"
+
+      - name: Android SDK components
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "build-tools;${ANDROID_BUILD_TOOLS}" "platforms;${ANDROID_PLATFORM}" > /dev/null
+
+      - name: Keystore and editor settings
+        env:
+          KS: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          keytool -genkeypair -keystore "$HOME/debug.keystore" -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          MAJOR_MINOR=$(echo "$GODOT_VERSION" | cut -d. -f1,2)
+          mkdir -p ~/.config/godot
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\nexport/android/debug_keystore = "%s"\nexport/android/debug_keystore_user = "androiddebugkey"\nexport/android/debug_keystore_pass = "android"\n' \
+            "$ANDROID_HOME" "$JAVA_HOME" "$HOME/debug.keystore" > ~/.config/godot/editor_settings-${MAJOR_MINOR}.tres
+
+      - name: Import, verify and test
+        run: |
+          ~/godot/godot --headless --path . --import || true
+          ~/godot/godot --headless --path . res://tools/validate/check_scene.tscn
+          ~/godot/godot --headless --path . -s res://tests/run_tests.gd
+
+      - name: Version from tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if ! echo "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then TAG=$(grep config/version project.godot | cut -d'"' -f2); fi
+          echo "APP_VERSION=$TAG" >> "$GITHUB_ENV"
+          sed -i "s/^version\/code=.*/version\/code=$((GITHUB_RUN_NUMBER + 1000))/" export_presets.cfg
+          sed -i "s/^version\/name=.*/version\/name=\"${TAG}\"/" export_presets.cfg
+
+      - name: Export release APK
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/release.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.RELEASE_KEY_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p build
+          ~/godot/godot --headless --path . --export-release "Android" "build/ringbound-${APP_VERSION}.apk"
+          ls -la build
+          rm -f "$RUNNER_TEMP/release.keystore"
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ringbound-${{ env.APP_VERSION }}.apk
+          generate_release_notes: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ringbound-release-apk
+          path: build/ringbound-*.apk
+          retention-days: 30

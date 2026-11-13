@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "skyline",
+  "name": [
+    "摩天楼ヘリポート",
+    "Skyline Helipad"
+  ],
+  "ring": {
+    "circle": {
+      "radius": "6.0",
+      "segments": 32
+    },
+    "edges": [
+      {
+        "type": "breakable",
+        "hp": 2,
+        "after": "open"
+      }
+    ],
+    "start": [
+      [
+        "-1.20",
+        "0"
+      ],
+      [
+        "1.20",
+        "0"
+      ]
+    ]
+  },
+  "look": {
+    "theme": "skyline"
+  },
+  "audio": {
+    "bgm": "bgm_skyline",
+    "ambience": "amb_city"
+  },
+  "ground": "metal"
+}

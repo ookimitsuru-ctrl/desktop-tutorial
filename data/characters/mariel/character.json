@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "id": "mariel",
+  "name": [
+    "カンピラン",
+    "Kampilan"
+  ],
+  "style": [
+    "カリ／パナントゥカン",
+    "Kali / Panantukan"
+  ],
+  "difficulty": 3,
+  "weight_class": "light",
+  "body": {
+    "height": "1.63",
+    "shoulder": "0.90",
+    "hip": "1.0",
+    "arm": "0.97",
+    "leg": "1.0",
+    "torso": "0.96",
+    "hair_chain": true,
+    "hair_len": "0.22"
+  },
+  "physics": {
+    "push_radius": "0.27",
+    "float_factor": "0.96",
+    "hurt_mul": "0.88",
+    "throw_range": "0.85"
+  },
+  "movement": {
+    "walk_f": "1.65",
+    "walk_b": "1.35",
+    "dash_f": [
+      17,
+      "1.45"
+    ],
+    "dash_b": [
+      19,
+      "1.25"
+    ],
+    "run": "4.8",
+    "evade": 20
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.28",
+    "depth": "0.40",
+    "crouch": "0.08",
+    "turn": "26",
+    "guard": "high",
+    "lean": "5"
+  },
+  "model": {
+    "build": "lean",
+    "female": true,
+    "skin": "#C99A74",
+    "hair": "short",
+    "face": {
+      "jaw": "0.35",
+      "brow": "0.35",
+      "nose": "0.45"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "visor",
+      "shoulder": "asym",
+      "chest": "hatch",
+      "back": "pack",
+      "forearm": "blade",
+      "shin": "roller",
+      "antenna": "rod",
+      "hose": true,
+      "features": [
+        "sheaths",
+        "pouches",
+        "hazard"
+      ],
+      "number": "25"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#B3262B",
+      "secondary": "#2A2A2E",
+      "accent": "#E8D23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFD23A",
+      "dark": "#1B1C1E",
+      "lips": "#E8D23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#E8D23A",
+      "secondary": "#2A2A2E",
+      "accent": "#B3262B",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF3A22",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#4E5832",
+      "secondary": "#3A3D40",
+      "accent": "#E8D23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFD23A",
+      "dark": "#1B1C1E",
+      "lips": "#E8D23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#1F2A4D",
+      "secondary": "#3A4458",
+      "accent": "#E8D23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFD23A",
+      "dark": "#1B1C1E",
+      "lips": "#E8D23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "raft",
+  "rival": "adrien",
+  "voice": {
+    "pitch": "1.08",
+    "type": "female_bright",
+    "rough": "0.02"
+  },
+  "side_throw": "mariel_side_pg",
+  "back_throw": "mariel_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "近接型",
+        "Blade"
+      ],
+      "model": {
+        "outfit": [
+          "tank",
+          "cargo",
+          "bandana",
+          "pads",
+          "sneakers"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "防盾型",
+        "Shield"
+      ],
+      "model": {
+        "outfit": [
+          "rashguard",
+          "pants",
+          "pads",
+          "sneakers"
+        ],
+        "recolor": {
+          "rashguard": {
+            "primary": "tertiary"
+          },
+          "pants": {
+            "secondary": "tertiary"
+          }
+        },
+        "mech": {
+          "shoulder": "box",
+          "forearm": "shield"
+        }
+      }
+    }
+  ],
+  "machine": "RF-25",
+  "win_pose": 1,
+  "pilot": [
+    "マリエル・サントス",
+    "Mariel Santos"
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "id": "bjorn",
+  "name": [
+    "イスビョルン",
+    "Isbjorn"
+  ],
+  "style": [
+    "グレコローマン・レスリング",
+    "Greco-Roman Wrestling"
+  ],
+  "difficulty": 4,
+  "weight_class": "heavy",
+  "body": {
+    "height": "1.96",
+    "shoulder": "1.18",
+    "hip": "1.08",
+    "arm": "1.02",
+    "leg": "0.98",
+    "torso": "1.06"
+  },
+  "physics": {
+    "push_radius": "0.34",
+    "float_factor": "1.10",
+    "hurt_mul": "1.16",
+    "throw_range": "1.05"
+  },
+  "movement": {
+    "walk_f": "1.30",
+    "walk_b": "1.05",
+    "dash_f": [
+      20,
+      "1.20"
+    ],
+    "dash_b": [
+      22,
+      "0.90"
+    ],
+    "run": "4.2",
+    "evade": 24
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.36",
+    "depth": "0.40",
+    "crouch": "0.10",
+    "turn": "18",
+    "guard": "wide",
+    "lean": "12"
+  },
+  "model": {
+    "build": "heavy",
+    "skin": "#E8C2A8",
+    "hair": "short",
+    "beard": "braided",
+    "face": {
+      "jaw": "0.85",
+      "brow": "0.75",
+      "nose": "0.65"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "mono",
+      "shoulder": "heavy",
+      "chest": "heavy",
+      "back": "tanks",
+      "forearm": "heavy",
+      "shin": "heavy",
+      "antenna": "none",
+      "hands": 1.3,
+      "skirt": "long",
+      "features": [
+        "rollbar",
+        "stacks",
+        "claws",
+        "hazard"
+      ],
+      "number": "12"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#3F5A3C",
+      "secondary": "#6B4A2E",
+      "accent": "#E6DCC4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#D6D9DC",
+      "secondary": "#8A9096",
+      "accent": "#B3262B",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#B3262B",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#24304A",
+      "secondary": "#3A4458",
+      "accent": "#E0E0E0",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#E0E0E0",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#7A2A22",
+      "secondary": "#3A3D40",
+      "accent": "#E6DCC4",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFB22A",
+      "dark": "#1B1C1E",
+      "lips": "#E6DCC4",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "harbor",
+  "rival": "adrien",
+  "voice": {
+    "pitch": "0.78",
+    "type": "male_deep",
+    "rough": "0.25"
+  },
+  "side_throw": "bjorn_side_pg",
+  "back_throw": "bjorn_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "重作業型",
+        "Heavy Duty"
+      ],
+      "model": {
+        "outfit": [
+          "singlet",
+          "wrestling_shoes"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "寒冷地型",
+        "Arctic"
+      ],
+      "model": {
+        "outfit": [
+          "overalls",
+          "boots"
+        ],
+        "recolor": {
+          "overalls": {
+            "secondary": "tertiary"
+          }
+        },
+        "mech": {
+          "shoulder": "layered",
+          "head": "twin"
+        }
+      }
+    }
+  ],
+  "machine": "RF-12",
+  "win_pose": 1,
+  "pilot": [
+    "ビョルン・ハルヴォルセン",
+    "Bjorn Halvorsen"
+  ]
+}

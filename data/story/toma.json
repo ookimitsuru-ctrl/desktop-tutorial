@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "id": "toma",
+  "profile": {
+    "age": "23",
+    "origin": [
+      "日本・石川県金沢市",
+      "Kanazawa, Ishikawa, Japan"
+    ],
+    "size": "178cm / 76kg",
+    "bio": [
+      "実直、負けず嫌い、少し不器用。礼を重んじる。父が遺した町道場を守るために戦う。",
+      "Earnest, competitive and a little clumsy, with deep respect for etiquette. Fights to protect the dojo his father left behind."
+    ]
+  },
+  "opening": [
+    "金沢の小さな町道場「篠宮道場」。父が遺したその看板は、借金とともに灯真の肩に残った。\n届いたのは、環財団からの招待状。世界中の武術家が拳を交える大会「RINGBOUND」——優勝賞金があれば、道場は守れる。\n「親父の一撃必倒じゃない。一手先を読む空手で、俺は勝つ」\n灯真は帯を締め直し、海を渡った。",
+    "In Kanazawa stands the small Shinomiya Dojo. When his father died, Toma inherited its sign — and its debts.\nThen came an invitation from the Tamaki Foundation: RINGBOUND, a tournament of the world's martial artists. The prize money could save the dojo.\n\"Not Father's one-strike karate. I'll win by reading one move ahead.\"\nToma tightened his belt and crossed the sea."
+  ],
+  "rival": [
+    [
+      "ゾー「……また会ったな。お前の拳は真っ直ぐだ」",
+      "Zaw: \"...We meet again. Your fists are honest.\""
+    ],
+    [
+      "灯真「あんたもな。だからこそ、読み合いで勝つ」",
+      "Toma: \"So are yours. That's why I'll win the mind game.\""
+    ],
+    [
+      "ゾー「拳で話そう。そのほうが楽だ」",
+      "Zaw: \"Let our fists talk. It's easier.\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「ほう、篠宮の倅か。父上の拳は重かったが、読みは浅かった」",
+      "Gensai: \"Ah, Shinomiya's boy. Your father's fist was heavy, but his reading was shallow.\""
+    ],
+    [
+      "灯真「親父を知ってるのか……！」",
+      "Toma: \"You knew my father...?\""
+    ],
+    [
+      "玄斎「確かめてみるがいい。その一手、どこまで先に置ける？」",
+      "Gensai: \"See for yourself. How far ahead can you place your move?\""
+    ]
+  ],
+  "ending": [
+    "灯台の嵐が去ったあと、玄斎は静かに笑った。「父上は、最後にお前の名を呼んでいたよ。『あいつは俺より先を見る』とな」\n賞金で道場の借金は消えた。だが灯真が持ち帰った一番のものは、財団が記録していた父の組手の映像だった。\n翌朝、篠宮道場の戸が開く。子どもたちの声が響く板の間で、灯真は一礼した。\n「押忍。今日は、一手先を読む稽古からだ」",
+    "When the storm over the lighthouse passed, Gensai smiled quietly. \"Your father said your name at the end. 'He sees further than I do,' he told me.\"\nThe prize cleared the dojo's debts. But the greatest thing Toma brought home was the Foundation's footage of his father's matches.\nThe next morning the doors of the Shinomiya Dojo opened. On the wooden floor, filled with children's voices, Toma bowed.\n\"Osu. Today we train to read one move ahead.\""
+  ],
+  "win_quotes": [
+    [
+      "一手、先に置いておいた",
+      "I placed my move one step ahead."
+    ],
+    [
+      "押忍。いい組手でした",
+      "Osu. That was a good match."
+    ],
+    [
+      "まだまだ。親父なら、もっと早く終わらせてた",
+      "Not yet. Father would've finished it faster."
+    ]
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "character": "bjorn",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 204,
+      "id": "bjorn_c_wsp_3_1",
+      "route": [
+        "bjorn_wsp",
+        "bjorn_3k",
+        "bjorn_2p"
+      ],
+      "starter": "bjorn_wsp",
+      "timing": [
+        0,
+        50,
+        44
+      ],
+      "wall": false,
+      "weight_classes": [
+        "light",
+        "middle"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 194,
+      "id": "bjorn_c_3p_3_1",
+      "route": [
+        "bjorn_3p",
+        "bjorn_3k",
+        "bjorn_2p"
+      ],
+      "starter": "bjorn_3p",
+      "timing": [
+        0,
+        49,
+        44
+      ],
+      "wall": false,
+      "weight_classes": [
+        "light",
+        "middle"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 4,
+      "expected_damage": 240,
+      "id": "bjorn_c_kg_6_1",
+      "route": [
+        "bjorn_kg",
+        "bjorn_k",
+        "bjorn_2p",
+        "bjorn_2p",
+        "bjorn_2p",
+        "bjorn_3p"
+      ],
+      "starter": "bjorn_kg",
+      "timing": [
+        0,
+        53,
+        40,
+        42,
+        42,
+        42
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "id": "toma",
+  "name": [
+    "ハガネ",
+    "Hagane"
+  ],
+  "style": [
+    "篠宮流 実戦空手",
+    "Shinomiya-ryu Combat Karate"
+  ],
+  "difficulty": 2,
+  "weight_class": "middle",
+  "body": {
+    "height": "1.78",
+    "shoulder": "1.0",
+    "hip": "1.0",
+    "arm": "1.0",
+    "leg": "1.0",
+    "torso": "1.0",
+    "sash_chain": true
+  },
+  "physics": {
+    "push_radius": "0.30",
+    "float_factor": "1.00",
+    "hurt_mul": "1.00",
+    "throw_range": "0.90"
+  },
+  "movement": {
+    "walk_f": "1.55",
+    "walk_b": "1.25",
+    "dash_f": [
+      18,
+      "1.40"
+    ],
+    "dash_b": [
+      20,
+      "1.10"
+    ],
+    "run": "4.5",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.30",
+    "depth": "0.46",
+    "crouch": "0.07",
+    "turn": "30",
+    "guard": "mid",
+    "lean": "6"
+  },
+  "model": {
+    "build": "athletic",
+    "skin": "#E2B48F",
+    "hair": "short_spiky",
+    "face": {
+      "jaw": "0.6",
+      "brow": "0.6",
+      "nose": "0.5"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "turret",
+      "shoulder": "round",
+      "chest": "hatch",
+      "back": "pack",
+      "forearm": "block",
+      "shin": "roller",
+      "antenna": "rod",
+      "features": [
+        "searchlight",
+        "belt",
+        "knuckles"
+      ],
+      "number": "07"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#4E5832",
+      "secondary": "#424A2B",
+      "accent": "#D9B23A",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF3A22",
+      "dark": "#1B1C1E",
+      "lips": "#D9B23A",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#9C8A62",
+      "secondary": "#7D6E4E",
+      "accent": "#3A3D40",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF3A22",
+      "dark": "#1B1C1E",
+      "lips": "#3A3D40",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#4A5560",
+      "secondary": "#3A434C",
+      "accent": "#E0E0E0",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#38E0FF",
+      "dark": "#1B1C1E",
+      "lips": "#E0E0E0",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#D8D4C8",
+      "secondary": "#B3262B",
+      "accent": "#1F2A4D",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF3A22",
+      "dark": "#1B1C1E",
+      "lips": "#1F2A4D",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "temple",
+  "rival": "zaw",
+  "voice": {
+    "pitch": "1.0",
+    "type": "male_young"
+  },
+  "side_throw": "toma_side_pg",
+  "back_throw": "toma_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "標準装備",
+        "Standard"
+      ],
+      "model": {
+        "outfit": [
+          "gi_top",
+          "gi_pants",
+          "belt",
+          "gloves_open"
+        ],
+        "sleeves": "rolled_one"
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "重装型",
+        "Heavy Kit"
+      ],
+      "model": {
+        "outfit": [
+          "rashguard",
+          "gi_pants",
+          "belt",
+          "wraps"
+        ],
+        "mech": {
+          "shoulder": "layered",
+          "hatch2": true,
+          "antenna": "twin",
+          "forearm": "heavy"
+        }
+      }
+    }
+  ],
+  "machine": "RF-07",
+  "win_pose": 0,
+  "pilot": [
+    "篠宮 灯真",
+    "Toma Shinomiya"
+  ]
+}

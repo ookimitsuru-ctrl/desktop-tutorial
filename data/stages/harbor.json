@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "harbor",
+  "name": [
+    "埠頭の夜",
+    "Harbor Night"
+  ],
+  "ring": {
+    "vertices": [
+      [
+        "-6.00",
+        "-6.00"
+      ],
+      [
+        "6.00",
+        "-6.00"
+      ],
+      [
+        "6.00",
+        "6.00"
+      ],
+      [
+        "-6.00",
+        "6.00"
+      ]
+    ],
+    "edges": [
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      },
+      {
+        "type": "open"
+      }
+    ],
+    "start": [
+      [
+        "-1.20",
+        "0"
+      ],
+      [
+        "1.20",
+        "0"
+      ]
+    ]
+  },
+  "look": {
+    "theme": "harbor"
+  },
+  "audio": {
+    "bgm": "bgm_harbor",
+    "ambience": "amb_rain"
+  },
+  "ground": "concrete"
+}

@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "id": "gensai",
+  "name": [
+    "コガラス",
+    "Kogarasu"
+  ],
+  "style": [
+    "鷹司流 古流柔術",
+    "Takatsukasa-ryu Jujutsu"
+  ],
+  "difficulty": 4,
+  "weight_class": "middle",
+  "body": {
+    "height": "1.65",
+    "shoulder": "0.94",
+    "hip": "0.96",
+    "arm": "1.0",
+    "leg": "0.97",
+    "torso": "0.98"
+  },
+  "physics": {
+    "push_radius": "0.28",
+    "float_factor": "1.00",
+    "hurt_mul": "0.98",
+    "throw_range": "0.95"
+  },
+  "movement": {
+    "walk_f": "1.35",
+    "walk_b": "1.20",
+    "dash_f": [
+      18,
+      "1.30"
+    ],
+    "dash_b": [
+      20,
+      "1.10"
+    ],
+    "run": "4.3",
+    "evade": 21
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.24",
+    "depth": "0.40",
+    "crouch": "0.05",
+    "turn": "24",
+    "guard": "open",
+    "lean": "0"
+  },
+  "model": {
+    "build": "old",
+    "skin": "#E3C2A6",
+    "hair": "bun",
+    "beard": "short",
+    "face": {
+      "jaw": "0.5",
+      "brow": "0.8",
+      "nose": "0.6"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "crest",
+      "shoulder": "layered",
+      "chest": "heavy",
+      "back": "mantle",
+      "forearm": "block",
+      "shin": "heavy",
+      "antenna": "none",
+      "skirt": "long",
+      "features": [
+        "kusazuri",
+        "katana",
+        "trim"
+      ],
+      "number": "00"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#1C1C1E",
+      "secondary": "#2E2E32",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#E3E0D6",
+      "secondary": "#1E2A4D",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#5A1418",
+      "secondary": "#1C1C1E",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#4A3A2A",
+      "secondary": "#2A2420",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF2A2A",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "lighthouse",
+  "rival": "yuelan",
+  "voice": {
+    "pitch": "0.85",
+    "type": "male_old",
+    "rough": "0.35"
+  },
+  "side_throw": "gensai_side_pg",
+  "back_throw": "gensai_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "大鎧型",
+        "Great Armor"
+      ],
+      "model": {
+        "outfit": [
+          "gi_top",
+          "haori",
+          "hakama",
+          "tabi"
+        ],
+        "recolor": {
+          "gi_top": {
+            "primary": "tertiary"
+          }
+        }
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "稽古型",
+        "Practice"
+      ],
+      "model": {
+        "outfit": [
+          "gi_top",
+          "hakama",
+          "tabi"
+        ],
+        "recolor": {
+          "gi_top": {
+            "primary": "tertiary"
+          }
+        },
+        "mech": {
+          "back": "flat",
+          "shoulder": "box"
+        }
+      }
+    }
+  ],
+  "machine": "RF-00",
+  "win_pose": 2,
+  "pilot": [
+    "鷹司 玄斎",
+    "Gensai Takatsukasa"
+  ]
+}

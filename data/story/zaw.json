@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "zaw",
+  "profile": {
+    "age": "29",
+    "origin": [
+      "ミャンマー・マンダレー",
+      "Mandalay, Myanmar"
+    ],
+    "size": "172cm / 72kg",
+    "bio": [
+      "寡黙で誠実、家族思い。戦いの前後に伝統の礼を欠かさない。",
+      "Quiet, honest and devoted to family. Never skips the traditional salute before and after a fight."
+    ]
+  },
+  "opening": [
+    "マンダレー郊外の村で育ったゾー・ミン。素手で打ち合う拳法ラウェイの使い手だ。\n村の子どもたちは、遠い町の学校まで毎日二時間歩く。村に学校を建てる——それが彼の唯一の願いだった。\n試合の前に、ゾーは伝統の礼を捧げる。拳に巻いた布を確かめ、静かに目を閉じる。\n「……拳で話すほうが、楽だ」",
+    "Zaw Min grew up in a village outside Mandalay, a fighter of Lethwei — bare-knuckle boxing.\nThe village children walk two hours every day to a school in a distant town. To build a school in the village: that is his only wish.\nBefore each bout, Zaw performs the traditional salute, checks the wraps on his fists, and quietly closes his eyes.\n\"...It's easier to talk with fists.\""
+  ],
+  "rival": [
+    [
+      "灯真「ゾー、決勝まで待てなかったな」",
+      "Toma: \"Zaw. Couldn't wait for the final, huh.\""
+    ],
+    [
+      "ゾー「……いい。お前とは、いつやっても同じだ」",
+      "Zaw: \"...Fine. With you, it's the same whenever we fight.\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「素手の拳か。重いが、真っ直ぐすぎる」",
+      "Gensai: \"Bare fists. Heavy — but too straight.\""
+    ],
+    [
+      "ゾー「真っ直ぐでいい。曲がる理由がない」",
+      "Zaw: \"Straight is enough. I have no reason to bend.\""
+    ]
+  ],
+  "ending": [
+    "賞金の使い道を聞かれたゾーは、一言だけ答えた。「学校」。\n一年後、村の真ん中に小さな校舎が建った。開校の日、ゾーは子どもたちの前で伝統の礼を見せた。真似をする小さな手が、いくつも並んだ。\n校舎の壁には、灯真から届いた寄せ書きと、大会の写真が一枚。\nゾーは窓の外の夕日を見て、ほんの少しだけ笑った。",
+    "Asked what he would do with the prize, Zaw answered with one word: \"School.\"\nA year later a small schoolhouse stood in the middle of the village. On opening day Zaw showed the children the traditional salute, and rows of small hands copied him.\nOn the wall hung a card signed by Toma, and a single photo from the tournament.\nWatching the sunset through the window, Zaw smiled, just a little."
+  ],
+  "win_quotes": [
+    [
+      "……拳で話すほうが、楽だ",
+      "...It's easier to talk with fists."
+    ],
+    [
+      "悪くない拳だった",
+      "Not a bad fist."
+    ],
+    [
+      "礼を。それで終わりだ",
+      "Bow. Then it's over."
+    ]
+  ]
+}

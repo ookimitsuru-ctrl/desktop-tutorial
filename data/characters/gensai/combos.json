@@ -1,0 +1,67 @@
+{
+  "character": "gensai",
+  "combos": [
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 194,
+      "id": "gensai_c_3p_2_1",
+      "route": [
+        "gensai_3p",
+        "gensai_3k"
+      ],
+      "starter": "gensai_3p",
+      "timing": [
+        0,
+        51
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "launch",
+      "difficulty": 1,
+      "expected_damage": 194,
+      "id": "gensai_c_wsp_2_1",
+      "route": [
+        "gensai_wsp",
+        "gensai_3k"
+      ],
+      "starter": "gensai_wsp",
+      "timing": [
+        0,
+        49
+      ],
+      "wall": false,
+      "weight_classes": [
+        "middle",
+        "heavy"
+      ]
+    },
+    {
+      "context": "wall",
+      "difficulty": 1,
+      "expected_damage": 179,
+      "id": "gensai_c_6pk_2_1",
+      "route": [
+        "gensai_6pk",
+        "gensai_6p"
+      ],
+      "starter": "gensai_6pk",
+      "timing": [
+        0,
+        52
+      ],
+      "wall": true,
+      "weight_classes": [
+        "light",
+        "middle",
+        "heavy"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

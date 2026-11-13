@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "ravi",
+  "profile": {
+    "age": "41",
+    "origin": [
+      "インド・ケーララ州",
+      "Kerala, India"
+    ],
+    "size": "175cm / 70kg",
+    "bio": [
+      "穏やかで哲学的、ユーモアのある師範。伝統医療にも通じる。",
+      "A gentle, philosophical master with a sense of humor, also versed in traditional medicine."
+    ]
+  },
+  "opening": [
+    "ケーララ州でカラリパヤットの道場を開く師範、ラヴィ・ナーヤル。伝統医療にも通じ、弟子たちに慕われている。\n伝統を「見世物」にしてよいのか——招待状を前に彼は迷った。\nだが弟子たちは言った。「先生の技を、世界に見せてください」\n「獅子も、蛇も、象も、ひとつの体の中にいる。……行こう、外の世界へ」",
+    "Ravi Nair, master of a Kalaripayattu school in Kerala, versed in traditional medicine and beloved by his students.\nShould tradition become a spectacle? Facing the invitation, he hesitated.\nBut his students said, \"Show the world your art, master.\"\n\"The lion, the serpent and the elephant all live in one body. ...Let us go out into the world.\""
+  ],
+  "rival": [
+    [
+      "灯真「ラヴィさん。型と実戦、どっちが大事か——答えを聞かせてください」",
+      "Toma: \"Ravi. Forms or real fighting — which matters more? Tell me your answer.\""
+    ],
+    [
+      "ラヴィ「答えは言葉ではなく、この一戦の中にあるよ」",
+      "Ravi: \"The answer isn't in words. It's inside this match.\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「三つの獣を飼う男か。どれが本物の顔かの？」",
+      "Gensai: \"A man who keeps three beasts. Which one is your real face?\""
+    ],
+    [
+      "ラヴィ「どれも私です。そしてどれも、まだ修行中です」",
+      "Ravi: \"All of them are me. And all of them are still in training.\""
+    ]
+  ],
+  "ending": [
+    "大会のあと、ラヴィの道場には世界中から入門の手紙が届いた。その中に、篠宮道場からの一通があった。\n『型と実戦は、ひとつの体の中にある。あなたの言葉の意味が、少しわかった気がします——灯真』\nラヴィは弟子たちを集め、手紙を読み上げた。\n「見世物になるかどうかは、見せる者の心次第だ。さあ、稽古を始めよう」\n夕暮れの道場に、獅子の咆哮のような気合が響いた。",
+    "After the tournament, letters asking to join Ravi's school arrived from all over the world. Among them was one from the Shinomiya Dojo.\n'Forms and real fighting live in one body. I think I finally understand what you meant. — Toma'\nRavi gathered his students and read it aloud.\n\"Whether it becomes a spectacle depends on the heart of the one who shows it. Now — let us train.\"\nA shout like a lion's roar echoed through the dojo at dusk."
+  ],
+  "win_quotes": [
+    [
+      "獅子も、蛇も、象も、ひとつの体の中にいる",
+      "The lion, the serpent and the elephant all live in one body."
+    ],
+    [
+      "怪我はないかな？ 薬草ならあるよ",
+      "Are you hurt? I have some herbs."
+    ],
+    [
+      "良い修行になった。ありがとう",
+      "That was good training. Thank you."
+    ]
+  ]
+}

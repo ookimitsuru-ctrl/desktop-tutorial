@@ -1,0 +1,138 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Load versions
+        run: grep -E '^[A-Z_]+=' tools/versions.env >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-${{ env.GODOT_RELEASE }}
+
+      - name: Download Godot and export templates
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          V="${GODOT_VERSION}-${GODOT_RELEASE}"
+          mkdir -p ~/godot
+          curl -sSL -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/${V}/Godot_v${V}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${V}_linux.x86_64 ~/godot/godot
+          curl -sSL -o /tmp/tpl.tpz "https://github.com/godotengine/godot/releases/download/${V}/Godot_v${V}_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}"
+          unzip -q /tmp/tpl.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates/android_* /tmp/tpl/templates/version.txt "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}/"
+
+      - name: Android SDK components
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "build-tools;${ANDROID_BUILD_TOOLS}" "platforms;${ANDROID_PLATFORM}" > /dev/null
+
+      - name: Godot editor settings and debug keystore
+        run: |
+          keytool -genkeypair -keystore "$HOME/debug.keystore" -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          MAJOR_MINOR=$(echo "$GODOT_VERSION" | cut -d. -f1,2)
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-${MAJOR_MINOR}.tres <<EOT
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOT
+          sed -i 's/^          //' ~/.config/godot/editor_settings-${MAJOR_MINOR}.tres
+
+      - name: Import
+        run: ~/godot/godot --headless --path . --import || true
+
+      - name: Compile check
+        run: ~/godot/godot --headless --path . res://tools/validate/check_scene.tscn
+
+      - name: Lint (simulation layer)
+        run: python3 tools/validate/lint_sim.py
+
+      - name: Asset ledger
+        run: python3 tools/validate/check_ledger.py
+
+      - name: Font glyph coverage
+        run: |
+          pip install --quiet fonttools
+          python3 tools/validate/check_glyphs.py
+
+      - name: Bake consistency
+        run: |
+          ~/godot/godot --headless --path . -s res://tools/bake/bake_all.gd
+          git diff --exit-code --stat -- data/baked || (echo "::error::ベイク結果がコミットされたものと異なります。tools/bake/bake_all.gd を実行してコミットしてください" && exit 1)
+
+      - name: Tests
+        run: ~/godot/godot --headless --path . -s res://tests/run_tests.gd
+
+      - name: UI smoke (every screen, CPU matches on every stage)
+        run: |
+          ~/godot/godot --headless --path . res://tools/validate/ui_smoke.tscn 2>&1 | tee ui_smoke.log
+          grep -q "ui_smoke: [0-9]* screen(s) visited" ui_smoke.log
+          if grep -E "SCRIPT ERROR|^ERROR:|^WARNING:" ui_smoke.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::UI smoke でエラーが出ました"; exit 1; fi
+
+      - name: Arcade walk (every character reaches the ending)
+        run: |
+          ~/godot/godot --headless --path . res://tools/validate/arcade_walk.tscn 2>&1 | tee arcade_walk.log
+          grep -q "arcade_walk: [0-9]* character(s), PASS" arcade_walk.log
+          if grep -E "SCRIPT ERROR|^ERROR:" arcade_walk.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::アーケードの通しでエラーが出ました"; exit 1; fi
+
+      - name: Render smoke (all shaders compiled on a software Vulkan device)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb mesa-vulkan-drivers > /dev/null
+          xvfb-run -a -s "-screen 0 640x360x24" ~/godot/godot --path . --rendering-driver vulkan --resolution 640x360 res://tools/validate/render_smoke.tscn 2>&1 | tee render_smoke.log
+          grep -q "render_smoke: [0-9]* stage(s) rendered" render_smoke.log
+          if grep -E "SHADER ERROR|SCRIPT ERROR|^ERROR:" render_smoke.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::描画の実行確認でエラーが出ました"; exit 1; fi
+
+      - name: Soak (36 CPU matches, leak check)
+        run: |
+          ~/godot/godot --headless --path . --fixed-fps 60 res://tools/validate/soak.tscn -- --matches 36 --frames 2400 2>&1 | tee soak.log
+          grep -q "soak: .* PASS" soak.log
+          if grep -E "SCRIPT ERROR|^ERROR:|^WARNING:" soak.log | grep -v "ERR_CANT_OPEN\|ALSA\|audio driver"; then echo "::error::ソークテストでエラーが出ました"; exit 1; fi
+
+      - name: Combo routes (combos.json) still work
+        run: ~/godot/godot --headless --path . -s res://tools/validate/combo_search.gd -- --verify
+
+      - name: Version
+        run: |
+          sed -i "s/^version\/code=.*/version\/code=${GITHUB_RUN_NUMBER}/" export_presets.cfg
+          VN=$(grep config/version project.godot | cut -d'"' -f2)
+          sed -i "s/^version\/name=.*/version\/name=\"${VN}.${GITHUB_RUN_NUMBER}\"/" export_presets.cfg
+
+      - name: Export Android APK (debug)
+        run: |
+          mkdir -p build
+          ~/godot/godot --headless --path . --export-debug "Android" build/ringbound-debug.apk
+          ls -la build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ringbound-debug-apk
+          path: build/ringbound-debug.apk
+          retention-days: 14

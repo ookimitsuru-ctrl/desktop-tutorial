@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "id": "yuelan",
+  "name": [
+    "チンルアン",
+    "Qingluan"
+  ],
+  "style": [
+    "形意拳",
+    "Xingyiquan"
+  ],
+  "difficulty": 4,
+  "weight_class": "light",
+  "body": {
+    "height": "1.60",
+    "shoulder": "0.88",
+    "hip": "1.02",
+    "arm": "0.96",
+    "leg": "1.0",
+    "torso": "0.96",
+    "hair_chain": true,
+    "hair_len": "0.32"
+  },
+  "physics": {
+    "push_radius": "0.26",
+    "float_factor": "0.94",
+    "hurt_mul": "0.98",
+    "throw_range": "0.85"
+  },
+  "movement": {
+    "walk_f": "1.45",
+    "walk_b": "1.20",
+    "dash_f": [
+      18,
+      "1.60"
+    ],
+    "dash_b": [
+      20,
+      "1.10"
+    ],
+    "run": "4.6",
+    "evade": 22
+  },
+  "stance": {
+    "lead": "l",
+    "width": "0.22",
+    "depth": "0.52",
+    "crouch": "0.12",
+    "turn": "40",
+    "guard": "open",
+    "lean": "10"
+  },
+  "model": {
+    "build": "slim",
+    "female": true,
+    "skin": "#EED3BC",
+    "hair": "braid",
+    "face": {
+      "jaw": "0.3",
+      "brow": "0.3",
+      "nose": "0.35"
+    },
+    "kind": "mech",
+    "mech": {
+      "head": "twin",
+      "shoulder": "round",
+      "chest": "round",
+      "back": "flat",
+      "forearm": "slim",
+      "shin": "slim",
+      "antenna": "twin",
+      "hose": true,
+      "skirt": "none",
+      "features": [
+        "tassets",
+        "trim"
+      ],
+      "number": "18"
+    }
+  },
+  "colors": [
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#2F7F86",
+      "secondary": "#E3E6E8",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF5AA0",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#B3262B",
+      "secondary": "#D9B23A",
+      "accent": "#2A2A2E",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FFD23A",
+      "dark": "#1B1C1E",
+      "lips": "#2A2A2E",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#2A2C30",
+      "secondary": "#9AA0A8",
+      "accent": "#C9A548",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#46E6FF",
+      "dark": "#1B1C1E",
+      "lips": "#C9A548",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    },
+    {
+      "skin": "#FFF1CC",
+      "hair": "#202224",
+      "primary": "#8FB8D8",
+      "secondary": "#E3E6E8",
+      "accent": "#1F2A4D",
+      "gloves": "#3A3D40",
+      "shoes": "#2F3235",
+      "eye": "#FF5AA0",
+      "dark": "#1B1C1E",
+      "lips": "#1F2A4D",
+      "metal": "#9C9E9A",
+      "tertiary": "#34383B"
+    }
+  ],
+  "home_stage": "bamboo",
+  "rival": "mariel",
+  "voice": {
+    "pitch": "1.12",
+    "type": "female_young",
+    "rough": "0.0"
+  },
+  "side_throw": "yuelan_side_pg",
+  "back_throw": "yuelan_back_pg",
+  "costumes": [
+    {
+      "id": "a",
+      "name": [
+        "拳法型",
+        "Fist"
+      ],
+      "model": {
+        "outfit": [
+          "high_collar_jacket",
+          "pants_loose",
+          "cloth_shoes"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "name": [
+        "儀仗型",
+        "Ceremonial"
+      ],
+      "model": {
+        "outfit": [
+          "shirt",
+          "pants",
+          "armbands",
+          "cloth_shoes"
+        ],
+        "mech": {
+          "head": "visor",
+          "shoulder": "layered"
+        }
+      }
+    }
+  ],
+  "machine": "RF-18",
+  "win_pose": 0,
+  "pilot": [
+    "蘇 月嵐",
+    "Su Yuelan"
+  ]
+}

@@ -1,0 +1,241 @@
+key,ja,en
+back,戻る,Back
+cat_access,アクセシビリティ,Accessibility
+cat_backturn,背向け,Back-turned
+cat_basic,基本技,Basic
+cat_controls,操作,Controls
+cat_data,データ,Data
+cat_display,画面,Display
+cat_down_attack,ダウン攻撃・起き上がり,Down / Wake-up
+cat_evade,回避攻撃,Evade Attacks
+cat_game,ゲーム,Game
+cat_sound,サウンド,Sound
+cat_special,特殊技,Special
+cat_stance,構え,Stance
+cat_string,連携,Strings
+cat_system,固有システム,System
+cat_throw,投げ,Throws
+char_select,キャラクター選択,Character Select
+color,カラー,Color
+command_list,技表,Command List
+continue,コンティニュー,Continue
+costume,衣装,Costume
+credits,クレジット,Credits
+decide,決定,Confirm
+difficulty,難易度,Difficulty
+draw,引き分け,Draw
+endings,エンディング,Endings
+fd_down,ダウン,Down
+fd_guard,ガード,Block
+fd_hit,ヒット,Hit
+fd_startup,発生,Startup
+give_up,やめる,Give Up
+hud_back,背面,BACK
+hud_break,投げ抜け,BREAK
+hud_evade,回避,EVADE
+hud_guard_crush,ガード崩し,GUARD CRUSH
+hud_parry,受け流し,PARRY
+hud_wall,壁,WALL
+licenses,ライセンス,Licenses
+locked_costume,アーケードをクリアすると解禁,Clear Arcade to unlock
+main_menu,メインメニュー,Main Menu
+menu_arcade,アーケード,Arcade
+menu_options,オプション,Options
+menu_quick,クイック対戦,Quick Match
+menu_records,記録・ギャラリー,Records & Gallery
+menu_replay,リプレイ,Replays
+menu_survival,サバイバル,Survival
+menu_time_attack,タイムアタック,Time Attack
+menu_training,トレーニング,Training
+menu_trial,技トライアル,Command Trials
+menu_tutorial,チュートリアル,Tutorial
+menu_versus,VS 対戦,Versus
+menu_watch,CPU 観戦,Watch CPU
+next,次へ,Next
+next_fight,次の試合へ,Next Fight
+no_records,まだ記録がありません,No records yet
+no_replays,リプレイはまだありません,No replays yet
+opt_after_block,ガード後の行動,After Block
+opt_cpu_level,CPU レベル,CPU Level
+opt_dummy,ダミー動作,Dummy Action
+opt_escape,投げ抜け,Throw Escape
+opt_position,開始位置,Position
+opt_show_boxes,判定表示,Hitboxes
+opt_show_frame,フレーム表示,Frame Data
+opt_show_input,入力履歴,Input History
+opt_speed,速度,Speed
+opt_tech,受け身,Tech
+opt_wakeup,起き上がり,Wake-up
+pause,ポーズ,Pause
+pre_backturn,背向け中 ,Back-turned 
+pre_down,ダウン中の相手に ,vs Downed 
+pre_evade,回避中 ,During Evade 
+pre_run,走り中 ,While Running 
+pre_wall,壁際 ,At Wall 
+preset_assist,アシスト,Assist
+preset_classic,クラシック,Classic
+preset_left,左利き,Left
+preset_standard,スタンダード,Standard
+press_start,画面をタップ / ボタンを押してスタート,TAP OR PRESS ANY BUTTON
+random,ランダム,Random
+rank,段位,Rank
+rank_dan,%d段,%d Dan
+rank_kyu,%d級,%d Kyu
+rank_master,環闘士,Ring Master
+record_start,録画開始（自分がダミーを操作）,Record Dummy (you control)
+record_stop,録画停止,Stop Recording
+records,記録,Records
+rematch,再戦,Rematch
+replay_old,別バージョン,other version
+reset_position,位置リセット,Reset Position
+reset_save,セーブデータ初期化（2回押す）,Reset Save Data (press twice)
+resume,再開,Resume
+retire,メインメニューへ,Main Menu
+ring_legend,赤 = リングアウト　黄 = 柵　白 = 壁　破線 = 破壊壁,Red = ring out   Yellow = fence   White = wall   Dashed = breakable
+set_assist_escape,投げ抜け簡易化（オフライン）,Easy Throw Escape (offline)
+set_button_scale,ボタンの大きさ(%),Button Size (%)
+set_camera_shake,カメラの揺れ(%),Camera Shake (%)
+set_comic_words,打撃の文字演出（POW! など）,Comic Sound Words
+set_intros,登場・勝利演出,Intros
+set_language,言語,Language
+set_photosensitive,光過敏配慮,Photosensitivity Mode
+set_power_save,省電力モード,Power Saving
+set_quality,画質,Quality
+set_render_scale,描画解像度(%),Render Scale (%)
+set_replay_autosave,リプレイ自動保存,Auto-save Replays
+set_ringout,リングアウト,Ring Out
+set_round_seconds,ラウンド時間,Round Time
+set_rounds_to_win,ラウンド数（先取）,Rounds to Win
+set_show_fps,FPS 表示,Show FPS
+set_stagger_gauge,よろけ回復ゲージ,Stagger Gauge
+set_stick_deadzone,デッドゾーン(%),Deadzone (%)
+set_stick_diag_deg,斜めの幅(度),Diagonal Width (deg)
+set_stick_mode,スティック方式,Stick Mode
+set_text_size,文字サイズ,Text Size
+set_touch_opacity,操作UIの不透明度(%),Touch Opacity (%)
+set_touch_preset,タッチ配置,Touch Layout
+set_unlock_all,全て解禁,Unlock Everything
+set_vibration,振動,Vibration
+set_vol_announcer,アナウンス,Announcer
+set_vol_bgm,BGM,Music
+set_vol_master,マスター音量,Master Volume
+set_vol_sfx,効果音,Effects
+set_vol_voice,ボイス,Voice
+slot_dummy,ダミー,Dummy
+slot_player,プレイヤー,Player
+stage_select,ステージ選択,Stage Select
+stat_counters,カウンター,Counters
+stat_damage,与ダメージ,Damage
+stat_escapes,投げ抜け,Throw Breaks
+stat_evades,回避成功,Evades
+stat_max_combo,最大コンボ,Best Combo
+survival_result,%d 人抜き,%d Wins
+tap_next,タップ / 決定で進む,Tap / Confirm to continue
+touch_layout,タッチ配置,Touch Layout
+training_hint,ポーズ: 設定・録画・技表　｜　フレーム表示は設定で切替,"Pause for settings, recording and command list"
+training_settings,トレーニング設定,Training Settings
+trial_dash,ダッシュ中 ,Dashing 
+trial_rise,立ち途中 ,Rising 
+trial_title,技トライアル,Trial
+tut0_a,P（パンチ）を押そう,Press P (Punch)
+tut0_b,K（キック）を押そう,Press K (Kick)
+tut0_c,G（ガード）を押し続けよう,Hold G (Guard)
+tut0_d,前（相手の方向）を入れながら P,Hold forward and press P
+tut0_e,下を入れながら K,Hold down and press K
+tut0_title,操作の基本,Basic Controls
+tut10_a,浮かせた相手に追撃して、空中コンボを決めよう,Launch and follow up with an air combo
+tut10_title,浮かせとコンボ,Launchers & Combos
+tut11_a,倒される瞬間に G で受け身（2回）,Press G as you land to tech (2 times)
+tut11_b,相手を押し出して壁/リングの外へ。リングアウトを狙おう,Knock the dummy out of the ring
+tut11_title,ダウン・壁・リングアウト,"Knockdowns, Walls, Ring Outs"
+tut1_a,前を押し続けて歩こう,Hold forward to walk
+tut1_b,前を素早く2回でダッシュ,Tap forward twice to dash
+tut1_c,後ろを素早く2回でバックダッシュ,Tap back twice to backdash
+tut1_d,下を押し続けてしゃがもう,Hold down to crouch
+tut1_title,移動,Movement
+tut2_a,"P,P,K を続けて押して3連続で当てよう","Press P, P, K to land a 3-hit string"
+tut2_title,攻撃と連携,Attacks & Strings
+tut3_a,相手の上段パンチを、しゃがんでかわそう（3回）,Crouch under the high punch (3 times)
+tut3_b,相手の中段を立ちガード（G）で防ごう（3回）,Block the mid attack with standing guard (3 times)
+tut3_title,ガード,Guarding
+tut4_a,中段は立ちガード、下段はしゃがみガード。5回連続で防ごう,Mids: stand guard. Lows: crouch guard. Block 5 in a row
+tut4_title,上中下段,"High, Mid, Low"
+tut5_a,ガードを固めた相手を P+G で投げよう（2回）,Throw the guarding dummy with P+G (2 times)
+tut5_title,投げ,Throws
+tut6_a,相手の投げに合わせて P+G で投げ抜け（3回）,Press P+G to escape the throw (3 times)
+tut6_title,投げ抜け,Throw Escapes
+tut7_a,上または下をタップして横移動。直線技をかわそう（3回）,Tap up or down to sidestep linear attacks (3 times)
+tut7_title,横移動（回避）,Evading
+tut8_a,K+G（ガードさせて有利な技）をガードさせよう（2回）,Get K+G (plus on block) blocked (2 times)
+tut8_b,有利なまま、すかさず投げよう,"While at advantage, throw!"
+tut8_title,有利と不利,Frame Advantage
+tut9_a,大技をガードしたら、しゃがみから立ち上がりながら P（立ちP）で浮かせよう,"After blocking the big move, rise from crouch with P to launch"
+tut9_title,確定反撃,Punishing
+tut_clear,クリア！,CLEAR!
+tut_lesson,第,Lesson
+tut_next,次の課へ,Next Lesson
+tut_next_hint,ポーズ →「次の課へ」で進めます,Pause → Next Lesson to continue
+v_always,常に,Always
+v_assist,アシスト,Assist
+v_auto,自動,Auto
+v_back,後ろ,Back
+v_center,中央,Center
+v_classic,クラシック,Classic
+v_cpu,CPU,CPU
+v_crouch,しゃがみ,Crouch
+v_en,English,English
+v_evade,回避,Evade
+v_fixed,固定,Fixed
+v_floating,フローティング,Floating
+v_full,全て,Full
+v_guard_auto,全ガード,Guard All
+v_guard_crouch,しゃがみガード,Crouch Guard
+v_guard_random,ランダムガード,Random Guard
+v_guard_stand,立ちガード,Stand Guard
+v_high,高,High
+v_inplace,その場,In Place
+v_ja,日本語,日本語
+v_jab,最速P,Jab
+v_kick,起き上がり蹴り,Rising Kick
+v_large,大,Large
+v_left,左利き,Left-handed
+v_low,低,Low
+v_medium,中,Medium
+v_never,しない,Never
+v_none,なし,None
+v_p1_edge,縁際（自分）,Edge (you)
+v_p2_edge,縁際（相手）,Edge (dummy)
+v_play,録画再生,Playback
+v_punish,最速の確定反撃,Best Punish
+v_random,ランダム,Random
+v_roll,横転,Roll
+v_short,短縮,Short
+v_side,横,Side
+v_skip,スキップ,Skip
+v_stand,立ち,Stand
+v_standard,スタンダード,Standard
+v_stay,寝っぱなし,Stay Down
+v_throw,投げ,Throw
+v_ultra,最高,Ultra
+v_xlarge,特大,Extra Large
+vs_2p,2P 対戦,2 Players
+vs_cpu,CPU 戦,vs CPU
+wins,の勝ち,Wins
+menu_gallery,ギャラリー,Gallery
+gallery_endings,エンディング,Endings
+gallery_chars,キャラクター,Characters
+gallery_bgm,BGM,Music
+achievements,実績,Achievements
+gallery_endings_hint,アーケードをクリアしたキャラクターのエンディングを見られます。,View the endings of fighters who cleared Arcade.
+gallery_pose,ポーズ,Pose
+profile_age,年齢,Age
+profile_origin,出身,From
+profile_size,身長 / 体重,Height / Weight
+achievement_unlocked,実績解除: %s,Achievement unlocked: %s
+replay_keep,★ 保存,★ Keep
+replay_kept,保存しました,Saved
+trial_combo,コンボ,Combo
+trial_wall_combo,壁コンボ,Wall Combo
+pilot,パイロット,Pilot
+to_title,タイトルへ,Title Screen
+to_title_confirm,もう一度押すとタイトルへ,Tap again to quit

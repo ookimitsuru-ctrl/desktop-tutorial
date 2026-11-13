@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "yuelan",
+  "profile": {
+    "age": "20",
+    "origin": [
+      "中国・山西省",
+      "Shanxi, China"
+    ],
+    "size": "160cm / 50kg",
+    "bio": [
+      "生真面目な努力家。褒められると照れる。祖母から形意拳を受け継いだ。",
+      "A serious, hard-working student who gets flustered by praise. Learned Xingyiquan from her grandmother."
+    ]
+  },
+  "opening": [
+    "山西省の山あいで、祖母から形意拳を学んだ蘇 月嵐。\n「型は飾りではない。実戦で通じてこそ型だ」——祖母の口癖を証明するため、彼女は大会への出場を決めた。\n出発の前夜、祖母は古い写真を見せた。若き日の祖母が立つリング。その横断幕には、環財団の紋があった。\n「拳は、一直線に」",
+    "In the mountains of Shanxi, Su Yuelan learned Xingyiquan from her grandmother.\n\"Forms are not decoration. A form is only a form if it works in a fight\" — to prove her grandmother's words, she entered the tournament.\nThe night before she left, her grandmother showed her an old photo: her younger self standing in a ring beneath a banner bearing the Tamaki Foundation crest.\n\"A fist goes in a straight line.\""
+  ],
+  "rival": [
+    [
+      "マリエル「わお、ちっちゃい！ でも目が本気だね！」",
+      "Mariel: \"Whoa, tiny! But those eyes mean business!\""
+    ],
+    [
+      "月嵐「ちっちゃくありません！ ……あ、よろしくお願いします」",
+      "Yuelan: \"I'm not tiny! ...Ah — I mean, nice to meet you.\""
+    ]
+  ],
+  "boss": [
+    [
+      "玄斎「その構え……蘇の婆さんの弟子か。懐かしいのう」",
+      "Gensai: \"That stance... you're old Su's student. How nostalgic.\""
+    ],
+    [
+      "月嵐「祖母を、ご存じなんですか」",
+      "Yuelan: \"You know my grandmother?\""
+    ],
+    [
+      "玄斎「五十年前、わしを一直線に吹き飛ばした女じゃ」",
+      "Gensai: \"Fifty years ago, she sent me flying in a straight line.\""
+    ]
+  ],
+  "ending": [
+    "試合のあと、玄斎は一冊の古い記録帳を月嵐に手渡した。五十年前の大会、祖母の組手が細かく書き留められていた。\n「お前さんの崩拳は、婆さんより半歩速い。伝えておくれ」\n帰郷した月嵐は、記録帳を祖母に渡した。祖母はページをめくり、照れくさそうに笑った。\n「……あの爺、まだ生きてたのかい」\n庭先で、二人の拳が一直線に並んだ。",
+    "After the match, Gensai handed Yuelan an old notebook — a detailed record of her grandmother's bouts from the tournament fifty years ago.\n\"Your crushing fist is half a step faster than hers. Tell her that.\"\nBack home, Yuelan gave the notebook to her grandmother, who turned the pages and smiled bashfully.\n\"...So that old man is still alive.\"\nIn the garden, two fists lined up in a single straight line."
+  ],
+  "win_quotes": [
+    [
+      "拳は、一直線に",
+      "A fist goes in a straight line."
+    ],
+    [
+      "あ、ありがとうございました！ ……褒めても何も出ませんよ",
+      "Th-thank you very much! ...Praise won't get you anything."
+    ],
+    [
+      "型は、実戦で通じてこそ型です",
+      "A form is only a form if it works in a fight."
+    ]
+  ]
+}
