@@ -18,7 +18,7 @@ function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width 
 
 export class Renderer {
   constructor(canvas, T, line) {
-    this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+    this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha: false }); // desynchronized は Android WebView で画面が固まり DOM が隠れることがあるため使わない
     this.T = T; this.line = line;
     this.dpr = 1; this.w = 0; this.h = 0;
     this.cam = { x: 0, y: 0, ang: 0, scale: 4, init: false, shake: 0 };

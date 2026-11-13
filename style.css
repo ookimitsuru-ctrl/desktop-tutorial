@@ -2,9 +2,9 @@
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html,body { margin:0; height:100%; background:#0b1020; color:var(--txt); overflow:hidden; overscroll-behavior:none; touch-action:none; user-select:none; -webkit-user-select:none;
   font-family:"Roboto Condensed","Helvetica Neue","Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif; }
-#game { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+#game { position:fixed; left:0; top:0; right:0; bottom:0; z-index:0; width:100%; height:100%; display:block; touch-action:none; }
 #safe { position:fixed; left:0; top:0; width:0; height:0; visibility:hidden; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-#ui { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); touch-action:pan-y; }
+#ui { position:fixed; left:0; top:0; right:0; bottom:0; z-index:5; padding:10px; display:none; align-items:center; justify-content:center; padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); touch-action:pan-y; }
 #ui.on { display:flex; background:radial-gradient(ellipse at center, rgba(8,12,24,.35), rgba(8,12,24,.78)); }
 #ui.scr-pause,#ui.scr-results { backdrop-filter:blur(3px); }
 button { font:inherit; color:inherit; background:rgba(255,255,255,.07); border:1px solid var(--line); border-radius:9px; padding:.55em 1em; cursor:pointer; font-weight:700; }
@@ -48,7 +48,7 @@ h3 { font-size:12px; letter-spacing:.08em; color:#ffc79a; margin:14px 0 6px; fon
 .how .k.acc { background:#1f8f58; } .how .k.brk { background:#c23a30; } .how .k.pit { background:#d98a1a; color:#111; }
 .credits p { font-size:12.5px; line-height:1.7; color:#d6dbe6; word-break:break-word; }
 .panel.small h2 { margin:0 0 8px; font-size:18px; } .panel.small p { color:var(--dim); font-size:13px; line-height:1.6; margin:0; }
-#rotate { position:fixed; inset:0; background:#0b1020; display:none; align-items:center; justify-content:center; text-align:center; z-index:9; }
+#rotate { position:fixed; left:0; top:0; right:0; bottom:0; background:#0b1020; display:none; align-items:center; justify-content:center; text-align:center; z-index:9; }
 #rotate b { font-size:64px; color:var(--or); display:block; animation:spin 2.4s linear infinite; } #rotate p { font-weight:700; }
 @keyframes spin { to { transform:rotate(360deg); } }
 @media (orientation:portrait) and (pointer:coarse) { #rotate { display:flex; } }

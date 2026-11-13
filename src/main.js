@@ -239,6 +239,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = (now - last) / 1000; last = now;
   if (dt > 0.1) dt = 0.1; if (dt <= 0) return;
+  if (window.innerWidth !== R.w || window.innerHeight !== R.h) { if (window.innerWidth > 0 && window.innerHeight > 0) resize(); else return; } // WebView は起動直後のサイズが 0 のことがある
   const ctx = R.ctx;
   if (state === 'drive' && session) {
     input.showTyres = input.showPit && (session.player.pitRequest || (session.player.pit && session.player.pit.state !== 'out'));

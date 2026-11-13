@@ -13,7 +13,7 @@
 
 | 方法 | 手順 |
 |---|---|
-| **Android (APK)** | `release/OKRacing-1.0.0-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
+| **Android (APK)** | `release/OKRacing-1.0.1-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
 | **ブラウザ** | `npm run dev` → `http://localhost:8080/` を開く。HTTPS で公開すればホーム画面に追加(PWA)も可能 |
 | **単体HTML** | `npm run build` で作られる `dist/index.html` 1ファイルだけで動作 |
 

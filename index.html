@@ -16,6 +16,16 @@
 <div id="ui"></div>
 <div id="rotate"><div><b>⟳</b><p>端末を横向きにしてください</p></div></div>
 <div id="safe"></div>
+<div id="err" style="display:none;position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#7a1414;color:#fff;font:12px/1.5 monospace;padding:8px 10px;border-radius:8px;white-space:pre-wrap;word-break:break-all"></div>
+<script>
+// 起動や実行中のエラーを画面に表示する (不具合報告用)
+(function () {
+  var n = 0;
+  function show(msg) { if (n++ > 3) return; var e = document.getElementById('err'); e.style.display = 'block'; e.textContent += (e.textContent ? '\n' : 'エラーが発生しました。この表示を開発者に伝えてください:\n') + msg; }
+  window.addEventListener('error', function (ev) { show((ev.message || 'error') + ' @' + (ev.lineno || 0) + ':' + (ev.colno || 0)); });
+  window.addEventListener('unhandledrejection', function (ev) { show('promise: ' + (ev.reason && ev.reason.message || ev.reason)); });
+})();
+</script>
 <script type="module" src="src/main.js"></script>
 </body>
 </html>

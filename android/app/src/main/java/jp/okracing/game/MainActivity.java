@@ -33,6 +33,8 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);          // 設定・記録・ゴーストの保存 (localStorage)
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(true);
+        s.setUseWideViewPort(true);            // <meta viewport> を有効にする
+        s.setLoadWithOverviewMode(true);
         s.setSupportZoom(false);
         s.setTextZoom(100);
         web.setWebViewClient(new WebViewClient());

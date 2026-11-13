@@ -4,7 +4,7 @@
 import { build } from 'esbuild'; import fs from 'fs'; import path from 'path';
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..'), dist = path.join(root, 'dist');
 fs.rmSync(dist, { recursive: true, force: true }); fs.mkdirSync(path.join(dist, 'icons'), { recursive: true });
-const r = await build({ entryPoints: [path.join(root, 'src/main.js')], bundle: true, minify: true, format: 'iife', target: ['es2020'], write: false, legalComments: 'none' });
+const r = await build({ entryPoints: [path.join(root, 'src/main.js')], bundle: true, minify: true, format: 'iife', target: ['es2017'], write: false, legalComments: 'none' });
 const js = r.outputFiles[0].text.replace(/<\/script/g, '<\\/script');
 const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
