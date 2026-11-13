@@ -280,6 +280,16 @@ export class Driver {
       if (need > 0.02) { brk = sat(need); thr = 0; }
     }
     if (Math.abs(beta) > 0.14 && v > 15) { thr *= sat(1 - (Math.abs(beta) - 0.14) * 8); }
+    // アシスト無しの車では、空転・ロックを感じ取って足で調整する (人間のドライバー相当)
+    if (!c.assistTC) {
+      this.footT = clamp((this.footT || 0) + (c.kR > 0.085 ? dt * 9 * (1 + (c.kR - 0.085) * 12) : -dt * 1.6), 0, 0.9);
+      thr *= 1 - this.footT;
+      if (c.gear <= 2) thr = Math.min(thr, 0.35 + 0.65 * sat((c.rpm - 6000) / 7000) + (c.gear - 1) * 0.2);
+    }
+    if (!c.assistABS) {
+      this.footB = clamp((this.footB || 0) + ((c.kF < -0.12 || c.kR < -0.14) ? dt * 10 : -dt * 2.5), 0, 0.85);
+      brk *= 1 - this.footB;
+    }
     c.throttle += clamp(thr - c.throttle, -dt * 12, dt * (4 + 4 * this.skill));
     c.brake += clamp(brk - c.brake, -dt * 10, dt * 9);
   }

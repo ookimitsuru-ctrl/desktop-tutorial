@@ -113,7 +113,7 @@ export function applySetup(car) {
 }
 export function fitTyres(car, id) {
   car.tyre = TYRES[id];
-  car.tempF = car.tempR = id === 'rain' ? 55 : 78; // タイヤウォーマー
+  car.tempF = car.tempR = TYRES[id].opt - 6; // タイヤウォーマー
   car.wearF = car.wearR = 0;
 }
 export function placeCar(car, track, s, d, speed = 0) {

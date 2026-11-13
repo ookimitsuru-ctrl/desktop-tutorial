@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'jp.okracing.game'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'jp.okracing.game'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+    // ゲーム本体は Web 版のビルド成果物 (../dist) をそのままアセットとして同梱する。
+    // 先にリポジトリ直下で `npm run build` を実行しておくこと。
+    sourceSets { main { assets.srcDirs = ['../../dist'] } }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.debug }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

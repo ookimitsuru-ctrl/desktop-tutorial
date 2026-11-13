@@ -89,7 +89,7 @@ export class Hud {
       const lapStr = S.mode === 'race' ? `LAP ${Math.min(Math.max(pl.lap, 1), S.laps)}/${S.laps}` : S.mode === 'quali' ? `LAP ${Math.max(0, Math.min(pl.lap, S.laps))}/${S.laps}` : `LAP ${Math.max(0, pl.lap)}`;
       ctx.font = `700 ${13 * u}px ${FONT}`; const w3 = ctx.measureText(lapStr).width;
       const pw = w1 + w2 + w3 + 34;
-      panel(ctx, bx, by, pw, bh, 8);
+      panel(ctx, bx, by, pw, bh, 8); this.posRight = bx + pw;
       ctx.textBaseline = 'middle';
       text(ctx, s1, bx + 10, by + bh / 2 + 1, (S.mode === 'race' ? 22 : 14) * u, S.mode === 'race' ? '#ffb347' : '#fff', 'left', '800', true);
       ctx.font = `italic 800 ${(S.mode === 'race' ? 22 : 14) * u}px ${FONT}`; const ww = ctx.measureText(s1).width;
@@ -114,11 +114,30 @@ export class Hud {
     if (this.cornerT > 0 && S.state === 'green') {
       this.cornerT -= dt; const a = sat(this.cornerT / 0.5) * sat((2.6 - this.cornerT) / 0.25);
       ctx.globalAlpha = a * 0.95;
-      const cy = h * 0.27;
+      const cy = h * 0.115 + 62 * u + 44 * u;
       ctx.font = `italic 800 ${17 * u}px ${FONT}`; const tw = ctx.measureText(this.cornerName).width;
       rr(ctx, w / 2 - tw / 2 - 14, cy - 15 * u, tw + 28, 24 * u, 12 * u); ctx.fillStyle = 'rgba(8,12,22,0.55)'; ctx.fill();
       text(ctx, this.cornerName, w / 2, cy + 3 * u, 17 * u, '#fff', 'center', '800', true);
       ctx.globalAlpha = 1;
+    }
+
+    // ================= 次のブレーキングポイント =================
+    if (R.assist && S.state === 'green' && !pl.pit && cfg.lineAssist) {
+      const cat = R.assist, N = S.T.N, ds = S.T.ds;
+      let dist = -1, inBrake = cat[c.i] === 2;
+      if (!inBrake) for (let q = 1; q < 260; q++) if (cat[(c.i + q) % N] === 2) { dist = q * ds; break; }
+      if (inBrake || (dist > 0 && dist < 60 + c.speed * 4.2)) {
+        // この先のコーナー名
+        let nm = ''; const s2 = S.T.wrapS(c.s + Math.max(0, dist) + 90); const sc2 = S.T.sectionAt(s2); if (sc2 && sc2.no) nm = sc2.name;
+        const bw = 150 * u, bx = w / 2 - bw / 2, by = h * 0.115 + 62 * u;
+        panel(ctx, bx, by, bw, 22 * u, 6, 0.6);
+        if (inBrake) { rr(ctx, bx, by, bw, 22 * u, 6); ctx.fillStyle = 'rgba(255,60,45,0.85)'; ctx.fill(); text(ctx, 'BRAKE  ' + nm, w / 2, by + 15.5 * u, 12 * u, '#fff', 'center', '800', true); }
+        else {
+          const f = sat(1 - dist / (60 + c.speed * 4.2));
+          rr(ctx, bx, by, Math.max(8, bw * f), 22 * u, 6); ctx.fillStyle = f > 0.7 ? 'rgba(255,150,40,0.8)' : 'rgba(255,210,60,0.55)'; ctx.fill();
+          text(ctx, `${Math.round(dist / 10) * 10}m  ${nm}`, w / 2, by + 15.5 * u, 12 * u, '#fff', 'center', '800', true);
+        }
+      }
     }
 
     // ================= スタートシグナル / カウントダウン =================
@@ -297,8 +316,12 @@ export class Hud {
   }
 
   drawTiming(ctx, L, S, pl, u) {
-    const w = L.w, cx = w / 2, y0 = L.pause.y;
-    const pw = clamp(w * 0.3, 200, 290), ph = 58 * u;
+    const w = L.w, y0 = L.pause.y;
+    const mapX = L.w - L.m - L.safe.r - clamp(L.w * 0.2, 130, 210) - 4;
+    let pw = clamp(w * 0.3, 190, 290); const ph = 58 * u;
+    let xL = Math.max(w / 2 - pw / 2, (this.posRight || 0) + 8);
+    if (xL + pw > mapX - 8) pw = Math.max(170, mapX - 8 - xL);
+    const cx = xL + pw / 2;
     panel(ctx, cx - pw / 2, y0, pw, ph, 10, 0.58);
     const now = S.mode === 'race' ? S.raceTime : S.time;
     const running = pl.lap >= 1 && S.state === 'green' && !pl.finished;

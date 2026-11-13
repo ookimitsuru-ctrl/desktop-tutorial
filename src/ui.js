@@ -25,6 +25,7 @@ export class UI {
     this.root.className = 'on scr-' + name;
     this.root.innerHTML = this[name](ctx);
     this.after?.[name]?.call(this, ctx);
+    const me = this.root.querySelector('tr.me'); if (me && me.scrollIntoView) me.scrollIntoView({ block: 'center' });
     const cv = this.root.querySelector('canvas.showcase');
     if (cv) { const dpr = Math.min(3, window.devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; drawCarShowcase(cv, TEAMS[0], 1); }
   }
@@ -124,7 +125,7 @@ export class UI {
         <h3>表示</h3>
         ${this.seg('set', 'lineAssist', s.lineAssist, [{ v: true, label: '走行ライン表示 ON', sub: '赤=ブレーキ 黄=旋回' }, { v: false, label: 'OFF' }])}
         ${this.seg('set', 'ghost', s.ghost, [{ v: true, label: 'ゴースト ON' }, { v: false, label: 'OFF' }])}
-        ${this.seg('set', 'quality', s.quality, [{ v: 'high', label: '高画質' }, { v: 'low', label: '軽量 (低負荷)' }])}
+        ${this.seg('set', 'quality', s.quality, [{ v: 'auto', label: '画質 自動', sub: '60fpsを保つよう調整' }, { v: 'high', label: '高画質' }, { v: 'low', label: '軽量' }])}
         <h3>ダメージ</h3>${this.seg('set', 'damage', s.damage, [{ v: true, label: 'あり' }, { v: false, label: 'なし' }])}
         <h3>音量</h3>${range('volume', 0, 1, 0.05)}
         <div class="row"><button data-act="resetSettings">設定を初期化</button></div>

@@ -19,7 +19,7 @@ export const DEFAULT_SETTINGS = {
   damage: true,
   difficulty: 'normal',
   volume: 0.8,
-  quality: 'high',
+  quality: 'auto',        // auto: フレームレートに応じて自動調整 / high / low
   showBoard: true,
 };
 

@@ -59,8 +59,8 @@ export const WEATHERS = {
 export function estimateQualiTime(d, team, diff, wet) {
   const D = DIFFICULTY[diff] || DIFFICULTY.normal;
   const skill = clamp(d.skill + D.skill, 0, 1);
-  let t = 102.7 + (1 - skill) * 7.0 + (1 - team.power * D.power) * 20 + (1 - team.grip * D.grip) * 42;
-  if (wet > 0.05) t *= 1 + 0.27 * Math.pow(sat(wet), 0.7);
+  let t = 102.3 + (1 - skill) * 7.0 + (1 - team.power * D.power) * 20 + (1 - team.grip * D.grip) * 42;
+  if (wet > 0.05) t *= 1 + 0.26 * Math.pow(sat(wet), 0.35);
   return t;
 }
 

@@ -43,7 +43,7 @@ export class Renderer {
     const cr = T.cross;
     for (const ch of T.chunks) {
       const { a, b } = ch;
-      const P = { asphalt: new Path2D(), lineL: new Path2D(), lineR: new Path2D(), kerbA: new Path2D(), kerbB: new Path2D(), gravel: new Path2D(), wall: new Path2D(), tyre: new Path2D(), rubber: new Path2D(), verge: new Path2D(), deck: new Path2D() };
+      const P = { asphalt: new Path2D(), lineL: new Path2D(), lineR: new Path2D(), kerbA: new Path2D(), kerbB: new Path2D(), gravel: new Path2D(), wall: new Path2D(), tyre: new Path2D(), tyreW: new Path2D(), rubber: new Path2D(), verge: new Path2D(), deck: new Path2D() };
       for (let q = a; q <= b; q++) { const i = q % N; q === a ? P.asphalt.moveTo(X(i, -T.wl[i]), Y(i, -T.wl[i])) : P.asphalt.lineTo(X(i, -T.wl[i]), Y(i, -T.wl[i])); }
       for (let q = b; q >= a; q--) { const i = q % N; P.asphalt.lineTo(X(i, T.wr[i]), Y(i, T.wr[i])); }
       P.asphalt.closePath();
@@ -65,8 +65,8 @@ export class Renderer {
         if (T.gravR[i] && T.gravR[j]) quad(P.gravel, T.wr[i] + T.kerbR[i] + gs, T.wallR[i] - 0.7, T.wr[j] + T.kerbR[j] + gs, T.wallR[j] - 0.7);
         // バリア
         const seg = (path, di, dj) => { path.moveTo(X(i, di), Y(i, di)); path.lineTo(X(j, dj), Y(j, dj)); };
-        seg(T.tyreL[i] ? P.tyre : P.wall, -T.wallL[i], -T.wallL[j]);
-        seg(T.tyreR[i] ? P.tyre : P.wall, T.wallR[i], T.wallR[j]);
+        seg(T.tyreL[i] ? ((q & 1) ? P.tyre : P.tyreW) : P.wall, -T.wallL[i], -T.wallL[j]);
+        seg(T.tyreR[i] ? ((q & 1) ? P.tyre : P.tyreW) : P.wall, T.wallR[i], T.wallR[j]);
         quad(P.deck, -(T.wallL[i] + 0.9), T.wallR[i] + 0.9, -(T.wallL[j] + 0.9), T.wallR[j] + 0.9);
       }
       ch.P = P;
@@ -171,7 +171,7 @@ export class Renderer {
     stand(1640, 1820, 1, 4, 11, '#7b8590');          // ダンロップ
     stand(2625, 2700, 1, 4, 12, '#77808b');          // ヘアピン
     stand(3580, 3740, 1, 4, 11, '#7b8590');          // スプーン
-    stand(5075, 5190, -1, 4, 12, '#77808b');         // シケイン
+    stand(4960, 5050, -1, 4, 12, '#77808b');         // シケイン手前
     stand(5260, 5440, -1, 4, 14, '#6d7682');         // 最終コーナー
     // 観覧車 (最終コーナー外側の遊園地)
     { const p = this.PT(5380, -(wallL(5380) + 70)); add({ type: 'wheel', x: p.x, y: p.y, r: 60 }); }
@@ -258,6 +258,11 @@ export class Renderer {
     gg.fillStyle = '#c9b48a'; gg.fillRect(0, 0, 64, 64);
     for (let i = 0; i < 700; i++) { gg.fillStyle = ['rgba(120,100,70,0.35)', 'rgba(240,225,190,0.4)', 'rgba(160,140,100,0.3)'][i % 3]; gg.fillRect((rnd() * 64) | 0, (rnd() * 64) | 0, 1, 1); }
     this.gravelCanvas = gc; this.gravelPattern = null;
+    // 観客パターン
+    const cc = makeCanvas(64, 64), cg = cc.getContext('2d');
+    const ccols = ['#e5484d', '#f2c230', '#3d8fd9', '#f4f4f4', '#58b368', '#f08a24', '#222831', '#d9d9d9'];
+    for (let i = 0; i < 520; i++) { cg.fillStyle = ccols[(rnd() * ccols.length) | 0]; cg.globalAlpha = 0.55 + rnd() * 0.4; cg.fillRect((rnd() * 32) * 2, (rnd() * 32) * 2, 2, 2); }
+    this.crowdCanvas = cc; this.crowdPattern = null;
   }
 
   buildMinimap() {
@@ -374,11 +379,11 @@ export class Renderer {
     let scale, ax, ay, targetAng;
     const t = sat((v - 8) / 72), tt = t * t * (3 - 2 * t);
     if (mode === 'right') {
-      scale = w / (lerp(165, 400, tt) * zf); ax = w * 0.3; ay = h * 0.47; targetAng = target.yaw;
+      scale = w / (lerp(110, 330, tt) * zf); ax = w * 0.3; ay = h * 0.47; targetAng = target.yaw;
     } else if (mode === 'north') {
       scale = h / (lerp(150, 290, tt) * zf); ax = w * 0.5; ay = h * 0.47; targetAng = null;
     } else {
-      scale = h / (lerp(100, 245, tt) * zf); ax = w * 0.5; ay = h * 0.66; targetAng = target.yaw;
+      scale = h / (lerp(56, 176, tt) * zf); ax = w * 0.5; ay = h * 0.68; targetAng = target.yaw;
     }
     if (!cam.init || snap) {
       cam.x = target.x; cam.y = target.y; cam.scale = scale; cam.ang = targetAng ?? 0; cam.init = true; cam.lx = 0; cam.ly = 0;
@@ -432,12 +437,13 @@ export class Renderer {
     if (!this.grassPattern) {
       this.grassPattern = ctx.createPattern(this.grassCanvas, 'repeat');
       this.gravelPattern = ctx.createPattern(this.gravelCanvas, 'repeat');
+      this.crowdPattern = ctx.createPattern(this.crowdCanvas, 'repeat');
+      try { this.crowdPattern.setTransform(new DOMMatrix().scale(0.3)); } catch (e) { /* 等倍 */ }
       try { this.grassPattern.setTransform(new DOMMatrix().scale(0.5)); this.gravelPattern.setTransform(new DOMMatrix().scale(0.22)); } catch (e) { /* 非対応環境では等倍 */ }
     }
     if (cfg.quality !== 'low') {
-      ctx.globalAlpha = 1 - wet * 0.35;
       ctx.fillStyle = this.grassPattern; ctx.fillRect(vx - vr, vy - vr, vr * 2, vr * 2);
-      ctx.globalAlpha = 1;
+      if (wet > 0.03) { ctx.fillStyle = `rgba(30,60,50,${wet * 0.3})`; ctx.fillRect(vx - vr, vy - vr, vr * 2, vr * 2); }
     }
 
     // 可視チャンクの収集
@@ -484,8 +490,7 @@ export class Renderer {
       // バリア
       ctx.lineCap = 'butt';
       ctx.strokeStyle = '#1b1d20'; ctx.lineWidth = 1.5; ctx.stroke(merge('tyre', bridge));
-      ctx.strokeStyle = '#e9e9e9'; ctx.lineWidth = 1.5; ctx.setLineDash([1.6, 1.6]); ctx.stroke(merge('tyre', bridge)); ctx.setLineDash([]);
-      ctx.strokeStyle = '#1b1d20'; ctx.lineWidth = 0.5; ctx.stroke(merge('tyre', bridge));
+      ctx.strokeStyle = '#e4e4e4'; ctx.stroke(merge('tyreW', bridge));
       ctx.strokeStyle = bridge ? '#d9dde2' : '#b9bec6'; ctx.lineWidth = Math.max(0.55, lw * 1.6); ctx.stroke(merge('wall', bridge));
     };
     drawTrackLayer(false);
@@ -615,12 +620,8 @@ export class Renderer {
       const dx = o.x - vx, dy = o.y - vy, rr = vr + o.r; if (dx * dx + dy * dy > rr * rr) continue;
       if (o.type === 'stand') {
         ctx.fillStyle = o.col; ctx.fill(o.body);
-        ctx.strokeStyle = 'rgba(30,34,40,0.55)'; ctx.lineWidth = 0.5; for (const r of o.rows) ctx.stroke(r);
-        // 観客 (色の点描)
-        ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 0.9; ctx.setLineDash([0.7, 1.9]); for (const r of o.rows) ctx.stroke(r);
-        ctx.strokeStyle = 'rgba(230,70,60,0.35)'; ctx.setLineDash([0.6, 5.3]); ctx.lineDashOffset = 1.7; for (const r of o.rows) ctx.stroke(r);
-        ctx.strokeStyle = 'rgba(60,140,230,0.35)'; ctx.setLineDash([0.6, 7.1]); ctx.lineDashOffset = 3.1; for (const r of o.rows) ctx.stroke(r);
-        ctx.setLineDash([]); ctx.lineDashOffset = 0;
+        if (cfg.quality !== 'low') { ctx.fillStyle = this.crowdPattern; ctx.fill(o.body); }
+        ctx.strokeStyle = 'rgba(30,34,40,0.4)'; ctx.lineWidth = 0.4; for (const r of o.rows) ctx.stroke(r);
         ctx.fillStyle = 'rgba(225,230,236,0.92)'; ctx.fill(o.roof);
         ctx.strokeStyle = 'rgba(40,44,50,0.5)'; ctx.lineWidth = Math.max(0.2, lw); ctx.stroke(o.body);
       } else if (o.type === 'wheel') {
