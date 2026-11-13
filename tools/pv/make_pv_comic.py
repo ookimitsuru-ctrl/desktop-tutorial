@@ -583,7 +583,7 @@ def auto_marks(fo, shot, j0, n, counter, stage=""):
             cand.append((e["j"], 5, e, "KRASH!", "gold", 12, "wall_hit", 260))
         elif k == "ringout":
             e2 = dict(e)
-            e2["j"] = e["j"] + 10
+            e2["j"] = e["j"] + 5
             snd = f"ringout_{stage}" if (SFX / f"ringout_{stage}.wav").exists() else "ringout"
             cand.append((e2["j"], 6, e2, "SPLASH!", "blue", 14, snd, 250))
         elif k == "hit" and e.get("ko"):
