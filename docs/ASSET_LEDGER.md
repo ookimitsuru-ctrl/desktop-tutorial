@@ -7,7 +7,7 @@
 |---|---|---|---|---|---|---|
 | `assets/characters/*/*.glb` | model | 自作（`tools/charmodel/gen_mech.py`: 機甲兵の硬い部品（凸包）を骨格に剛体で取り付けて glTF に。旧来の人間のモデルは `gen_model.py`） | 自作 | 2026-11-05 | — | 不要 |
 | `assets/audio/sfx/*.wav` | sfx | 自作（`tools/audio/gen_sfx.py`: numpy による波形合成） | 自作 | 2026-11-04 | — | 不要 |
-| `assets/audio/bgm/*.ogg` | bgm | 自作（`tools/audio/gen_bgm.py`: mido で作曲した MIDI を FluidSynth + FluidR3_GM で再生・録音。ステージの曲の太鼓・打楽器は `tools/audio/drumkit.py` で波形から合成） | 自作（音源 FluidR3_GM は MIT） | 2026-11-04 | ループ点の付与、OGG Vorbis 化 | 不要（音源のライセンス表記はクレジットに記載） |
+| `assets/audio/bgm/*.ogg` | bgm | 自作（`tools/audio/gen_bgm_rock.py`: ハードロック編曲。歪んだギター・リード・ベースは弦の物理モデル（Karplus-Strong）とアンプの歪みを合成、ドラムは `tools/audio/drumkit.py` で波形から合成。オルガンと彩りの楽器だけ FluidSynth + FluidR3_GM。旋律と進行は `gen_bgm.py` と同じ種から生成） | 自作（音源 FluidR3_GM は MIT） | 2026-11-13 | ループ点の付与、OGG Vorbis 化 | 不要（音源のライセンス表記はクレジットに記載） |
 | `assets/audio/announcer/*.wav` | voice | 自作（`tools/audio/gen_voice.py`: espeak-ng の合成音声を加工） | 自作（espeak-ng は GPL-3.0 だが、出力音声はプログラムの著作物ではない） | 2026-11-04 | ピッチ低下、帯域制限、歪み、残響 | 不要 |
 | `assets/audio/voice/*/*.wav` | voice | 自作（`tools/audio/gen_voice.py`: 声帯音源 + フォルマントの合成） | 自作 | 2026-11-04 | — | 不要 |
 | `assets/fonts/NotoSansJP-*.ttf` | font | Google Fonts（Noto Sans JP） | OFL 1.1 | 2026-11-04 | 使用文字でのサブセット化（`tools/gen/subset_fonts.py`） | 要 |

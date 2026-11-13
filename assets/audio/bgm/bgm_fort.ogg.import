@@ -2,7 +2,7 @@
 
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
-uid="uid://cuyne8i3a48f6"
+uid="uid://dqghc4wnxtw88"
 path="res://.godot/imported/bgm_fort.ogg-d5ae66456a46d6f88f84b41e8e9dd22a.oggvorbisstr"
 
 [deps]
@@ -13,7 +13,7 @@ dest_files=["res://.godot/imported/bgm_fort.ogg-d5ae66456a46d6f88f84b41e8e9dd22a
 [params]
 
 loop=true
-loop_offset=8.5714
+loop_offset=8.2759
 bpm=0
 beat_count=0
 bar_beats=4

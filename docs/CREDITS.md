@@ -15,9 +15,10 @@
 - ライセンス全文: `assets/fonts/OFL.txt` / Full license text: `assets/fonts/OFL.txt`
 
 ## 音楽制作に使用したツール / Tools used for music
-- FluidSynth (LGPL-2.1) と FluidR3_GM サウンドフォント (MIT License, Copyright (c) Frank Wen) で MIDI を録音しました。
-  BGM was rendered from original MIDI with FluidSynth and the FluidR3_GM SoundFont (MIT License, Copyright (c) Frank Wen).
-- ステージの曲のドラム・打楽器は、サンプルを使わずに波形の合成で作りました。 / Stage drums and percussion are synthesized from scratch (no samples).
+- BGM はハードロック編成のオリジナル曲です。ギター・ベース・ドラムはサンプルを使わず、弦の物理モデルと波形の合成で作りました。
+  All BGM is original hard rock. Guitars, bass and drums are synthesized from scratch (string physical model and waveform synthesis, no samples).
+- オルガンと一部の彩りの楽器は FluidSynth (LGPL-2.1) と FluidR3_GM サウンドフォント (MIT License, Copyright (c) Frank Wen) で録音しました。
+  The organ and a few accent instruments were rendered with FluidSynth and the FluidR3_GM SoundFont (MIT License, Copyright (c) Frank Wen).
 - アナウンス音声は espeak-ng の合成音声を加工して作成しました。 / Announcer lines were made by processing espeak-ng speech synthesis.
 
 ## 謝辞 / Thanks
