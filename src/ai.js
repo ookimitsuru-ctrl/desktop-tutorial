@@ -104,7 +104,8 @@ export class Driver {
     this.errT = 3 + rand() * 20; this.err = 0;
     this.lift = 0; this.wet = 0;
     this.passSide = 0; this.passT = 0;
-    car.assistTC = true; car.assistABS = true; car.autoShift = true;
+    this.steerOnly = !!opts.steerOnly;   // プレイヤー車の自動操舵: ステアリングと進路取りだけを行う
+    if (!this.steerOnly) { car.assistTC = true; car.assistABS = true; car.autoShift = true; }
     this.refresh(0);
   }
   estMu(wet) {
@@ -173,7 +174,7 @@ export class Driver {
         const closing = v - ov;
         const lat = ahead.d - myOff;
         const slow = ov < 12 && v > 20;
-        if (aGap < 9 + Math.max(0, closing) * 1.4 + (slow ? 40 : 0)) {
+        if (aGap < (this.steerOnly ? 16 + Math.max(0, closing) * 2.2 : 9 + Math.max(0, closing) * 1.4) + (slow ? 40 : 0)) {
           if (Math.abs(lat) < 2.5 || this.passT > 0) {
             // 抜く側を決める
             if (this.passT <= 0) {
@@ -182,7 +183,7 @@ export class Driver {
               if (inside > 0 && roomR > 0.2) side = 1; else if (inside < 0 && roomL > 0.2) side = -1;
               else side = roomR > roomL ? (roomR > 0.2 ? 1 : 0) : (roomL > 0.2 ? -1 : 0);
               const cornering = Math.abs(L.curv[c.i]) > 0.008;
-              if (cornering && !slow && rand() > 0.02 + this.aggr * 0.05) side = 0;
+              if (cornering && !slow && !this.steerOnly && rand() > 0.02 + this.aggr * 0.05) side = 0;
               this.passSide = side; this.passT = side ? 2.5 : 0.4;
             }
             if (this.passSide) {
@@ -223,6 +224,7 @@ export class Driver {
     if (this.errT <= 0) { this.errT = 6 + rand() * 30; this.err = (rand() - 0.3) * (1 - this.skill) * 0.05; }
     this.err *= (1 - dt * 0.4);
 
+    if (info?.keepRight) this.offsetTarget += ((L.hi[c.i] - L.off[c.i] - 0.6) - this.offsetTarget) * Math.min(1, dt * 2.5); // ピット入口へ
     // オフセットをコース幅に収める
     const oi = (c.i + 8) % N;
     this.offsetTarget = clamp(this.offsetTarget, L.lo[oi] - L.off[oi], L.hi[oi] - L.off[oi]);
@@ -245,11 +247,15 @@ export class Driver {
     let delta = Math.atan(CAR.wheelbase * curvCmd) + 0.055 * clamp(ayReq / ayMax, -1.2, 1.2);
     // スピン抑制: リアの滑り角が限界を大きく超えたらカウンターを当てる
     const beta = Math.atan2(c.vy - CAR.b * c.r, Math.max(v, 3));
-    if (Math.abs(beta) > 0.15) delta += (beta - Math.sign(beta) * 0.15) * 1.6;
+    const bTh = this.steerOnly ? 0.10 : 0.15;
+    if (Math.abs(beta) > bTh) delta += (beta - Math.sign(beta) * bTh) * (this.steerOnly ? 2.2 : 1.6);
+    if (lx < 1.5) delta = Math.sign(ly || 1) * CAR.maxLock; // 目標が後ろ (スピン後など): 目一杯切って向きを戻す
     this.dSm = (this.dSm ?? delta) + (delta - (this.dSm ?? delta)) * Math.min(1, dt * 14);
     delta = this.dSm;
     const lock = steerLock(c, v);
     c.steerIn = clamp(delta / lock, -1, 1);
+
+    if (this.steerOnly) return; // アクセル・ブレーキはプレイヤーが操作する
 
     // ---------- 速度制御 ----------
     const pi = (c.i + Math.round((2 + v * 0.07) / T.ds)) % N;

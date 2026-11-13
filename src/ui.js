@@ -50,7 +50,7 @@ export class UI {
     const s = Store.settings(); s[t.dataset.range] = Number(t.value); Store.saveSettings(s); this.act.settingsChanged?.(s);
     const o = this.root.querySelector(`[data-out="${t.dataset.range}"]`); if (o) o.textContent = this.fmtRange(t.dataset.range, Number(t.value));
   }
-  fmtRange(k, v) { return k === 'steerDead' ? `${v.toFixed(1)}°` : k === 'volume' ? `${Math.round(v * 100)}%` : `${Math.round(v * 100)}%`; }
+  fmtRange(k, v) { return k === 'volume' ? `${Math.round(v * 100)}%` : `${Math.round(v * 100)}%`; }
 
   seg(kind, key, cur, opts) {
     return `<div class="seg">${opts.map(o => `<button class="${o.v === cur ? 'sel' : ''}" data-${kind}="${key}" data-val="${o.v}">${o.dot ? `<i class="dot" style="border-color:${o.dot}">${o.short}</i>` : ''}<b>${esc(o.label)}</b>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</button>`).join('')}</div>`;
@@ -63,7 +63,7 @@ export class UI {
       <div class="tag">SUZUKA CIRCUIT &nbsp;·&nbsp; F1 SIMULATOR &nbsp;·&nbsp; OK-90</div>
       <canvas class="showcase"></canvas>
       <button class="big" data-act="start">TAP TO START</button>
-      <div class="foot">横スライドパッド + 6速パドルシフト + 傾きステアリング</div>
+      <div class="foot">操作はアクセル・ブレーキ・シフトだけ — ステアリングは自動</div>
     </div>`;
   }
   menu() {
@@ -104,21 +104,13 @@ export class UI {
     const s = Store.settings();
     const range = (k, min, max, step) => `<div class="range"><input type="range" min="${min}" max="${max}" step="${step}" value="${s[k]}" data-range="${k}"><output data-out="${k}">${this.fmtRange(k, s[k])}</output></div>`;
     return `<div class="panel wide">
-      <header><button class="back" data-act="${inGame ? 'pauseBack' : 'back'}">‹ 戻る</button><h2>設定<em>SETTINGS</em></h2><button data-act="calibrate">傾きの中心を今の角度に</button></header>
+      <header><button class="back" data-act="${inGame ? 'pauseBack' : 'back'}">‹ 戻る</button><h2>設定<em>SETTINGS</em></h2><span></span></header>
       <div class="scroll">
-        <h3>ステアリング方式 <small>(画面にハンドルは表示しません)</small></h3>
-        ${this.seg('set', 'steerMode', s.steerMode, [{ v: 'tilt', label: '傾きセンサー', sub: '端末をハンドルのように傾ける' }, { v: 'thumb', label: '親指シーソー', sub: 'パッド上の両親指を上下にずらす' }])}
-        <div class="note" id="tiltState"></div>
-        <h3>ステアリング感度</h3>${range('steerSens', 0.5, 2, 0.05)}
-        <h3>デッドゾーン</h3>${range('steerDead', 0, 8, 0.5)}
-        <h3>最大操舵角</h3>${range('maxLock', 0.5, 1, 0.05)}
-        <h3>傾きの向き</h3>${this.seg('set', 'tiltInvert', s.tiltInvert, [{ v: false, label: '標準' }, { v: true, label: '反転' }])}
-        <h3>ペダルパッドの増加方向</h3>
-        ${this.seg('set', 'pedalDir', s.pedalDir, [{ v: 'out', label: '外側へスライド', sub: 'アクセル→右 / ブレーキ→左 で増加' }, { v: 'in', label: '内側へスライド', sub: 'アクセル→左 / ブレーキ→右 で増加' }])}
+        <div class="note">ステアリングは端末が自動で行います。操作するのはアクセル・ブレーキ・シフトだけです。</div>
+        <h3>ペダルパッド (左下)</h3>
+        ${this.seg('set', 'pedalSwap', s.pedalSwap, [{ v: false, label: '左 アクセル / 右 ブレーキ (標準)', sub: '中央から離すほど強くなる' }, { v: true, label: '左 ブレーキ / 右 アクセル' }])}
         <h3>指を離したとき</h3>
         ${this.seg('set', 'pedalRelease', s.pedalRelease, [{ v: 'zero', label: 'ゼロに戻す (標準)' }, { v: 'hold', label: '直前の入力を保持' }])}
-        <h3>パドルの配置</h3>
-        ${this.seg('set', 'paddleLayout', s.paddleLayout, [{ v: 'cross', label: '左 UP / 右 DOWN', sub: 'アクセル中に左手でシフトアップ、ブレーキ中に右手でダウン' }, { v: 'std', label: '左 DOWN / 右 UP', sub: '実車のパドルと同じ並び' }])}
         <h3>カメラ</h3>
         ${this.seg('set', 'camera', s.camera, [{ v: 'up', label: '進行方向が上' }, { v: 'right', label: '進行方向が右', sub: '先が広く見える' }, { v: 'north', label: '北が上 (固定)' }])}
         ${this.seg('set', 'zoom', s.zoom, [{ v: 'near', label: '近い' }, { v: 'normal', label: '標準' }, { v: 'far', label: '遠い' }])}
@@ -135,13 +127,14 @@ export class UI {
     return `<div class="panel wide">
       <header><button class="back" data-act="back">‹ 戻る</button><h2>操作説明<em>HOW TO DRIVE</em></h2><span></span></header>
       <div class="scroll howto">
-        <div class="how"><b class="k acc">ACCEL</b><p><strong>アクセル (右下の横スライドパッド)</strong><br>指を右へスライドするほど開度が上がります (0〜100%)。低いギアで全開にすると後輪が空転します。じわっと開けるのがコツ。</p></div>
-        <div class="how"><b class="k brk">BRAKE</b><p><strong>ブレーキ (左下の横スライドパッド)</strong><br>指を左へスライドするほど強く効きます。ABSは無いので、速度が落ちてダウンフォースが減ったら踏力を抜かないとタイヤがロックします。</p></div>
-        <div class="how"><b class="k pad">▲ ▼</b><p><strong>6速パドルシフト</strong><br>パッドの上にある UP / DOWN をタップ。回転ランプが青く点滅したらシフトアップ。回転が高すぎるシフトダウンは受け付けません。停止中に1速から DOWN でリバース。</p></div>
-        <div class="how"><b class="k str">⟲ ⟳</b><p><strong>ステアリング</strong><br>端末をハンドルのように左右へ傾けます (傾きセンサー)。センサーが使えない場合は「親指シーソー」— パッドに置いた右親指を下げ・左親指を上げると右に曲がります。感度・デッドゾーン・最大操舵角は設定で調整できます。</p></div>
+        <div class="how"><b class="k str">AUTO</b><p><strong>ステアリングは自動</strong><br>ハンドル操作はありません。マシンは理想の走行ラインを自動でたどり、前の車に追いつくと空いている側へ自動で並びかけます。速く走れるか・抜けるかは、アクセルとブレーキのタイミング次第です。</p></div>
+        <div class="how"><b class="k acc">ACCEL</b><p><strong>アクセル (左下パッドの左半分)</strong><br>パッドの中央がニュートラル。中央から左へスライドするほど開度が上がります (0〜100%)。低いギアで全開にすると後輪が空転します。じわっと開けるのがコツ。</p></div>
+        <div class="how"><b class="k brk">BRAKE</b><p><strong>ブレーキ (左下パッドの右半分)</strong><br>中央から右へスライドするほど強く効きます。ABSは無いので、速度が落ちてダウンフォースが減ったら踏力を抜かないとタイヤがロックします。速度が高すぎるとコーナーを曲がり切れません。</p></div>
+        <div class="how"><b class="k pad">▼ ▲</b><p><strong>6速パドルシフト (右下)</strong><br>左が DOWN、右が UP。回転ランプが青く点滅したらシフトアップ。回転が高すぎるシフトダウンは受け付けません。停止中に1速から DOWN でリバース。</p></div>
+        <div class="how"><b class="k line">PASS</b><p><strong>追い越し</strong><br>コーナーの立ち上がりで早くアクセルを開けて直線で並ぶ、スリップストリームに入る、ブレーキングを遅らせてインに飛び込む — タイミングが良ければ抜けます。</p></div>
         <div class="how"><b class="k pit">PIT</b><p><strong>ピットイン</strong><br>左上の PIT を押して次のタイヤを選び、最終コーナーで右側へ。ピットレーン内は自動走行でタイヤ交換と修理を行います。</p></div>
         <div class="how"><b class="k line">LINE</b><p><strong>走行ライン</strong><br>路面のラインは理想の走行ライン。<span style="color:#ff5a4a">赤</span>はブレーキング、<span style="color:#ffd23a">黄</span>は旋回区間の目安です。</p></div>
-        <div class="how"><b class="k key">KEY</b><p><strong>キーボード (PC)</strong><br>↑ アクセル / ↓ ブレーキ / ← → ステア / X シフトアップ / Z シフトダウン / P ポーズ / R コース復帰 / I ピット / C カメラ切替。ゲームパッドにも対応。</p></div>
+        <div class="how"><b class="k key">KEY</b><p><strong>キーボード (PC)</strong><br>↑ アクセル / ↓ ブレーキ / → シフトアップ / ← シフトダウン (X / Z でも可) / P ポーズ / R コース復帰 / I ピット / C カメラ切替。ゲームパッドにも対応。</p></div>
       </div></div>`;
   }
   records() {
@@ -178,7 +171,7 @@ export class UI {
     return `<div class="panel">
       <header><h2>ポーズ<em>PAUSED</em></h2></header>
       <div class="scroll">
-        <div class="btns"><button class="go" data-act="resume">再開</button><button data-act="restart">リスタート</button><button data-act="open" data-arg="settingsInGame">設定</button><button data-act="calibrate">傾きの中心を今の角度に</button><button data-act="quit">メニューへ戻る</button></div>
+        <div class="btns"><button class="go" data-act="resume">再開</button><button data-act="restart">リスタート</button><button data-act="open" data-arg="settingsInGame">設定</button><button data-act="quit">メニューへ戻る</button></div>
         ${free}
         <h3>カメラ</h3>${this.seg('set', 'camera', s.camera, [{ v: 'up', label: '進行方向が上' }, { v: 'right', label: '進行方向が右' }, { v: 'north', label: '北が上' }])}
       </div></div>`;

@@ -1,5 +1,6 @@
 // HUD 描画 (画面座標 / CSS px)
 import { fmtTime } from './race.js';
+import { PEDAL_DEAD, PEDAL_EDGE } from './input.js';
 import { TYRES, CAR, tyreGripFactor } from './physics.js';
 import { SECTIONS } from './track.js';
 
@@ -42,8 +43,7 @@ export class Hud {
     const u = clamp(h / 400, 0.82, 1.5); // スケール係数
 
     // ================= 操作パッド =================
-    this.drawPad(ctx, L.brake, input.brake, '#ff4a3d', 'BRAKE', (cfg.pedalDir || 'out') === 'out' ? -1 : 1, input.brakePtr, c.lockedF && c.speed > 4 ? 'LOCK' : null, u);
-    this.drawPad(ctx, L.accel, input.throttle, '#35d07f', 'ACCEL', (cfg.pedalDir || 'out') === 'out' ? 1 : -1, input.accelPtr, c.kR > 0.3 && c.speed > 2 ? 'SPIN' : null, u);
+    this.drawPedal(ctx, L.pedal, input, cfg, c, u);
     this.drawPaddle(ctx, L.shiftUp, '▲', 'UP', input.flash.up, false, u);
     this.drawPaddle(ctx, L.shiftDown, '▼', 'DOWN', input.flash.down, c.shiftDenied > 0, u);
 
@@ -200,35 +200,47 @@ export class Hud {
     ctx.textBaseline = 'middle'; text(ctx, label, r.x + r.w / 2, r.y + r.h / 2 + 1, size * u, '#fff', 'center', '800'); ctx.textBaseline = 'alphabetic';
   }
 
-  drawPad(ctx, r, v, col, label, dir, ptr, alert, u) {
-    // 軌道
+  // アクセル/ブレーキ兼用の横スライドパッド: 中央より左がアクセル、右がブレーキ
+  drawPedal(ctx, r, input, cfg, c, u) {
+    const swap = !!cfg.pedalSwap;
+    const thr = input.throttle, brk = input.brake;
+    const GREEN = '#35d07f', RED = '#ff4a3d';
+    const mid = r.x + r.w / 2, dead = r.w * PEDAL_DEAD, edge = r.w * PEDAL_EDGE, span = r.w / 2 - dead - edge;
     rr(ctx, r.x, r.y, r.w, r.h, 14); ctx.fillStyle = 'rgba(8,12,22,0.55)'; ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1.5; ctx.stroke();
-    // 塗り
-    const inner = { x: r.x + r.w * 0.07, w: r.w * 0.86 };
     ctx.save(); rr(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 11); ctx.clip();
-    const fw = r.w * 0.07 + inner.w * v;
-    const g = ctx.createLinearGradient(dir > 0 ? r.x : r.x + r.w, 0, dir > 0 ? r.x + r.w : r.x, 0);
-    g.addColorStop(0, col + '55'); g.addColorStop(1, col);
-    ctx.fillStyle = g; ctx.globalAlpha = 0.25 + 0.6 * v;
-    if (v > 0.001) { if (dir > 0) ctx.fillRect(r.x, r.y, fw, r.h); else ctx.fillRect(r.x + r.w - fw, r.y, fw, r.h); }
-    ctx.globalAlpha = 1;
-    // 目盛り
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
-    for (let k = 0; k <= 4; k++) { const t = k / 4, x = dir > 0 ? inner.x + inner.w * t : inner.x + inner.w * (1 - t); const hh = k % 2 === 0 ? r.h * 0.3 : r.h * 0.18; ctx.beginPath(); ctx.moveTo(x, r.y + r.h - 4); ctx.lineTo(x, r.y + r.h - 4 - hh); ctx.stroke(); }
+    // 左右それぞれの塗り (side: -1=左, +1=右)
+    const half = (side, v, col) => {
+      const g = ctx.createLinearGradient(mid, 0, mid + side * r.w / 2, 0);
+      g.addColorStop(0, col + '30'); g.addColorStop(1, col);
+      ctx.fillStyle = g; ctx.globalAlpha = 0.14; ctx.fillRect(side < 0 ? r.x : mid, r.y, r.w / 2, r.h);
+      if (v > 0.001) { const fw = dead + span * v + (v >= 0.999 ? edge : 0); ctx.globalAlpha = 0.35 + 0.55 * v; ctx.fillRect(side < 0 ? mid - fw : mid, r.y, fw, r.h); }
+      ctx.globalAlpha = 1;
+      // 目盛り 25/50/75/100
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+      for (let k = 1; k <= 4; k++) { const x = mid + side * (dead + span * k / 4), hh = k % 2 === 0 ? r.h * 0.28 : r.h * 0.16; ctx.beginPath(); ctx.moveTo(x, r.y + r.h - 4); ctx.lineTo(x, r.y + r.h - 4 - hh); ctx.stroke(); }
+    };
+    half(swap ? 1 : -1, thr, GREEN); half(swap ? -1 : 1, brk, RED);
+    // 中央のニュートラル帯
+    ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(mid - dead, r.y, dead * 2, r.h);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(mid - 0.75, r.y, 1.5, r.h);
     ctx.restore();
     // つまみ
-    const kx = dir > 0 ? inner.x + inner.w * v : inner.x + inner.w * (1 - v);
-    if (ptr || v > 0.001) { rr(ctx, kx - 5, r.y + 5, 10, r.h - 10, 5); ctx.fillStyle = '#fff'; ctx.globalAlpha = ptr ? 0.95 : 0.6; ctx.fill(); ctx.globalAlpha = 1; }
-    // ラベル
-    const tx = dir > 0 ? r.x + 12 : r.x + r.w - 12, al = dir > 0 ? 'left' : 'right';
-    text(ctx, label, tx, r.y + 18 * u, 11 * u, 'rgba(255,255,255,0.75)', al, '800', true);
-    text(ctx, `${Math.round(v * 100)}`, dir > 0 ? r.x + r.w - 12 : r.x + 12, r.y + 24 * u, 20 * u, '#fff', dir > 0 ? 'right' : 'left', '800', true);
-    // 増加方向の矢印
-    text(ctx, dir > 0 ? '▶▶' : '◀◀', r.x + r.w / 2, r.y + r.h * 0.6, 12 * u, 'rgba(255,255,255,0.25)', 'center');
+    const pv = input.pedal * (swap ? -1 : 1);
+    const kx = mid + (pv === 0 ? 0 : Math.sign(pv) * (dead + span * Math.abs(pv)));
+    if (input.pedalPtr || pv !== 0) { rr(ctx, kx - 5, r.y + 5, 10, r.h - 10, 5); ctx.fillStyle = '#fff'; ctx.globalAlpha = input.pedalPtr ? 0.95 : 0.6; ctx.fill(); ctx.globalAlpha = 1; }
+    // ラベルと数値
+    const lab = (side, name, v, col) => {
+      const x = side < 0 ? r.x + 12 : r.x + r.w - 12, al = side < 0 ? 'left' : 'right';
+      text(ctx, side < 0 ? '◀ ' + name : name + ' ▶', x, r.y + 17 * u, 11 * u, 'rgba(255,255,255,0.8)', al, '800', true);
+      text(ctx, `${Math.round(v * 100)}`, x, r.y + 42 * u, 22 * u, v > 0.001 ? '#fff' : 'rgba(255,255,255,0.35)', al, '800', true);
+    };
+    lab(swap ? 1 : -1, 'ACCEL', thr, GREEN); lab(swap ? -1 : 1, 'BRAKE', brk, RED);
+    // 警告 (空転 / ロック)
+    const alert = c.lockedF && c.speed > 4 ? 'LOCK' : (c.kR > 0.3 && c.speed > 2 ? 'SPIN' : null);
     if (alert && Math.floor(this.t * 8) % 2 === 0) {
-      rr(ctx, r.x + r.w / 2 - 30 * u, r.y - 22 * u, 60 * u, 18 * u, 4); ctx.fillStyle = alert === 'LOCK' ? '#ff4a3d' : '#ffb020'; ctx.fill();
-      text(ctx, alert, r.x + r.w / 2, r.y - 8.5 * u, 12 * u, '#111', 'center', '800');
+      rr(ctx, mid - 30 * u, r.y - 22 * u, 60 * u, 18 * u, 4); ctx.fillStyle = alert === 'LOCK' ? RED : '#ffb020'; ctx.fill();
+      text(ctx, alert, mid, r.y - 8.5 * u, 12 * u, '#111', 'center', '800');
     }
   }
   drawPaddle(ctx, r, sym, label, flash, denied, u) {
@@ -244,15 +256,15 @@ export class Hud {
 
   drawCluster(ctx, L, S, c, input, cfg, u) {
     const pl = S.player;
-    const cw = clamp(L.centre.w, 150, 330), cx = L.w / 2, x0 = cx - cw / 2;
+    const cw = clamp(L.centre.w, 150, 330), cx = L.centre.x + L.centre.w / 2, x0 = cx - cw / 2;
     const ch = clamp(L.h * 0.25, 84, 118), y0 = L.h - L.m - L.safe.b - ch;
     panel(ctx, x0, y0, cw, ch, 12, 0.6);
-    // ステアリング入力バー
+    // 自動操舵の舵角表示
     {
       const bw = cw - 24, bx = x0 + 12, by = y0 - 9;
       rr(ctx, bx, by, bw, 5, 2.5); ctx.fillStyle = 'rgba(8,12,22,0.6)'; ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(cx - 0.5, by - 2, 1, 9);
-      const sx = cx + input.steer * bw / 2;
+      const sx = cx + clamp(c.steerIn, -1, 1) * bw / 2;
       ctx.fillStyle = '#ffb347'; ctx.fillRect(Math.min(cx, sx), by, Math.abs(sx - cx), 5);
       rr(ctx, sx - 3, by - 3, 6, 11, 2); ctx.fillStyle = '#fff'; ctx.fill();
     }

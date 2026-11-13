@@ -55,7 +55,7 @@ function tickDemo(dt) {
   if (!demo) return;
   const pl = demo.player;
   demoDrv.update(1 / 60, demo.wet, demo.cars, {});
-  demo.playerInput.throttle = pl.car.throttle; demo.playerInput.brake = pl.car.brake; demo.playerInput.steer = pl.car.steerIn;
+  demo.playerInput.throttle = pl.car.throttle; demo.playerInput.brake = pl.car.brake;
   pl.pitRequest = false;
   demo.update(dt); demo.events.length = 0;
 }
@@ -91,7 +91,6 @@ function startSession(mode, keep) {
   input.showReset = true; input.enabled = true;
   assistKey = ''; updateAssist();
   ui.hide(); state = 'drive'; resultsTimer = 0;
-  input.calibrateTilt();
   audio.init();
   requestWake();
   if (opts.mode !== 'race') hud.message(MODES[opts.mode].name, '#ffb347', 2.2, true);
@@ -115,17 +114,15 @@ function goFullscreen() {
 function toMenu() { session = null; state = 'menu'; audio.silence(); if (!demo) startDemo(); menuStack = []; ui.show('menu'); }
 const ui = new UI(document.getElementById('ui'), {
   click() { audio.init(); audio.click(); },
-  async start() {
+  start() {
     audio.init(); audio.setVolume(cfg.volume);
     goFullscreen();
-    const ok = await input.enableTilt();
     state = 'menu'; ui.show('menu');
-    if (!ok && cfg.steerMode === 'tilt') { /* 許可されなかった場合は親指シーソーに自動で切り替わる */ }
   },
   mode(m) { menuStack.push('menu'); ui.show('config', { mode: m }); },
   open(name) {
     if (name === 'settingsInGame') { ui.show('settings', { inGame: true }); return; }
-    menuStack.push('menu'); ui.show(name); showTiltState();
+    menuStack.push('menu'); ui.show(name);
   },
   back() { ui.show(menuStack.pop() || 'menu'); },
   pauseBack() { ui.show('pause', { mode: session.mode }); },
@@ -134,7 +131,6 @@ const ui = new UI(document.getElementById('ui'), {
   restart() { startSession(lastOpts.mode, true); },
   quit() { toMenu(); },
   toRace() { const l = Store.last(); l.gridMode = 'quali'; Store.saveLast(l); menuStack = ['menu']; session = null; state = 'menu'; audio.silence(); startDemo(); ui.show('config', { mode: 'race' }); },
-  calibrate() { input.calibrateTilt(); audio.good(); showTiltState('中心を設定しました'); },
   settingsChanged(s) { cfg = s; input.cfg = s; audio.setVolume(s.volume); resize(); if (session) { const c = session.player.car; c.assistTC = c.assistABS = !!s.assist; c.autoShift = !!s.autoShift; session.env.noDamage = !s.damage; } },
   optionChanged(k, v, ctx) {
     if (state === 'pause' && session && session.mode === 'free') {
@@ -146,11 +142,6 @@ const ui = new UI(document.getElementById('ui'), {
   clearRecords() { Store.clearRecords(); ui.refresh(); },
   noticeOk() { ui.show(menuStack.pop() || 'menu'); },
 });
-function showTiltState(msg) {
-  const el = document.getElementById('tiltState'); if (!el) return;
-  const t = input.tilt;
-  el.textContent = msg || (t.ok ? `傾きセンサー: 使用できます (現在 ${(t.raw * 57.3).toFixed(0)}°)` : '傾きセンサー: 検出されていません — 走行中は自動で「親指シーソー」に切り替わります (PCはキーボード)');
-}
 function pause() { if (state !== 'drive') return; state = 'pause'; audio.silence(); input.enabled = false; input.reset(); ui.show('pause', { mode: session.mode }); }
 function resume() { if (state !== 'pause') return; state = 'drive'; input.enabled = true; ui.hide(); requestWake(); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { if (state === 'drive') pause(); audio.setMuted(true); } else audio.setMuted(false); });
@@ -252,7 +243,7 @@ function frame(now) {
   if (state === 'drive' && session) {
     input.showTyres = input.showPit && (session.player.pitRequest || (session.player.pit && session.player.pit.state !== 'out'));
     input.update(dt);
-    const pi = session.playerInput; pi.throttle = Math.pow(input.throttle, 1.25); pi.brake = input.brake; pi.steer = input.steer; // アクセルは低開度側を細かく
+    const pi = session.playerInput; pi.throttle = Math.pow(input.throttle, 1.25); pi.brake = input.brake; // アクセルは低開度側を細かく
     if (auto.on) autoDrive(pi);
     session.update(dt);
     for (let k = 1; k < auto.speed && state === 'drive'; k++) { if (auto.on) autoDrive(pi); session.update(dt); handleEvents(); if (resultsTimer > 0) break; }
@@ -289,10 +280,10 @@ const auto = { on: false, drv: null, car: null, skill: 0.9, speed: 1 };
 function autoDrive(pi) {
   const pl = session.player, c = pl.car;
   if (auto.car !== c) { const a = c.assistTC, b = c.autoShift; auto.drv = new Driver(c, T, line, { skill: auto.skill }); auto.car = c; }
-  if (session.state !== 'green' || pl.pit || pl.finished) { pi.throttle = 0; pi.brake = 1; pi.steer = 0; return; }
+  if (session.state !== 'green' || pl.pit || pl.finished) { pi.throttle = 0; pi.brake = 1; return; }
   auto.drv.update(1 / 60, session.wet, session.cars, {});
-  pi.throttle = c.throttle; pi.brake = c.brake; pi.steer = c.steerIn;
-  input.throttle = c.throttle; input.brake = c.brake; input.steer = c.steerIn;
+  pi.throttle = c.throttle; pi.brake = c.brake;
+  input.throttle = c.throttle; input.brake = c.brake; input.pedal = c.brake > 0.01 ? c.brake : -c.throttle;
 }
 // Android の戻るキー (APK 版の WebView から呼ばれる)。処理したら true
 window.__okrBack = () => {

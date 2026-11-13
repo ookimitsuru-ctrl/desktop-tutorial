@@ -2,14 +2,8 @@
 const KEY = 'okracing.v1';
 
 export const DEFAULT_SETTINGS = {
-  steerMode: 'tilt',      // tilt: 傾きセンサー / thumb: 親指シーソー
-  steerSens: 1.0,         // 感度
-  steerDead: 2,           // デッドゾーン [度]
-  maxLock: 1.0,           // 最大操舵角 (倍率)
-  tiltInvert: false,
-  pedalDir: 'out',        // out: 外側へスライドで増加 / in: 内側へ
+  pedalSwap: false,       // false: 左=アクセル 右=ブレーキ / true: 逆
   pedalRelease: 'zero',   // zero: 指を離すと0 / hold: 保持
-  paddleLayout: 'cross',  // cross: 左=UP 右=DOWN / std: 左=DOWN 右=UP
   autoShift: false,
   assist: false,          // TC + ABS (初心者向け)
   camera: 'up',           // up / right / north

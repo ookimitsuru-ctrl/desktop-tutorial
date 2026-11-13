@@ -222,7 +222,13 @@ export class Session {
       if (e.pit) { this.updatePit(e, dt); continue; }
       if (e.isPlayer && !e.finished) {
         const inp = this.playerInput;
-        c.throttle = inp.throttle; c.brake = inp.brake; c.steerIn = inp.steer;
+        // ステアリングは端末が行う (自動操舵)。プレイヤーの入力はアクセルとブレーキ。
+        if (!e.pilot) e.pilot = new Driver(c, T, this.line, { skill: 1, aggr: 1, steerOnly: true });
+        if (this.state === 'green') {
+          const toPit = T.sDiff(T.pit.sEntry, c.s);
+          e.pilot.update(dt, this.wet, this.cars, { keepRight: e.pitRequest && toPit > 0 && toPit < 230 });
+        } else c.steerIn = 0;
+        c.throttle = inp.throttle; c.brake = inp.brake;
         if (this.state === 'grid' || this.state === 'lights') {
           // フライング判定 (動き出したら)
           if (c.speed > 1.2 && !e.jump) { e.jump = true; e.penalty += 10; this.emit('penalty', { text: 'フライング +10秒' }); }
@@ -296,6 +302,14 @@ export class Session {
         const wrong = Math.abs(c.relH) > 1.9;
         if ((c.speed < 3 && c.offCount >= 2) || wrong || (c.speed < 1.5 && this.stateT > 5)) e.stuckT += dt; else e.stuckT = Math.max(0, e.stuckT - dt * 2);
         if (e.stuckT > 3.5) { this.resetToTrack(e); e.stuckT = 0; }
+      }
+      // プレイヤーはステアリングを操作できないので、コース外で動けなくなったら自動でコースへ戻す
+      if (e.isPlayer && !e.pit && !e.finished && this.state === 'green') {
+        const wrong = Math.abs(c.relH) > 2.0;
+        const bogged = c.offCount >= 3 && c.speed < 5;
+        const walled = c.speed < 1.5 && c.throttle > 0.25 && this.stateT > 4;
+        if (wrong || bogged || walled) e.stuckT += dt; else e.stuckT = Math.max(0, e.stuckT - dt * 2);
+        if (e.stuckT > 2.2) { this.resetToTrack(e); e.stuckT = 0; }
       }
       c.entry = e;
       if (c.speed * 3.6 > e.topSpeed) e.topSpeed = c.speed * 3.6;
