@@ -44,8 +44,8 @@ export const DRIVERS = [
 ];
 
 export const DIFFICULTY = {
-  easy: { name: 'やさしい', skill: -0.30, grip: 0.955, power: 0.975 },
-  normal: { name: 'ふつう', skill: -0.12, grip: 0.98, power: 0.99 },
+  easy: { name: 'やさしい', skill: -0.30, grip: 0.97, power: 0.985 },
+  normal: { name: 'ふつう', skill: -0.05, grip: 0.995, power: 0.997 },
   hard: { name: 'むずかしい', skill: 0, grip: 1.0, power: 1.0 },
 };
 export const WEATHERS = {
@@ -59,7 +59,8 @@ export const WEATHERS = {
 export function estimateQualiTime(d, team, diff, wet) {
   const D = DIFFICULTY[diff] || DIFFICULTY.normal;
   const skill = clamp(d.skill + D.skill, 0, 1);
-  let t = 102.3 + (1 - skill) * 7.0 + (1 - team.power * D.power) * 20 + (1 - team.grip * D.grip) * 42;
+  const tp = 1 - (1 - team.power) * 0.55, tg = 1 - (1 - team.grip) * 0.55; // 決勝のAIと同じ圧縮
+  let t = 102.3 + (1 - skill) * 4.6 + (1 - tp * D.power) * 20 + (1 - tg * D.grip) * 42;
   if (wet > 0.05) t *= 1 + 0.26 * Math.pow(sat(wet), 0.35);
   return t;
 }
@@ -108,7 +109,7 @@ export class Session {
       const isPlayer = !!d.player;
       const car = createCar({
         id: di, setup: isPlayer ? opts.setup : 'mid', tyre: 'medium',
-        power: isPlayer ? 1 : team.power * diff.power, gripK: isPlayer ? 1 : team.grip * diff.grip,
+        power: isPlayer ? 1 : (1 - (1 - team.power) * 0.55) * diff.power, gripK: isPlayer ? 1 : (1 - (1 - team.grip) * 0.55) * diff.grip,
       });
       const e = {
         di, d, team, car, isPlayer, ai: null, slot,

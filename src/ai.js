@@ -94,7 +94,7 @@ export class Driver {
   constructor(car, T, line, opts = {}) {
     this.car = car; this.T = T; this.line = line;
     this.skill = opts.skill ?? 0.8;
-    this.use = 0.86 + 0.13 * this.skill;      // グリップ使用率
+    this.use = 0.95 + 0.05 * this.skill;      // グリップ使用率
     this.aggr = opts.aggr ?? 0.5;
     this.profile = new Float32Array(T.N);
     this.profileMu = 0; this.profileT = 0;

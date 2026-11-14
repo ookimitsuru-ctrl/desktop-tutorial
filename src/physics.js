@@ -25,8 +25,8 @@ export const CAR = {
   revLimit: 13600, revMax: 14300, idle: 2500,
   shiftTime: 0.11,
   maxLock: 0.37,           // 前輪最大切れ角 [rad]
-  fuelRate: 0.040,         // 全開時燃料消費 [kg/s]
-  fuelPerLap: 2.75,        // 目安 [kg/周]
+  fuelRate: 0.030,         // 全開時燃料消費 [kg/s]
+  fuelPerLap: 2.1,         // 目安 [kg/周]
 };
 
 // 3.5L NA V10 トルクカーブ [rpm, Nm]  最高出力 約680ps / 12,800rpm
