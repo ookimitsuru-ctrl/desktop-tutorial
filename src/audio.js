@@ -39,12 +39,13 @@ export class GameAudio {
     const wA = mk([1, 0.62, 0.48, 0.3, 0.26, 0.15, 0.12, 0.08, 0.06, 0.04]);       // 点火基音
     const wB = mk([1, 0.3, 0.55, 0.2, 0.3, 0.1, 0.12]);                             // 1/2 次 (うなり)
     const wC = mk([0.6, 1, 0.5, 0.7, 0.3, 0.35, 0.2, 0.2, 0.1, 0.12, 0.06, 0.08]);  // クランク次数 (低音の荒さ)
-    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), o3 = ctx.createOscillator();
-    o1.setPeriodicWave(wA); o2.setPeriodicWave(wB); o3.setPeriodicWave(wC);
-    const g1 = ctx.createGain(), g2 = ctx.createGain(), g3 = ctx.createGain();
-    g1.gain.value = 0.5; g2.gain.value = 0.3; g3.gain.value = 0.35;
+    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), o3 = ctx.createOscillator(), o4 = ctx.createOscillator();
+    o1.setPeriodicWave(wA); o2.setPeriodicWave(wB); o3.setPeriodicWave(wC); o4.setPeriodicWave(wA);
+    const g1 = ctx.createGain(), g2 = ctx.createGain(), g3 = ctx.createGain(), g4 = ctx.createGain();
+    g1.gain.value = 0.5; g2.gain.value = 0.3; g3.gain.value = 0.35; g4.gain.value = 0;
     const mix = ctx.createGain(); mix.gain.value = 1;
-    o1.connect(g1); o2.connect(g2); o3.connect(g3); g1.connect(mix); g2.connect(mix); g3.connect(mix);
+    // o4: 基音をわずかにずらした波。o1 とのうなりで低〜中回転の「濁り」を作る (高回転では音量を 0 にして澄ませる)
+    o1.connect(g1); o2.connect(g2); o3.connect(g3); o4.connect(g4); g1.connect(mix); g2.connect(mix); g3.connect(mix); g4.connect(mix);
     const sh = ctx.createWaveShaper();
     const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 2.6) * 0.85; }
     sh.curve = curve; sh.oversample = main ? '2x' : 'none';
@@ -54,15 +55,22 @@ export class GameAudio {
     const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     mix.connect(sh); sh.connect(lp); lp.connect(pk); pk.connect(out);
     if (pan) { out.connect(pan); pan.connect(this.master); } else out.connect(this.master);
-    o1.start(); o2.start(); o3.start();
-    return { o1, o2, o3, lp, out, pan, mix, g1, g2, g3 };
+    o1.start(); o2.start(); o3.start(); o4.start();
+    return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4 };
   }
   setEngine(e, rpm, load, gain, pan = 0) {
     const t = this.ctx.currentTime, f = clamp(rpm, 1500, 14500) / 60 * 5; // V10: 1回転で5回点火
+    // 濁り: 低〜中回転 (約9,000rpm まで) で強く、11,000rpm 以上では 0 (高回転は澄んだ高音)
+    const x = clamp((rpm - 8500) / 3000, 0, 1), murk = 1 - x * x * (3 - 2 * x);
     e.o1.frequency.setTargetAtTime(f, t, 0.02);
     e.o2.frequency.setTargetAtTime(f * 0.5, t, 0.02);
     e.o3.frequency.setTargetAtTime(f * 0.2, t, 0.02);
-    e.lp.frequency.setTargetAtTime(900 + load * 4200 + rpm * 0.16, t, 0.04);
+    e.o4.frequency.setTargetAtTime(f * (1 + 0.011 + 0.006 * (1 - murk)), t, 0.02); // 約1%ずれ → うなり
+    e.g4.gain.setTargetAtTime(0.30 * murk, t, 0.05);
+    e.g2.gain.setTargetAtTime(0.30 + 0.12 * murk, t, 0.05);   // 1/2 次を足して太く
+    e.g3.gain.setTargetAtTime(0.35 + 0.12 * murk, t, 0.05);
+    e.lp.frequency.setTargetAtTime((900 + load * 4200 + rpm * 0.16) * (1 - 0.30 * murk), t, 0.04); // 高域を少し丸める
+    e.pk.gain.setTargetAtTime(5 - 2.5 * murk, t, 0.06);
     e.mix.gain.setTargetAtTime(0.55 + load * 0.75, t, 0.03);
     e.out.gain.setTargetAtTime(gain, t, 0.05);
     if (e.pan) e.pan.pan.setTargetAtTime(clamp(pan, -1, 1), t, 0.08);

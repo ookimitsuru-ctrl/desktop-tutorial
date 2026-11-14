@@ -7,8 +7,8 @@ android {
         applicationId 'jp.okracing.game'
         minSdk 24
         targetSdk 35
-        versionCode 3
-        versionName '1.0.2'
+        versionCode 4
+        versionName '1.0.3'
     }
     // ゲーム本体は Web 版のビルド成果物 (../dist) をそのままアセットとして同梱する。
     // 先にリポジトリ直下で `npm run build` を実行しておくこと。
