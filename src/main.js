@@ -1,7 +1,8 @@
 // OK RACING エントリーポイント
 import { buildTrack } from './track.js';
 import { computeRacingLine, speedProfile, Driver } from './ai.js';
-import { Session, DRIVERS, fmtTime, estimateQualiTime, TEAMS } from './race.js';
+import { Session, DRIVERS, fmtTime, estimateQualiTime, TEAMS, WEATHERS } from './race.js';
+import { buildReference } from './trainer.js';
 import { Renderer } from './render.js';
 import { Hud } from './hud.js';
 import { Input, computeLayout } from './input.js';
@@ -22,7 +23,7 @@ const TYRE_IDS = ['soft', 'medium', 'hard', 'rain'];
 
 let state = 'title';          // title | menu | drive | pause | results
 let session = null, demo = null, demoDrv = null;
-let lastOpts = null, layout = null, resultsTimer = 0;
+let lastOpts = null, layout = null, resultsTimer = 0, reviewT = 0, autoT = 0, lastReviewCtx = null;
 let assistKey = '', menuStack = [];
 let wakeLock = null;
 // 60fps を目標とした自動負荷調整 (画質「自動」のとき): 解像度 → 描画品質の順に下げる
@@ -82,18 +83,23 @@ function startSession(mode, keep) {
   };
   if (opts.mode === 'ta') { const g = Store.loadGhost(wetClass); opts.ghost = g; opts.bestTrace = g ? g.trace : null; }
   else { opts.ghost = null; opts.bestTrace = null; }
+  if (opts.mode === 'train') { // お手本ラップを (セッティング・タイヤ・路面ごとに) 用意する
+    const W = WEATHERS[opts.weather] || WEATHERS.dry;
+    opts.damage = false; opts.trainSection = Store.last().trainSec | 0;
+    opts.reference = buildReference(T, line, { setup: opts.setup, tyre: opts.tyre, wet: W.wet });
+  }
   lastOpts = opts;
   session = new Session(T, line, opts);
   session.gridPos = opts.grid ? opts.grid.indexOf(0) + 1 : 0;
   demo = null;
   hud.reset(); R.clearEffects(); R.cam.init = false; input.reset();
   input.showPit = opts.mode === 'race' || opts.mode === 'free';
-  input.showReset = true; input.enabled = true;
+  input.showReset = opts.mode !== 'train'; input.showRetry = input.showTrain = opts.mode === 'train'; input.enabled = true;
   assistKey = ''; updateAssist();
-  ui.hide(); state = 'drive'; resultsTimer = 0;
+  ui.hide(); state = 'drive'; resultsTimer = 0; reviewT = 0; autoT = 0;
   audio.init();
   requestWake();
-  if (opts.mode !== 'race') hud.message(MODES[opts.mode].name, '#ffb347', 2.2, true);
+  if (opts.mode !== 'race' && opts.mode !== 'train') hud.message(MODES[opts.mode].name, '#ffb347', 2.2, true);
 }
 function updateAssist() {
   if (!session) return;
@@ -133,6 +139,14 @@ const ui = new UI(document.getElementById('ui'), {
   toRace() { const l = Store.last(); l.gridMode = 'quali'; Store.saveLast(l); menuStack = ['menu']; session = null; state = 'menu'; audio.silence(); startDemo(); ui.show('config', { mode: 'race' }); },
   settingsChanged(s) { cfg = s; input.cfg = s; audio.setVolume(s.volume); resize(); if (session) { const c = session.player.car; c.assistTC = c.assistABS = !!s.assist; c.autoShift = !!s.autoShift; session.env.noDamage = !s.damage; } },
   optionChanged(k, v, ctx) {
+    if (state === 'pause' && session && session.mode === 'train') { // トレーニング中のポーズ: 区間・セッティング・タイヤ・路面の変更
+      const tr = session.trainer;
+      if (k === 'trainSec') { tr.setSection(v); lastOpts.trainSection = v; tr.restart(); return; }
+      if (k === 'setup') session.changeConfig(v, null); else if (k === 'tyre') session.changeConfig(null, v); else if (k === 'weather') session.setWeather(v); else return;
+      const l = Store.last(); lastOpts[k] = v;
+      tr.setReference(buildReference(T, line, { setup: l.setup, tyre: l.tyre, wet: session.wet })); tr.restart(); assistKey = ''; updateAssist();
+      return;
+    }
     if (state === 'pause' && session && session.mode === 'free') {
       if (k === 'setup') session.changeConfig(v, null); else if (k === 'tyre') session.changeConfig(null, v); else if (k === 'weather') session.setWeather(v);
       lastOpts[k] = v; assistKey = ''; updateAssist();
@@ -141,7 +155,29 @@ const ui = new UI(document.getElementById('ui'), {
   resetSettings() { Store.saveSettings({ ...DEFAULT_SETTINGS }); cfg = Store.settings(); input.cfg = cfg; audio.setVolume(cfg.volume); resize(); ui.refresh(); },
   clearRecords() { Store.clearRecords(); ui.refresh(); },
   noticeOk() { ui.show(menuStack.pop() || 'menu'); },
+  // --- トレーニング ---
+  trainRetry() { trainRestart(); },
+  trainNext() { const tr = session.trainer, n = (tr.secIdx + 1) % (tr.prepared.length); const l = Store.last(); l.trainSec = n; Store.saveLast(l); tr.setSection(n); trainRestart(); },
+  trainGo() { const tr = session.trainer; tr.setSection(Store.last().trainSec); menuStack.pop(); trainRestart(); },
+  trainBackReview() { menuStack.pop(); ui.show('trainReview', { ...lastReviewCtx, auto: false }); },
+  trainStopAuto() { autoT = 0; document.getElementById('autoRow')?.remove(); },
 });
+function trainRestart() {
+  if (!session || session.mode !== 'train') return;
+  ui.hide(); state = 'drive'; input.enabled = true; input.reset(); autoT = 0; reviewT = 0;
+  hud.reset(); R.clearEffects(); R.cam.init = false; assistKey = '';
+  session.trainer.restart(); lastOpts.trainSection = session.trainer.secIdx;
+  requestWake();
+}
+function showTrainReview() {
+  const S = session, rep = S.trainer.report; if (!rep) return;
+  state = 'review'; audio.silence(); input.enabled = false; input.reset();
+  if (!rep.aborted) Store.addTrainBest(rep.secId, rep);
+  autoT = cfg.trainAuto !== false ? 7 : 0;
+  lastReviewCtx = { report: rep, auto: autoT > 0 };
+  ui.show('trainReview', lastReviewCtx);
+  if (!rep.aborted) { if (rep.stars >= 4) audio.best(); else audio.good(); } else audio.bad();
+}
 function pause() { if (state !== 'drive') return; state = 'pause'; audio.silence(); input.enabled = false; input.reset(); ui.show('pause', { mode: session.mode }); }
 function resume() { if (state !== 'pause') return; state = 'drive'; input.enabled = true; ui.hide(); requestWake(); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { if (state === 'drive') pause(); audio.setMuted(true); } else audio.setMuted(false); });
@@ -157,6 +193,12 @@ input.onButton = id => {
   if (id === 'pause') { if (state === 'drive') pause(); else if (state === 'pause') resume(); return; }
   if (state !== 'drive' || !session) return;
   const pl = session.player;
+  if (session.mode === 'train') {
+    if (id === 'retry' || id === 'reset') { audio.click(); trainRestart(); return; }
+    if (id === 'tr0' || id === 'tr1' || id === 'tr2') {
+      const key = ['trainAuto', 'trainGuide', 'ghost'][Number(id[2])]; cfg[key] = cfg[key] === false; Store.saveSettings(cfg); audio.click(); return;
+    }
+  }
   if (id === 'pit' && input.showPit) {
     if (pl.pit) return;
     pl.pitRequest = !pl.pitRequest; audio.click();
@@ -181,6 +223,7 @@ function handleEvents() {
       case 'light': audio.light(); break;
       case 'go': audio.go(); if (S.mode === 'race') hud.message('GO!', '#3fe07f', 1.3, true); break;
       case 'lap': {
+        if (S.mode === 'train') break;
         const col = !ev.valid ? '#ffd23a' : ev.sb || ev.pb ? '#d58cff' : '#fff';
         hud.lapFlash = { time: ev.time, col, t0: hud.t };
         hud.secFlash = [null, null, null];
@@ -195,12 +238,13 @@ function handleEvents() {
         break;
       }
       case 'sector': {
+        if (S.mode === 'train') break;
         let col = '#f2c230';
         if (ev.valid) { const rec = Store.addSector(ev.k, ev.time, wetClass); col = rec ? '#d58cff' : (ev.pb || ev.best === ev.time) ? '#3fe07f' : '#f2c230'; }
         hud.secFlash[ev.k] = { time: ev.time, col, t0: hud.t };
         break;
       }
-      case 'invalid': hud.message('コースアウト — このラップは無効', '#ffd23a', 2); audio.bad(); break;
+      case 'invalid': if (S.mode === 'train') break; hud.message('コースアウト — このラップは無効', '#ffd23a', 2); audio.bad(); break;
       case 'crash': if (ev.e === pl) audio.crash(ev.v); break;
       case 'contact': audio.crash(ev.v * 0.6); break;
       case 'penalty': hud.message(ev.text, '#ff5a4a', 3); audio.bad(); break;
@@ -214,6 +258,8 @@ function handleEvents() {
       case 'weather': hud.message(ev.rain > 0.2 ? '雨が降り始めた' : '雨が上がった', '#7fd6ff', 3.5, true); break;
       case 'reset': hud.message('コースへ復帰', '#fff', 1.4); break;
       case 'results': resultsTimer = 0.01; break;
+      case 'trainreport': reviewT = 0.8; break;
+      case 'traincue': if (ev.sev === 'urgent') audio.blip(1250, 0.08, 0.2, 'square'); else if (ev.sev === 'good') audio.good(); else audio.blip(700, 0.07, 0.12, 'triangle'); break;
     }
   }
   S.events.length = 0;
@@ -263,8 +309,13 @@ function frame(now) {
     hud.draw(ctx, layout, session, input, cfg, R, dt);
     audio.update(session, R.cam);
     if (resultsTimer > 0) { resultsTimer += dt; if (resultsTimer > 1.2) { resultsTimer = 0; showResults(); } }
-  } else if ((state === 'pause' || state === 'results') && session) {
+    if (reviewT > 0) { reviewT -= dt; if (reviewT <= 0) { reviewT = 0; showTrainReview(); } }
+  } else if ((state === 'pause' || state === 'results' || state === 'review') && session) {
     R.render(session, rcfg(), 0);
+    if (state === 'review' && autoT > 0) {
+      autoT -= dt; const el = document.getElementById('autoCnt'); if (el) el.textContent = Math.max(1, Math.ceil(autoT));
+      if (autoT <= 0) trainRestart();
+    }
   } else {
     if (!demo) startDemo();
     tickDemo(dt);
@@ -290,7 +341,7 @@ function autoDrive(pi) {
 window.__okrBack = () => {
   if (state === 'drive') { pause(); return true; }
   if (state === 'pause') { resume(); return true; }
-  if (state === 'results') { toMenu(); return true; }
+  if (state === 'results' || state === 'review') { toMenu(); return true; }
   if (state === 'menu' && ui.screen && ui.screen !== 'menu') { ui.show(menuStack.pop() || 'menu'); return true; }
   return false;
 };

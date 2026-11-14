@@ -3,11 +3,13 @@ import { SETUPS, TYRES } from './physics.js';
 import { WEATHERS, DIFFICULTY, DRIVERS, TEAMS, fmtTime, estimateQualiTime } from './race.js';
 import { drawCarShowcase } from './carsprite.js';
 import { Store, DEFAULT_SETTINGS } from './storage.js';
+import { TRAIN_SECTIONS } from './trainer.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const MODES = {
   free: { name: 'フリー走行', en: 'FREE PRACTICE', desc: '鈴鹿を自由に走行。セッティングやタイヤを試せます。' },
   ta: { name: 'タイムアタック', en: 'TIME ATTACK', desc: 'ベストラップに挑戦。ゴーストと競えます。' },
+  train: { name: 'トレーニング', en: 'TRAINING', desc: 'お手本ゴーストと目標ギヤ・速度、トレーナーの助言で区間を繰り返し練習。' },
   quali: { name: '予選', en: 'QUALIFYING', desc: 'アタック3周のベストタイムで決勝グリッドを決定。' },
   race: { name: '決勝', en: 'GRAND PRIX', desc: '20台でのレース。タイヤ摩耗とピット戦略が鍵。' },
 };
@@ -72,7 +74,7 @@ export class UI {
     return `<div class="panel wide">
       <header><div class="logo sm"><span class="ok">OK</span><span class="racing">RACING</span></div>
         <div class="best">ベストラップ <b>${fmtTime(bd?.time)}</b>${bw ? ` &nbsp; ウェット <b>${fmtTime(bw.time)}</b>` : ''}${q ? ` &nbsp; 予選 <b>P${q.pos}</b>` : ''}</div></header>
-      <div class="cards">${card('free')}${card('ta')}${card('quali')}${card('race')}</div>
+      <div class="cards">${card('free')}${card('train')}${card('ta')}${card('quali')}${card('race')}</div>
       <footer><button data-act="open" data-arg="settings">設定</button><button data-act="open" data-arg="howto">操作説明</button><button data-act="open" data-arg="records">記録</button><button data-act="open" data-arg="credits">クレジット</button></footer>
     </div>`;
   }
@@ -80,8 +82,9 @@ export class UI {
     const l = Store.last(), s = Store.settings(), q = Store.quali();
     const setups = Object.values(SETUPS).map(x => ({ v: x.id, label: x.name, sub: x.desc }));
     const tyres = Object.values(TYRES).map(x => ({ v: x.id, label: x.name, dot: x.color, short: x.short, sub: { soft: '高グリップ・摩耗早い', medium: 'バランス型', hard: '長持ち・グリップ控えめ', rain: '雨天用' }[x.id] }));
-    const weathers = Object.entries(WEATHERS).map(([k, w]) => ({ v: k, label: w.name }));
+    const weathers = Object.entries(WEATHERS).filter(([k]) => mode !== 'train' || k !== 'change').map(([k, w]) => ({ v: k, label: w.name }));
     let extra = '';
+    if (mode === 'train') extra = this.trainOptions(l, s);
     if (mode === 'race') {
       const gridOpts = [{ v: 'quali', label: '予選結果', sub: q ? `P${q.pos} スタート` : '未実施 (10番手)' }, { v: 'pole', label: 'ポール' }, { v: 'mid', label: '10番手' }, { v: 'last', label: '最後尾' }];
       extra = `<h3>周回数</h3>${this.seg('opt', 'laps', l.laps, [5, 10, 20, 53].map(n => ({ v: n, label: `${n}周`, sub: n === 53 ? 'フルディスタンス' : `約${Math.round(n * 1.75)}分` })))}
@@ -132,6 +135,7 @@ export class UI {
         <div class="how"><b class="k brk">BRAKE</b><p><strong>ブレーキ (左下パッドの右半分)</strong><br>中央から右へスライドするほど強く効きます。ABSは無いので、速度が落ちてダウンフォースが減ったら踏力を抜かないとタイヤがロックします。速度が高すぎるとコーナーを曲がり切れません。</p></div>
         <div class="how"><b class="k pad">▼ ▲</b><p><strong>6速パドルシフト (右下)</strong><br>左が DOWN、右が UP。回転ランプが青く点滅したらシフトアップ。回転が高すぎるシフトダウンは受け付けません。停止中に1速から DOWN でリバース。</p></div>
         <div class="how"><b class="k line">PASS</b><p><strong>追い越し</strong><br>コーナーの立ち上がりで早くアクセルを開けて直線で並ぶ、スリップストリームに入る、ブレーキングを遅らせてインに飛び込む — タイミングが良ければ抜けます。</p></div>
+        <div class="how"><b class="k tr">TRAIN</b><p><strong>トレーニングモード</strong><br>練習したい区間を選ぶと、その少し手前からお手本と同じ速度でスタート。半透明の<span style="color:#7fd6ff">お手本ゴースト</span>が理想のラインと速度で先行し、左の<strong>目標パネル</strong>に、いまの位置でのお手本の速度と<strong>最適ギヤ</strong>が大きく出ます。トレーナーがブレーキ開始点やアクセルのタイミングをその場で声かけし、区間を走り終えるとお手本との差(★1〜5)と改善点を講評。「自動リピート」で何度でも続けて挑戦できます。</p></div>
         <div class="how"><b class="k pit">PIT</b><p><strong>ピットイン</strong><br>左上の PIT を押して次のタイヤを選び、最終コーナーで右側へ。ピットレーン内は自動走行でタイヤ交換と修理を行います。</p></div>
         <div class="how"><b class="k line">LINE</b><p><strong>走行ライン</strong><br>路面のラインは理想の走行ライン。<span style="color:#ff5a4a">赤</span>はブレーキング、<span style="color:#ffd23a">黄</span>は旋回区間の目安です。</p></div>
         <div class="how"><b class="k key">KEY</b><p><strong>キーボード (PC)</strong><br>↑ アクセル / ↓ ブレーキ / → シフトアップ / ← シフトダウン (X / Z でも可) / P ポーズ / R コース復帰 / I ピット / C カメラ切替。ゲームパッドにも対応。</p></div>
@@ -163,8 +167,9 @@ export class UI {
   pause({ mode }) {
     const s = Store.settings(), l = Store.last();
     let free = '';
-    if (mode === 'free') {
-      free = `<h3>セッティング変更</h3>${this.seg('opt', 'setup', l.setup, Object.values(SETUPS).map(x => ({ v: x.id, label: x.name })))}
+    if (mode === 'train') free = this.trainOptions(l, s, true);
+    if (mode === 'free' || mode === 'train') {
+      free += `<h3>セッティング変更</h3>${this.seg('opt', 'setup', l.setup, Object.values(SETUPS).map(x => ({ v: x.id, label: x.name })))}
       <h3>タイヤ交換</h3>${this.seg('opt', 'tyre', l.tyre, Object.values(TYRES).map(x => ({ v: x.id, label: x.name, dot: x.color, short: x.short })))}
       <h3>天候</h3>${this.seg('opt', 'weather', l.weather, Object.entries(WEATHERS).filter(([k]) => k !== 'change').map(([k, w]) => ({ v: k, label: w.name })))}`;
     }
@@ -198,6 +203,48 @@ export class UI {
     return `<div class="panel wide">
       <header><h2>${title}<em>${mode === 'race' ? 'RACE RESULT' : 'QUALIFYING RESULT'}</em></h2><div class="btns inline">${next}<button data-act="restart">もう一度</button><button data-act="quit">メニューへ</button></div></header>
       <div class="scroll"><table class="tbl res">${head}${body}</table></div></div>`;
+  }
+  // トレーニングの設定 (区間・ガイド・ゴースト・リピート)
+  trainOptions(l, s, compact) {
+    const B = Store.trainBest();
+    const secs = TRAIN_SECTIONS.map((x, k) => ({ v: k, label: x.name, sub: B[x.id] ? `ベスト ${'★'.repeat(B[x.id].stars)}${'☆'.repeat(5 - B[x.id].stars)}` : '未挑戦' }));
+    return `<h3>練習する区間 <small>お手本の少し手前から、同じ速度でスタートします</small></h3><div class="secs">${this.seg('opt', 'trainSec', l.trainSec, secs)}</div>
+      <h3>トレーニング補助</h3>
+      ${this.seg('set', 'trainGuide', s.trainGuide, [{ v: true, label: 'ガイド ON', sub: '目標速度・最適ギヤ・トレーナーの声かけ' }, { v: false, label: 'ガイド OFF', sub: 'ゴーストだけで練習' }])}
+      ${this.seg('set', 'ghost', s.ghost, [{ v: true, label: 'お手本ゴースト ON' }, { v: false, label: 'OFF' }])}
+      ${this.seg('set', 'trainAuto', s.trainAuto, [{ v: true, label: '自動リピート ON', sub: '講評のあと数秒で自動でやり直し' }, { v: false, label: 'OFF', sub: '「もう一度」を押すまで待つ' }])}`;
+  }
+  trainPick() {
+    const l = Store.last(), s = Store.settings();
+    return `<div class="panel wide">
+      <header><button class="back" data-act="trainBackReview">‹ 戻る</button><h2>区間を選ぶ<em>TRAINING</em></h2><button class="go" data-act="trainGo">この区間で練習 ›</button></header>
+      <div class="scroll">${this.trainOptions(l, s)}</div></div>`;
+  }
+  trainReview({ report: r, auto }) {
+    const star = n => `<span class="stars">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
+    const dtxt = d => `${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(2)}秒`;
+    const adv = r.advice.map(a => `<li class="${a.sev}">${esc(a.text)}</li>`).join('');
+    let table = '';
+    if (r.aborted) table = '';
+    else if (r.isLap) {
+      table = `<table class="tbl"><tr><th>区間</th><th>評価</th><th>お手本との差</th></tr>${r.rows.map(x => `<tr><td>${esc(x.name)}</td><td>${star(x.stars)}</td><td class="t ${x.dT > 0.4 ? 'bad' : 'ok'}">${dtxt(x.dT)}</td></tr>`).join('')}</table>`;
+    } else {
+      const z = r.zones.map(q => {
+        const bm = Math.round(q.brakeDiffM), em = Math.round(q.exitDiffM);
+        const cls = (v, th) => (Math.abs(v) <= th ? 'ok' : 'bad');
+        return `<tr><td>${esc(q.label)}</td><td class="${q.noBrake ? 'bad' : cls(bm, 12)}">${q.noBrake ? 'なし' : (bm > 0 ? `${bm}m 遅い` : bm < 0 ? `${-bm}m 早い` : '一致')}</td><td class="${q.vMinPl < q.vMinRef - 8 ? 'bad' : 'ok'}">${Math.round(q.vMinPl)} <small>/ ${Math.round(q.vMinRef)}</small></td><td class="${cls(em, 14)}">${em > 0 ? `${em}m 遅い` : em < 0 ? `${-em}m 早い` : '一致'}</td><td class="${q.gearPl && q.gearPl !== q.gearOpt ? 'bad' : 'ok'}">${q.gearPl || '-'} <small>/ ${q.gearOpt}</small></td></tr>`;
+      }).join('');
+      table = z ? `<table class="tbl"><tr><th>ブレーキング</th><th>踏み始め</th><th>最低速度 <small>あなた/お手本 km/h</small></th><th>アクセル開始</th><th>ギヤ <small>あなた/最適</small></th></tr>${z}</table>` : '';
+    }
+    const head = r.aborted ? '中断' : `${star(r.stars)} <b class="${r.delta > 0.4 ? 'bad' : 'ok'}">${dtxt(r.delta)}</b> <small>お手本との差</small> <span class="score">${r.score}点</span>`;
+    return `<div class="panel wide">
+      <header><h2>${esc(r.name)}<em>${r.run}回目</em></h2><div class="btns inline"><button class="go" data-act="trainRetry">↻ もう一度</button><button data-act="trainNext">次の区間 ›</button><button data-act="open" data-arg="trainPick">区間を選ぶ</button><button data-act="quit">終了</button></div></header>
+      <div class="scroll">
+        <div class="trsum">${head}</div>
+        ${auto ? '<div class="autoline"><span id="autoRow">自動リピート: <b id="autoCnt"></b>秒後にもう一度</span> <button data-act="trainStopAuto">止める</button></div>' : ''}
+        <div class="coach"><div class="av">T</div><ul>${adv}</ul></div>
+        ${table}
+      </div></div>`;
   }
   notice({ text, sub }) {
     return `<div class="panel small"><h2>${esc(text)}</h2><p>${esc(sub || '')}</p><div class="btns"><button class="go" data-act="noticeOk">OK</button></div></div>`;

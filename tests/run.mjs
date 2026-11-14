@@ -45,5 +45,19 @@ check('決勝が完走して結果が出る', S.resultsReady && S.results.length
 const dnf = S.results.filter(r => r.dnf).length;
 check('リタイアが多すぎない (4台以下)', dnf <= 4, `${dnf}台`);
 check('プレイヤーが3周を完走', !!S.results.find(r => r.player && r.laps === 3 && !r.dnf));
+// --- トレーニング ---
+{
+  const { buildReference, TRAIN_SECTIONS } = await import('../src/trainer.js');
+  const { runTrain } = await import('./train.mjs');
+  const ref = buildReference(T, line, { setup: 'mid', tyre: 'soft', wet: 0 });
+  check('お手本ラップが生成される (1:38〜1:48)', ref.lapTime > 98 && ref.lapTime < 108 && ref.pose.x.length > 6000, ref.lapTime.toFixed(2));
+  let ok = true; for (let i = 0; i < T.N; i++) if (!ref.vis[i]) ok = false;
+  check('お手本が全区間を記録している', ok);
+  const good = runTrain(1, (c, prof) => { const k = (c.i + 5) % T.N, e = prof[k] * 0.95 - c.vx; let th = e > 0 ? Math.min(1, 0.15 + e * 0.5) : 0, br = e < -1 ? Math.min(1, -e * 0.12) : 0; if (c.gear <= 2) th = Math.min(th, 0.55); if (c.kR > 0.12) th *= 0.4; return [th, br]; }, { verbose: false });
+  const bad = runTrain(1, (c, prof) => [1, 0], { verbose: false });
+  check('区間の講評が出る (評価・差・助言)', good.stars >= 1 && good.advice.length >= 1 && Number.isFinite(good.delta), `★${good.stars} ${good.delta.toFixed(2)}s`);
+  check('アクセル全開のままだと中断または低評価になる', bad.aborted || bad.stars <= good.stars, bad.aborted ? '中断' : `★${bad.stars}`);
+  check('練習区間が定義されている (全周+8区間)', TRAIN_SECTIONS.length === 9);
+}
 console.log(fail ? `\n${fail} 件失敗` : '\nすべて成功');
 process.exit(fail ? 1 : 0);

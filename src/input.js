@@ -27,10 +27,11 @@ export function computeLayout(w, h, cfg = {}, safe = { l: 0, r: 0, t: 0, b: 0 })
     pause: { x: ml, y: mt, w: bs, h: bs },
     pit: { x: ml + bs + 8, y: mt, w: bs * 1.7, h: bs },
     reset: { x: ml + bs * 2.7 + 16, y: mt, w: bs * 1.5, h: bs },
-    tyreBtns: [],
+    tyreBtns: [], retry: { x: ml + bs + 8, y: mt, w: bs * 1.7, h: bs }, trRow: [],
     centre: { x: pedal.x + padW + 10, w: shiftDown.x - (pedal.x + padW) - 20 },
   };
   for (let k = 0; k < 4; k++) L.tyreBtns.push({ x: ml + k * (bs + 6), y: mt + bs + 8, w: bs, h: bs });
+  { const tw = clamp(w * 0.105, 74, 104); for (let k = 0; k < 3; k++) L.trRow.push({ x: ml + k * (tw + 6), y: mt + bs + 8, w: tw, h: bs * 0.82 }); }
   return L;
 }
 const inRect = (r, x, y, pad = 0) => x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
@@ -44,7 +45,7 @@ export class Input {
     this.keys = new Set();
     this.kThr = 0; this.kBrk = 0;
     this.onShift = null; this.onButton = null;
-    this.enabled = true; this.showPit = false; this.showTyres = false; this.showReset = true;
+    this.enabled = true; this.showPit = false; this.showTyres = false; this.showReset = true; this.showRetry = false; this.showTrain = false;
     this.flash = { up: 0, down: 0 };
     this.pedalPtr = null; this.gpPrev = {};
     this.bind();
@@ -62,6 +63,8 @@ export class Input {
       if (inRect(L.pause, p.x, p.y, 8)) { this.onButton?.('pause'); return; }
       if (this.showPit && inRect(L.pit, p.x, p.y, 4)) { this.onButton?.('pit'); return; }
       if (this.showReset && inRect(L.reset, p.x, p.y, 4)) { this.onButton?.('reset'); return; }
+      if (this.showRetry && inRect(L.retry, p.x, p.y, 4)) { this.onButton?.('retry'); return; }
+      if (this.showTrain) for (let k = 0; k < 3; k++) if (inRect(L.trRow[k], p.x, p.y, 3)) { this.onButton?.('tr' + k); return; }
       if (this.showTyres) for (let k = 0; k < 4; k++) if (inRect(L.tyreBtns[k], p.x, p.y, 3)) { this.onButton?.('tyre' + k); return; }
       if (inRect(L.shiftUp, p.x, p.y, 6)) { role = 'up'; this.flash.up = 0.18; this.onShift?.(1); }
       else if (inRect(L.shiftDown, p.x, p.y, 6)) { role = 'down'; this.flash.down = 0.18; this.onShift?.(-1); }
@@ -87,7 +90,7 @@ export class Input {
       if (k === 'ArrowRight' || k === 'x' || k === 'e') { this.flash.up = 0.18; this.onShift?.(1); }
       else if (k === 'ArrowLeft' || k === 'z' || k === 'q') { this.flash.down = 0.18; this.onShift?.(-1); }
       else if (k === 'Escape' || k === 'p') this.onButton?.('pause');
-      else if (k === 'r') this.onButton?.('reset');
+      else if (k === 'r') this.onButton?.(this.showRetry ? 'retry' : 'reset');
       else if (k === 'i') this.onButton?.('pit');
       else if (k === 'c') this.onButton?.('camera');
       else if (k >= '1' && k <= '4') this.onButton?.('tyre' + (Number(k) - 1));

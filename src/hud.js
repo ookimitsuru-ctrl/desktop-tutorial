@@ -8,7 +8,7 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const sat = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const FONT = '"Roboto Condensed","DIN Alternate","Helvetica Neue","Hiragino Sans","Noto Sans JP",system-ui,sans-serif';
 const TYRE_IDS = ['soft', 'medium', 'hard', 'rain'];
-const MODE_NAME = { free: 'フリー走行', ta: 'タイムアタック', quali: '予選', race: '決勝' };
+const MODE_NAME = { free: 'フリー走行', ta: 'タイムアタック', quali: '予選', race: '決勝', train: 'トレーニング' };
 
 function rr(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -78,6 +78,22 @@ export class Hud {
       this.drawButton(ctx, L.reset, '復帰', false, u, 12);
       lx = L.reset.x + L.reset.w + 8;
     }
+    if (input.showRetry) {
+      const tr = S.trainer;
+      rr(ctx, L.retry.x, L.retry.y, L.retry.w, L.retry.h, 8); ctx.fillStyle = 'rgba(244,122,31,0.92)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.textBaseline = 'middle'; text(ctx, '↻ やり直し', L.retry.x + L.retry.w / 2, L.retry.y + L.retry.h / 2 + 1, 12.5 * u, '#fff', 'center', '800'); ctx.textBaseline = 'alphabetic';
+      lx = L.retry.x + L.retry.w + 8;
+      if (input.showTrain && tr) {
+        const items = [['自動リピート', cfg.trainAuto !== false], ['ガイド', cfg.trainGuide !== false], ['ゴースト', cfg.ghost !== false]];
+        items.forEach(([label, on], k) => {
+          const b = L.trRow[k];
+          rr(ctx, b.x, b.y, b.w, b.h, 8); ctx.fillStyle = on ? 'rgba(60,190,120,0.85)' : 'rgba(8,12,22,0.6)'; ctx.fill();
+          ctx.strokeStyle = on ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.textBaseline = 'middle'; text(ctx, label, b.x + b.w / 2, b.y + b.h * 0.36, 11 * u, '#fff', 'center', '800'); text(ctx, on ? 'ON' : 'OFF', b.x + b.w / 2, b.y + b.h * 0.74, 9.5 * u, on ? '#fff' : 'rgba(255,255,255,0.55)', 'center', '800'); ctx.textBaseline = 'alphabetic';
+        });
+      }
+    }
     // 順位 / 周回
     {
       const bx = lx + 2, by = L.pause.y, bh = L.pause.h;
@@ -86,7 +102,7 @@ export class Hud {
       else { s1 = MODE_NAME[S.mode]; s2 = ''; }
       ctx.font = `italic 800 ${22 * u}px ${FONT}`; const w1 = ctx.measureText(s1).width;
       ctx.font = `700 ${12 * u}px ${FONT}`; const w2 = ctx.measureText(s2).width;
-      const lapStr = S.mode === 'race' ? `LAP ${Math.min(Math.max(pl.lap, 1), S.laps)}/${S.laps}` : S.mode === 'quali' ? `LAP ${Math.max(0, Math.min(pl.lap, S.laps))}/${S.laps}` : `LAP ${Math.max(0, pl.lap)}`;
+      const lapStr = S.mode === 'train' ? `${S.trainer.sec.short}  ${S.trainer.runs}回目` : S.mode === 'race' ? `LAP ${Math.min(Math.max(pl.lap, 1), S.laps)}/${S.laps}` : S.mode === 'quali' ? `LAP ${Math.max(0, Math.min(pl.lap, S.laps))}/${S.laps}` : `LAP ${Math.max(0, pl.lap)}`;
       ctx.font = `700 ${13 * u}px ${FONT}`; const w3 = ctx.measureText(lapStr).width;
       const pw = w1 + w2 + w3 + 34;
       panel(ctx, bx, by, pw, bh, 8); this.posRight = bx + pw;
@@ -97,6 +113,9 @@ export class Hud {
       text(ctx, lapStr, bx + pw - 10, by + bh / 2 + 1, 13 * u, '#fff', 'right');
       ctx.textBaseline = 'alphabetic';
     }
+
+    // ================= トレーニング: 目標表示とトレーナーの助言 =================
+    if (S.mode === 'train' && S.trainer) this.drawTrainer(ctx, L, S, cfg, u);
 
     // ================= 上中央: タイム =================
     this.drawTiming(ctx, L, S, pl, u);
@@ -153,7 +172,13 @@ export class Hud {
       }
       if (S.state === 'grid') text(ctx, 'グリッドにつけ', w / 2, y0 + r + 34 * u, 15 * u, '#fff', 'center');
     }
-    if (S.state === 'countdown') {
+    if (S.state === 'countdown' && S.mode === 'train') {
+      const f = sat(S.stateT / (S.cdDur || 1.7));
+      text(ctx, 'READY', w / 2, h * 0.43, 54 * u, '#fff', 'center', '800', true);
+      rr(ctx, w / 2 - 90 * u, h * 0.43 + 16 * u, 180 * u, 6, 3); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
+      rr(ctx, w / 2 - 90 * u, h * 0.43 + 16 * u, Math.max(6, 180 * u * f), 6, 3); ctx.fillStyle = '#ffb347'; ctx.fill();
+      text(ctx, 'お手本と同じ速度から始まります', w / 2, h * 0.43 + 44 * u, 13 * u, 'rgba(255,255,255,0.85)', 'center', '600');
+    } else if (S.state === 'countdown') {
       const n = Math.max(1, 3 - Math.floor(S.stateT));
       const f = S.stateT % 1;
       ctx.globalAlpha = 1 - f * 0.6;
@@ -170,7 +195,7 @@ export class Hud {
     else if (c.retired) warn = 'マシン破損 — リタイア';
     else if (c.fuel <= 0) warn = '燃料切れ';
     else if (pl.pitRequest) { warn = 'ピットイン予約中 — 最終コーナーで右側のピットレーンへ'; wcol = '#ffb347'; }
-    else if (!pl.lapValid && S.mode !== 'race' && pl.lap >= 1) { warn = 'このラップは無効 (コースアウト)'; wcol = '#ffd23a'; }
+    else if (!pl.lapValid && S.mode !== 'race' && S.mode !== 'train' && pl.lap >= 1) { warn = 'このラップは無効 (コースアウト)'; wcol = '#ffd23a'; }
     else if (S.mode === 'race' && S.leaderFinished && !pl.finished) { warn = 'ファイナルラップ'; wcol = '#fff'; }
     if (warn) {
       const y = h * 0.2;
@@ -327,6 +352,56 @@ export class Hud {
     if (c.assistTC || c.autoShift) text(ctx, (c.assistTC ? 'ASSIST ' : '') + (c.autoShift ? 'AT' : ''), x0 + 12, y0 + 30 * u, 8.5 * u, '#ffd23a', 'left', '700');
   }
 
+  // 目標速度・最適ギヤ(大)と、トレーナーの吹き出し
+  drawTrainer(ctx, L, S, cfg, u) {
+    const tr = S.trainer, c = S.player.car, w = L.w, h = L.h;
+    if (cfg.trainGuide !== false && (S.state === 'green' || S.state === 'countdown')) {
+      const tg = tr.target;
+      const px = L.m + L.safe.l, py = L.trRow[0].y + L.trRow[0].h + 8, pw = clamp(w * 0.255, 176, 236), ph = 118 * u;
+      panel(ctx, px, py, pw, ph, 12, 0.7);
+      ctx.strokeStyle = 'rgba(244,122,31,0.8)'; ctx.lineWidth = 1.5; rr(ctx, px, py, pw, ph, 12); ctx.stroke();
+      text(ctx, 'お手本の目標', px + 10, py + 14 * u, 10 * u, '#ffc79a', 'left', '800');
+      // 目標速度 (大)
+      const tk = Math.round(tg.speed * 3.6), nk = Math.round(c.speed * 3.6), dk = nk - tk;
+      text(ctx, String(tk), px + 10, py + 52 * u, 42 * u, '#fff', 'left', '800', true);
+      text(ctx, 'km/h', px + 12, py + 66 * u, 10 * u, 'rgba(255,255,255,0.7)', 'left', '700');
+      // 最適ギヤ (大)
+      const gw = 56 * u, gx = px + pw - gw - 10, gy = py + 22 * u, gh = 50 * u;
+      const ok = tg.gearState === 'ok';
+      rr(ctx, gx, gy, gw, gh, 10); ctx.fillStyle = ok ? 'rgba(53,208,127,0.9)' : 'rgba(244,122,31,0.95)'; ctx.fill();
+      text(ctx, String(tg.gear), gx + gw / 2, gy + 40 * u, 42 * u, '#fff', 'center', '800', true);
+      text(ctx, '最適ギヤ', gx + gw / 2, py + 14 * u, 9 * u, '#ffc79a', 'center', '800');
+      text(ctx, `${ok ? 'OK' : tg.gearState === 'up' ? '▲ UP' : '▼ DOWN'}  今${c.gear}速`, gx + gw, gy + gh + 13 * u, 11 * u, ok ? '#7dffb0' : '#ffd23a', 'right', '800');
+      // 現在値との差
+      const ac = Math.abs(dk) <= 6 ? '#7dffb0' : Math.abs(dk) <= 20 ? '#ffd23a' : '#ff7a6a';
+      text(ctx, `いま ${nk}`, px + 10, py + 86 * u, 12 * u, '#fff', 'left', '700');
+      text(ctx, `${dk > 0 ? '+' : dk < 0 ? '−' : '±'}${Math.abs(dk)}`, px + 12 + 58 * u, py + 86 * u, 12 * u, ac, 'left', '800');
+      // お手本のペダル操作
+      let chip, ccol;
+      if (tg.brk > 0.1) { chip = `ブレーキ ${Math.round(tg.brk * 100)}%`; ccol = 'rgba(255,74,61,0.9)'; }
+      else if (tg.thr > 0.92) { chip = 'アクセル全開'; ccol = 'rgba(53,208,127,0.9)'; }
+      else if (tg.thr > 0.15) { chip = `アクセル ${Math.round(tg.thr * 100)}%`; ccol = 'rgba(53,160,127,0.9)'; }
+      else { chip = 'リフト (離す)'; ccol = 'rgba(120,130,150,0.9)'; }
+      rr(ctx, px + 8, py + 94 * u, pw - 16, 18 * u, 6); ctx.fillStyle = ccol; ctx.fill();
+      text(ctx, chip, px + pw / 2, py + 107 * u, 11.5 * u, '#fff', 'center', '800');
+    }
+    // トレーナーの吹き出し
+    const cue = tr.cue;
+    if (cue && S.time - cue.at < cue.dur && S.state === 'green') {
+      const age = S.time - cue.at, a = sat(age / 0.12) * sat((cue.dur - age) / 0.3);
+      const col = cue.sev === 'urgent' ? '#ff4a3d' : cue.sev === 'warn' ? '#f4a21f' : cue.sev === 'good' ? '#35d07f' : '#4aa3ff';
+      const big = cue.sev === 'urgent';
+      ctx.globalAlpha = a;
+      const sz = (big ? 22 : 15) * u;
+      ctx.font = `800 ${sz}px ${FONT}`; const tw = ctx.measureText(cue.text).width;
+      const bw = tw + 58 * u, bh = (big ? 34 : 28) * u, bx = w / 2 - bw / 2, by = L.pause.y + 61 * u;
+      rr(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = 'rgba(8,12,22,0.82)'; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx + bh / 2, by + bh / 2, bh * 0.36, 0, 6.3); ctx.fillStyle = col; ctx.fill();
+      ctx.textBaseline = 'middle'; text(ctx, 'T', bx + bh / 2, by + bh / 2 + 1, bh * 0.42, '#111', 'center', '800'); ctx.textBaseline = 'alphabetic';
+      text(ctx, cue.text, bx + bh + 6 * u, by + bh / 2 + sz * 0.36, sz, '#fff', 'left', '800');
+      ctx.globalAlpha = 1;
+    }
+  }
   drawTiming(ctx, L, S, pl, u) {
     const w = L.w, y0 = L.pause.y;
     const mapX = L.w - L.m - L.safe.r - clamp(L.w * 0.2, 130, 210) - 4;
@@ -335,6 +410,23 @@ export class Hud {
     if (xL + pw > mapX - 8) pw = Math.max(170, mapX - 8 - xL);
     const cx = xL + pw / 2;
     panel(ctx, cx - pw / 2, y0, pw, ph, 10, 0.58);
+    if (S.mode === 'train' && S.trainer) {
+      const tr = S.trainer, x0 = cx - pw / 2;
+      const running = S.state === 'green' && !tr.done;
+      const tNow = running ? tr.runT : (tr.lastRunTime ?? 0);
+      text(ctx, running || tr.lastRunTime != null ? fmtTime(tNow) : '-:--.---', x0 + 12, y0 + 25 * u, 23 * u, '#fff', 'left', '800', true);
+      if (running && tr.runT > 0.5) {
+        const d = tr.target.delta, col = d <= 0 ? '#3fe07f' : '#ff5a4a';
+        text(ctx, (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(2), x0 + pw - 12, y0 + 24 * u, 19 * u, col, 'right', '800', true);
+        text(ctx, 'vs お手本', x0 + pw - 12, y0 + 37 * u, 9 * u, 'rgba(255,255,255,0.65)', 'right', '700');
+      }
+      const rep = tr.lastReport;
+      text(ctx, rep && !rep.aborted ? `前回 ${rep.delta >= 0 ? '+' : '−'}${Math.abs(rep.delta).toFixed(2)}s ${'★'.repeat(rep.stars)}` : '前回 --', x0 + 12, y0 + 42 * u, 10.5 * u, 'rgba(255,255,255,0.85)', 'left', '700');
+      const prog = sat(tr.runDist / tr.prep.len);
+      rr(ctx, x0 + 12, y0 + 48 * u, pw - 24, 5 * u, 2.5); ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
+      rr(ctx, x0 + 12, y0 + 48 * u, Math.max(5, (pw - 24) * prog), 5 * u, 2.5); ctx.fillStyle = '#ffb347'; ctx.fill();
+      return;
+    }
     const now = S.mode === 'race' ? S.raceTime : S.time;
     const running = pl.lap >= 1 && S.state === 'green' && !pl.finished;
     let cur = running ? now - pl.lapStart : null;

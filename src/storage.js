@@ -15,6 +15,8 @@ export const DEFAULT_SETTINGS = {
   volume: 0.8,
   quality: 'auto',        // auto: フレームレートに応じて自動調整 / high / low
   showBoard: true,
+  trainAuto: true,        // トレーニング: 区間を走り終えたら自動でやり直す
+  trainGuide: true,       // トレーニング: 目標速度・ギヤとトレーナーの声かけ
 };
 
 function load() {
@@ -26,7 +28,9 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (
 export const Store = {
   settings() { return Object.assign({}, DEFAULT_SETTINGS, db.settings || {}); },
   saveSettings(s) { db.settings = s; save(); },
-  last() { return Object.assign({ setup: 'mid', tyre: 'soft', weather: 'dry', laps: 5, gridMode: 'quali' }, db.last || {}); },
+  last() { return Object.assign({ setup: 'mid', tyre: 'soft', weather: 'dry', laps: 5, gridMode: 'quali', trainSec: 1 }, db.last || {}); },
+  trainBest() { return db.trainBest || (db.trainBest = {}); },
+  addTrainBest(id, r) { const B = this.trainBest(); if (!B[id] || r.score > B[id].score) { B[id] = { score: r.score, stars: r.stars, delta: r.delta }; save(); return true; } return false; },
   saveLast(l) { db.last = l; save(); },
   records() { return db.records || (db.records = { laps: [], best: {}, sectors: {}, races: [] }); },
   // ラップ記録を追加。新記録なら true
@@ -46,7 +50,7 @@ export const Store = {
   addRace(r) { const R = this.records(); R.races.unshift(r); if (R.races.length > 12) R.races.length = 12; save(); },
   quali() { return db.quali || null; },
   saveQuali(q) { db.quali = q; save(); },
-  clearRecords() { db.records = { laps: [], best: {}, sectors: {}, races: [] }; db.quali = null; try { localStorage.removeItem(KEY + '.ghost.dry'); localStorage.removeItem(KEY + '.ghost.wet'); } catch (e) { /* 無視 */ } save(); },
+  clearRecords() { db.records = { laps: [], best: {}, sectors: {}, races: [] }; db.quali = null; db.trainBest = {}; try { localStorage.removeItem(KEY + '.ghost.dry'); localStorage.removeItem(KEY + '.ghost.wet'); } catch (e) { /* 無視 */ } save(); },
 
   // ---- ゴースト ----
   saveGhost(g, wet) {

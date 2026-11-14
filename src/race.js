@@ -3,6 +3,7 @@
 import { createCar, stepCar, placeCar, collideCars, fitTyres, applySetup, requestShift, CAR, SETUPS, TYRES } from './physics.js';
 import { Driver, rand, seedRand } from './ai.js';
 import { SECTOR_SPLITS } from './track.js';
+import { Trainer } from './trainer.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const sat = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -176,6 +177,11 @@ export class Session {
     this.qualiResult = null;
     this.acc = 0;
     this.sortPositions();
+    if (opts.mode === 'train') {
+      this.env.noWear = true; this.env.noFuel = true; this.env.noDamage = true;
+      this.trainer = new Trainer(this, opts.reference, opts.trainSection || 0);
+      this.trainer.begin();
+    }
   }
 
   emit(type, data) { this.events.push({ type, ...data }); }
@@ -195,7 +201,7 @@ export class Session {
     this.time += dt; this.stateT += dt;
     // --- 状態遷移 ---
     if (this.state === 'countdown') {
-      if (this.stateT >= 3) { this.state = 'green'; this.stateT = 0; this.emit('go', {}); }
+      if (this.stateT >= (this.cdDur || 3)) { this.state = 'green'; this.stateT = 0; this.emit('go', {}); }
     } else if (this.state === 'grid') {
       if (this.stateT >= 2.5) { this.state = 'lights'; this.stateT = 0; this.lights = 0; this.goDelay = 0.6 + rand() * 1.8; }
     } else if (this.state === 'lights') {
@@ -210,8 +216,10 @@ export class Session {
     if (this.weatherPlan && this.state === 'green') {
       for (const w of this.weatherPlan) if (!w.done && this.raceTime >= w.t) { w.done = true; this.rainTarget = w.rain; this.emit('weather', { rain: w.rain }); }
     }
-    this.rain += clamp(this.rainTarget - this.rain, -dt * 0.03, dt * 0.03);
-    this.wet = sat(this.wet + (this.rain * 0.016 - (1 - this.rain) * (this.rain > 0.05 ? 0.001 : 0.0032)) * dt);
+    if (this.mode !== 'train') { // トレーニングでは路面状態を固定 (お手本と同じ条件にそろえる)
+      this.rain += clamp(this.rainTarget - this.rain, -dt * 0.03, dt * 0.03);
+      this.wet = sat(this.wet + (this.rain * 0.016 - (1 - this.rain) * (this.rain > 0.05 ? 0.001 : 0.0032)) * dt);
+    }
     this.env.wet = this.wet;
 
     // --- 入力とAI ---
@@ -279,6 +287,7 @@ export class Session {
     if (frozen) { // カウントダウン中は惰性で進めず静止表示
       return this.afterStep(dt);
     }
+    this.trainer?.tick(dt);
     // --- 計時 ---
     for (const e of this.entries) {
       if (e.out) continue;
@@ -310,7 +319,7 @@ export class Session {
         const bogged = c.offCount >= 3 && c.speed < 5;
         const walled = c.speed < 1.5 && c.throttle > 0.25 && this.stateT > 4;
         if (wrong || bogged || walled) e.stuckT += dt; else e.stuckT = Math.max(0, e.stuckT - dt * 2);
-        if (e.stuckT > 2.2) { this.resetToTrack(e); e.stuckT = 0; }
+        if (e.stuckT > 2.2) { if (this.trainer) this.trainer.abort('stuck'); else this.resetToTrack(e); e.stuckT = 0; }
       }
       c.entry = e;
       if (c.speed * 3.6 > e.topSpeed) e.topSpeed = c.speed * 3.6;

@@ -29,7 +29,7 @@ button:active { transform:translateY(1px); background:rgba(255,255,255,.16); }
 .panel .go, button.go { background:var(--or); border-color:transparent; color:#fff; }
 .scroll { overflow-y:auto; padding:6px 14px 16px; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
 h3 { font-size:12px; letter-spacing:.08em; color:#ffc79a; margin:14px 0 6px; font-weight:800; } h3 small { color:var(--dim); font-weight:600; letter-spacing:0; margin-left:.6em; }
-.cards { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:14px; }
+.cards { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; padding:14px; }
 .card { text-align:left; display:flex; flex-direction:column; gap:4px; padding:14px 12px; min-height:clamp(96px,34vh,170px); background:linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.02)); border-left:4px solid var(--or); }
 .card em { font-size:10px; letter-spacing:.18em; color:#ffc79a; font-weight:800; } .card b { font-size:clamp(17px,4.8vh,24px); font-style:italic; font-weight:900; } .card span { font-size:12px; color:var(--dim); font-weight:500; line-height:1.45; }
 .panel footer { display:flex; gap:8px; padding:0 14px 14px; flex-wrap:wrap; } .panel footer button { flex:1; font-size:13px; }
@@ -54,3 +54,15 @@ h3 { font-size:12px; letter-spacing:.08em; color:#ffc79a; margin:14px 0 6px; fon
 @media (orientation:portrait) and (pointer:coarse) { #rotate { display:flex; } }
 @media (max-width:640px) { .cards { grid-template-columns:repeat(2,1fr); } .card { min-height:84px; } }
 @media (max-height:380px) { .card span { display:none; } .card { min-height:70px; } .cards { padding:10px; } }
+
+.stars { color:#ffc24a; letter-spacing:.05em; white-space:nowrap; } .stars i { font-style:normal; color:rgba(255,255,255,.18); }
+.trsum { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; font-size:clamp(20px,5.4vh,30px); font-weight:900; font-style:italic; padding:6px 0 2px; }
+.trsum small { font-size:12px; font-style:normal; color:var(--dim); font-weight:600; } .trsum .score { margin-left:auto; font-size:.7em; color:#ffc79a; }
+.ok { color:#7dffb0; } .bad { color:#ff8a7a; } .tbl td small, .tbl th small { color:var(--dim); font-weight:500; }
+.autoline { display:flex; align-items:center; gap:12px; font-size:12.5px; color:var(--dim); margin:4px 0 8px; } .autoline b { color:#fff; font-size:15px; } .autoline button { padding:.3em .9em; font-size:12px; }
+.coach { display:flex; gap:12px; align-items:flex-start; background:rgba(244,122,31,.12); border:1px solid rgba(244,122,31,.4); border-radius:12px; padding:10px 12px; margin:8px 0 12px; }
+.coach .av { flex:none; width:34px; height:34px; border-radius:50%; background:var(--or); color:#111; font-weight:900; display:flex; align-items:center; justify-content:center; font-style:italic; }
+.coach ul { margin:0; padding-left:1.1em; font-size:13px; line-height:1.65; } .coach li { margin:2px 0; } .coach li.good { color:#7dffb0; } .coach li.info { color:#9cc9ff; }
+.how .k.tr { background:#e8761e; color:#111; }
+@media (max-width:760px) { .cards { grid-template-columns:repeat(2,1fr); } }
+.secs .seg button { flex:1 1 138px; min-width:138px; }
