@@ -55,8 +55,9 @@ export function buildReference(T, line, { setup = 'mid', tyre = 'soft', wet = 0 
       if (dist >= first + L && !ref.lapTime) ref.lapTime = t;
     }
   }
-  // 取りこぼしを補間
-  for (let i = 0; i < N; i++) if (!ref.vis[i]) { const a = (i - 1 + N) % N, b = (i + 1) % N; ref.v[i] = (ref.v[a] + ref.v[b]) / 2; ref.t[i] = (ref.t[a] + ref.t[b]) / 2; ref.thr[i] = ref.thr[a]; ref.brk[i] = ref.brk[a]; ref.gear[i] = ref.gear[a]; }
+  // 取りこぼしを補間 (1周ぶんの距離で記録を打ち切るため、周の継ぎ目で数点だけ記録されないことがある)
+  ref.filled = 0;
+  for (let i = 0; i < N; i++) if (!ref.vis[i]) { ref.filled++; const a = (i - 1 + N) % N, b = (i + 1) % N; ref.v[i] = (ref.v[a] + ref.v[b]) / 2; ref.t[i] = (ref.t[a] + ref.t[b]) / 2; ref.thr[i] = ref.thr[a]; ref.brk[i] = ref.brk[a]; ref.gear[i] = ref.gear[a]; }
   ref.ratios = car.ratios;
   refCache.set(key, ref);
   return ref;

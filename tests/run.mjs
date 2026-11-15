@@ -51,8 +51,8 @@ check('プレイヤーが3周を完走', !!S.results.find(r => r.player && r.lap
   const { runTrain } = await import('./train.mjs');
   const ref = buildReference(T, line, { setup: 'mid', tyre: 'soft', wet: 0 });
   check('お手本ラップが生成される (1:38〜1:48)', ref.lapTime > 98 && ref.lapTime < 108 && ref.pose.x.length > 6000, ref.lapTime.toFixed(2));
-  let ok = true; for (let i = 0; i < T.N; i++) if (!ref.vis[i]) ok = false;
-  check('お手本が全区間を記録している', ok);
+  let ok = true; for (let i = 0; i < T.N; i++) if (!(ref.v[i] > 5 && ref.v[i] < 100 && ref.gear[i] >= 1 && Number.isFinite(ref.t[i]))) ok = false;
+  check('お手本が全区間で有効な値を持つ (補間は5点以内)', ok && ref.filled <= 5, `補間 ${ref.filled}点`);
   const good = runTrain(1, (c, prof) => { const k = (c.i + 5) % T.N, e = prof[k] * 0.95 - c.vx; let th = e > 0 ? Math.min(1, 0.15 + e * 0.5) : 0, br = e < -1 ? Math.min(1, -e * 0.12) : 0; if (c.gear <= 2) th = Math.min(th, 0.55); if (c.kR > 0.12) th *= 0.4; return [th, br]; }, { verbose: false });
   const bad = runTrain(1, (c, prof) => [1, 0], { verbose: false });
   check('区間の講評が出る (評価・差・助言)', good.stars >= 1 && good.advice.length >= 1 && Number.isFinite(good.delta), `★${good.stars} ${good.delta.toFixed(2)}s`);
