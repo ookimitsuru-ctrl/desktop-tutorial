@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2f66"/><stop offset="1" stop-color="#0b1020"/></linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8f1e2"/><stop offset="1" stop-color="#eadfc6"/></linearGradient>
     <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#bg)"/>
   <!-- 路面 -->
-  <rect x="0" y="196" width="512" height="120" fill="#000" opacity=".28"/>
-  <rect x="0" y="192" width="512" height="4" fill="#fff" opacity=".35"/><rect x="0" y="316" width="512" height="4" fill="#fff" opacity=".35"/>
+  <rect x="0" y="196" width="512" height="120" fill="#2b2f38"/>
+  <rect x="0" y="192" width="512" height="5" fill="#fff"/><rect x="0" y="315" width="512" height="5" fill="#fff"/>
   <!-- 上: Formula -->
-  <text x="256" y="140" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="80" text-anchor="middle" fill="#fff" letter-spacing="1">Formula</text>
+  <text x="256" y="140" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="80" text-anchor="middle" fill="#14254f" letter-spacing="1">Formula</text>
   <!-- 中: 左向きの車 (ノーズが左) -->
   <g transform="translate(258 256) scale(1.06) translate(-258 -256)">
     <!-- 影 -->
-    <ellipse cx="258" cy="262" rx="176" ry="58" fill="#000" opacity=".3"/>
+    <ellipse cx="258" cy="262" rx="176" ry="56" fill="#000" opacity=".35"/>
     <!-- サスペンション -->
     <g stroke="#2a2d31" stroke-width="4" stroke-linecap="round"><path d="M160 256 L160 214 M160 256 L160 298 M190 256 L168 214 M190 256 L168 298 M340 256 L350 210 M340 256 L350 302 M300 256 L350 210 M300 256 L350 302"/></g>
     <!-- フロントウイング -->
@@ -44,5 +44,5 @@
     <rect x="226" y="222" width="12" height="9" rx="2" fill="#f47a1f"/><rect x="226" y="281" width="12" height="9" rx="2" fill="#f47a1f"/>
   </g>
   <!-- 下: simulator -->
-  <text x="256" y="402" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="68" text-anchor="middle" fill="#fff" letter-spacing="1">simulator</text>
+  <text x="256" y="402" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="68" text-anchor="middle" fill="#14254f" letter-spacing="1">simulator</text>
 </svg>
