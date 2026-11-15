@@ -9,7 +9,7 @@ html,body { margin:0; height:100%; background:#0b1020; color:var(--txt); overflo
 #ui.scr-pause,#ui.scr-results { backdrop-filter:blur(3px); }
 button { font:inherit; color:inherit; background:rgba(255,255,255,.07); border:1px solid var(--line); border-radius:9px; padding:.55em 1em; cursor:pointer; font-weight:700; }
 button:active { transform:translateY(1px); background:rgba(255,255,255,.16); }
-.logo { font-style:italic; font-weight:900; letter-spacing:.02em; line-height:.9; display:flex; align-items:baseline; gap:.18em; font-size:clamp(34px,10.5vh,78px); transform:skewX(-6deg); }
+.logo { font-style:italic; font-weight:900; letter-spacing:.02em; line-height:.9; display:flex; align-items:baseline; gap:.18em; font-size:clamp(26px,min(10.5vh,7.6vw),78px); transform:skewX(-6deg); }
 .logo .ok { color:#fff; background:var(--or); padding:.02em .22em .06em .16em; border-radius:.1em; box-shadow:.09em .09em 0 var(--navy); }
 .logo .racing { color:#fff; text-shadow:.05em .05em 0 var(--navy), 0 0 .5em rgba(0,0,0,.5); }
 .logo.sm { font-size:clamp(22px,6vh,34px); }

@@ -39,7 +39,7 @@ export class Hud {
     const w = L.w, h = L.h, pl = S.player, c = pl.car;
     ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
     const small = h < 400;
-    const u = clamp(h / 400, 0.82, 1.5); // スケール係数
+    const u = clamp(Math.min(h / 400, w / 800), 0.82, 1.5); // スケール係数 (正方形に近い画面では幅で決める)
 
     // ================= 操作パッド =================
     this.drawPedal(ctx, L.pedal, input, cfg, c, u);
@@ -411,7 +411,10 @@ export class Hud {
     const mapX = L.w - L.m - L.safe.r - clamp(L.w * 0.2, 130, 210) - 4;
     let pw = clamp(w * 0.3, 190, 290); const ph = 58 * u;
     let xL = Math.max(w / 2 - pw / 2, (this.posRight || 0) + 8);
-    if (xL + pw > mapX - 8) pw = Math.max(170, mapX - 8 - xL);
+    // 正方形に近い画面 (折りたたみ端末など): 上段にタイムとマップが並ばないので、タイムを右端へ寄せてマップを一段下げる
+    this.narrow = mapX - 8 - ((this.posRight || 0) + 8) < 190;
+    if (this.narrow) { const right = w - L.m - L.safe.r; pw = clamp(right - ((this.posRight || 0) + 8), 150, pw); xL = right - pw; this.timingBottom = y0 + ph; }
+    else if (xL + pw > mapX - 8) pw = Math.max(170, mapX - 8 - xL);
     const cx = xL + pw / 2;
     panel(ctx, cx - pw / 2, y0, pw, ph, 10, 0.58);
     if (S.mode === 'train' && S.trainer) {
@@ -465,7 +468,7 @@ export class Hud {
   drawMinimap(ctx, L, S, R, u) {
     const mm = R.minimap; if (!mm) return;
     const mw = clamp(L.w * 0.2, 130, 210), sc = mw / mm.W, mh = mm.H * sc;
-    const x0 = L.w - L.m - L.safe.r - mw, y0 = L.pause.y;
+    const x0 = L.w - L.m - L.safe.r - mw, y0 = this.narrow ? this.timingBottom + 8 : L.pause.y;
     panel(ctx, x0 - 4, y0 - 2, mw + 8, mh + 4, 8, 0.4);
     ctx.drawImage(mm.c, x0, y0, mw, mh);
     const pl = S.player;
