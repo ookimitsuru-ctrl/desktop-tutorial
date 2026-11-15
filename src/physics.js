@@ -17,8 +17,8 @@ export const CAR = {
   rw: 0.33,                // タイヤ半径 [m]
   iwF: 1.7, iwR: 2.3,      // 前後輪(左右合計)の慣性 [kg m2]
   ie: 0.032,               // エンジン・駆動系慣性 [kg m2]
-  halfTrack: 0.86,
-  length: 4.45, width: 2.1,
+  halfTrack: 0.88,
+  length: 4.45, width: 2.16,
   brakeForceMax: 23500,    // ペダル100%時の総制動力 [N] (ダウンフォースが無いと簡単にロックする)
   brakeBias: 0.67,
   eff: 0.91,               // 駆動効率
@@ -411,7 +411,7 @@ export function stepCar(car, dt, env) {
 }
 
 // 車同士の衝突 (各車 3 円で近似)。衝撃の強さを返す。
-const CIRC = [1.35, 0, -1.35], CR = 0.98;
+const CIRC = [1.35, 0, -1.35], CR = 1.04;
 export function collideCars(A, B, noDamage) {
   const dx0 = B.x - A.x, dy0 = B.y - A.y;
   if (dx0 * dx0 + dy0 * dy0 > 36) return 0;

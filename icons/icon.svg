@@ -5,41 +5,40 @@
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#bg)"/>
   <!-- 上: Formula -->
-  <text x="256" y="140" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="80" text-anchor="middle" fill="#14254f" letter-spacing="1">Formula</text>
-  <!-- 中: 左向きの車 (ノーズが左) -->
-  <g transform="translate(258 256) scale(1.06) translate(-258 -256)">
-    <!-- 影 -->
-    <ellipse cx="258" cy="266" rx="176" ry="56" fill="#14254f" opacity=".16"/>
+  <text x="256" y="130" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="78" text-anchor="middle" fill="#14254f" letter-spacing="1">Formula</text>
+  <!-- 中: 左向きの車 (ノーズが左)。1990年前後のF1: 細身のボディ、大きなリアタイヤ、V字のサスペンション -->
+  <g>
+    <ellipse cx="258" cy="262" rx="178" ry="40" fill="#14254f" opacity=".13"/>
     <!-- サスペンション -->
-    <g stroke="#2a2d31" stroke-width="4" stroke-linecap="round"><path d="M160 256 L160 214 M160 256 L160 298 M190 256 L168 214 M190 256 L168 298 M340 256 L350 210 M340 256 L350 302 M300 256 L350 210 M300 256 L350 302"/></g>
+    <g stroke="#2f3338" stroke-width="5" stroke-linecap="round"><path d="M200 246 L166 190 M200 266 L166 322 M152 250 L166 190 M152 262 L166 322 M326 250 L358 192 M326 262 L358 320 M372 252 L358 192 M372 260 L358 320"/></g>
     <!-- フロントウイング -->
-    <rect x="84" y="206" width="34" height="100" rx="3" fill="#14254f"/><rect x="92" y="206" width="12" height="100" fill="#2a4a9a"/>
-    <rect x="80" y="202" width="40" height="7" rx="2" fill="#f47a1f"/><rect x="80" y="303" width="40" height="7" rx="2" fill="#f47a1f"/>
-    <!-- リアウイング -->
-    <rect x="402" y="204" width="34" height="104" rx="3" fill="#14254f"/><rect x="410" y="204" width="12" height="104" fill="#2a4a9a"/>
-    <rect x="398" y="200" width="42" height="7" rx="2" fill="#f47a1f"/><rect x="398" y="305" width="42" height="7" rx="2" fill="#f47a1f"/>
-    <rect x="398" y="248" width="8" height="16" fill="#14254f"/>
-    <!-- タイヤ -->
-    <g fill="#101113"><rect x="130" y="198" width="66" height="30" rx="8"/><rect x="130" y="284" width="66" height="30" rx="8"/><rect x="318" y="192" width="78" height="40" rx="9"/><rect x="318" y="280" width="78" height="40" rx="9"/></g>
-    <g fill="#fff" opacity=".12"><rect x="136" y="202" width="54" height="9" rx="3"/><rect x="136" y="288" width="54" height="9" rx="3"/><rect x="324" y="197" width="66" height="11" rx="3"/><rect x="324" y="285" width="66" height="11" rx="3"/></g>
-    <!-- サイドポンツーン -->
-    <path d="M232 218 Q290 212 346 226 L352 256 L346 286 Q290 300 232 294 Q216 256 232 218 Z" fill="#f47a1f"/>
-    <path d="M246 232 L338 236 L338 250 L246 246 Z" fill="#14254f"/><path d="M246 266 L338 262 L338 276 L246 280 Z" fill="#14254f"/>
-    <path d="M222 230 L236 232 L236 280 L222 282 Z" fill="#0c0d0f"/>
-    <!-- モノコック・ノーズ (低いノーズ) -->
-    <path d="M96 256 Q150 246 206 238 L262 232 L330 234 Q372 238 408 246 L408 266 Q372 274 330 278 L262 280 L206 274 Q150 266 96 256 Z" fill="#f47a1f"/>
-    <path d="M96 256 Q150 246 206 238 L262 232 L330 234 Q372 238 408 246 L408 266 Q372 274 330 278 L262 280 L206 274 Q150 266 96 256 Z" fill="url(#shine)"/>
-    <path d="M96 256 Q118 251 140 248 L140 264 Q118 261 96 256 Z" fill="#14254f"/>
-    <!-- エンジンカバー -->
-    <path d="M318 248 L404 250 L404 262 L318 264 Z" fill="#14254f"/>
-    <ellipse cx="316" cy="256" rx="9" ry="14" fill="#0b0b0c"/>
+    <rect x="82" y="182" width="36" height="148" rx="3" fill="#14254f"/><rect x="90" y="182" width="12" height="148" fill="#2a4a9a"/>
+    <rect x="78" y="176" width="44" height="8" rx="2" fill="#f47a1f"/><rect x="78" y="328" width="44" height="8" rx="2" fill="#f47a1f"/>
+    <!-- リアウイング (幅は狭く、後方) -->
+    <rect x="406" y="206" width="32" height="100" rx="3" fill="#14254f"/><rect x="414" y="206" width="12" height="100" fill="#2a4a9a"/>
+    <rect x="402" y="201" width="40" height="7" rx="2" fill="#f47a1f"/><rect x="402" y="304" width="40" height="7" rx="2" fill="#f47a1f"/>
+    <rect x="402" y="248" width="8" height="16" fill="#14254f"/>
+    <!-- タイヤ: フロントは細め、リアは太く大きい -->
+    <g fill="#101113"><rect x="132" y="172" width="68" height="32" rx="9"/><rect x="132" y="308" width="68" height="32" rx="9"/><rect x="316" y="160" width="86" height="60" rx="11"/><rect x="316" y="292" width="86" height="60" rx="11"/></g>
+    <g fill="#fff" opacity=".13"><rect x="139" y="177" width="54" height="9" rx="3"/><rect x="139" y="313" width="54" height="9" rx="3"/><rect x="324" y="166" width="70" height="14" rx="4"/><rect x="324" y="298" width="70" height="14" rx="4"/></g>
+    <!-- サイドポンツーン (涙型) -->
+    <path d="M236 216 Q292 212 340 230 L350 256 L340 282 Q292 300 236 296 Q218 256 236 216 Z" fill="#f47a1f"/>
+    <path d="M250 230 L330 236 L330 248 L250 242 Z" fill="#14254f"/><path d="M250 270 L330 264 L330 276 L250 282 Z" fill="#14254f"/>
+    <path d="M226 226 L240 228 L240 284 L226 286 Z" fill="#0c0d0f"/>
+    <!-- モノコック・ノーズ (低く細いノーズ) -->
+    <path d="M96 256 Q150 247 206 240 L262 234 L330 236 Q372 240 408 247 L408 265 Q372 272 330 276 L262 278 L206 272 Q150 265 96 256 Z" fill="#f47a1f"/>
+    <path d="M96 256 Q150 247 206 240 L262 234 L330 236 Q372 240 408 247 L408 265 Q372 272 330 276 L262 278 L206 272 Q150 265 96 256 Z" fill="url(#shine)"/>
+    <path d="M96 256 Q118 252 140 250 L140 262 Q118 260 96 256 Z" fill="#14254f"/>
+    <!-- エンジンカバーとエアボックス -->
+    <path d="M326 249 L404 251 L404 261 L326 263 Z" fill="#14254f"/>
+    <ellipse cx="318" cy="256" rx="9" ry="13" fill="#0b0b0c"/>
     <!-- コックピット -->
-    <ellipse cx="250" cy="256" rx="32" ry="18" fill="#0d0e10"/>
-    <circle cx="258" cy="256" r="13" fill="#fff"/><rect x="256" y="243" width="6" height="26" fill="#14254f"/><path d="M251 248 Q244 256 251 264 Q256 261 256 256 Q256 251 251 248 Z" fill="#1a2030"/>
-    <rect x="224" y="246" width="5" height="20" fill="#2b2b2b"/>
+    <ellipse cx="252" cy="256" rx="34" ry="17" fill="#0d0e10"/>
+    <circle cx="260" cy="256" r="12" fill="#fff"/><rect x="258" y="244" width="6" height="24" fill="#14254f"/><path d="M253 249 Q246 256 253 263 Q258 260 258 256 Q258 252 253 249 Z" fill="#1a2030"/>
+    <rect x="226" y="247" width="5" height="18" fill="#2b2b2b"/>
     <!-- ミラー -->
-    <rect x="226" y="222" width="12" height="9" rx="2" fill="#f47a1f"/><rect x="226" y="281" width="12" height="9" rx="2" fill="#f47a1f"/>
+    <rect x="228" y="222" width="12" height="8" rx="2" fill="#f47a1f"/><rect x="228" y="282" width="12" height="8" rx="2" fill="#f47a1f"/>
   </g>
   <!-- 下: simulator -->
-  <text x="256" y="402" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="68" text-anchor="middle" fill="#14254f" letter-spacing="1">simulator</text>
+  <text x="256" y="420" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="68" text-anchor="middle" fill="#14254f" letter-spacing="1">simulator</text>
 </svg>
