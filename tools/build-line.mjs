@@ -1,9 +1,11 @@
 // レーシングライン(最小曲率ライン)の事前計算
-//   node tools/build-line.mjs   → src/data/raceline.js
+//   node tools/build-line.mjs [反復回数] [サーキットid]   → src/data/raceline.js (鈴鹿) / raceline-<id>.js
 // コース幅の範囲内で ∫κ²ds を最小化する横オフセット d(s) を、勾配射影 + 共役勾配法で解く。
 import fs from 'fs';
 import { buildTrack } from '../src/track.js';
-const T = buildTrack();
+import { TRACKS } from '../src/tracks.js';
+const TRACK_ID = process.argv[3] || 'suzuka';
+const T = buildTrack(TRACKS[TRACK_ID]);
 const N = T.N;
 const lo = new Float64Array(N), hi = new Float64Array(N);
 for (let i = 0; i < N; i++) {
@@ -100,6 +102,6 @@ for (let k = 0; k < ITERS; k++) {
   if (moved < 1e-5) { if (++stall > 2 && k % 25 !== 0) break; } else stall = 0;
 }
 const off = Array.from(d, (v, i) => Math.round(Math.min(hi[i], Math.max(lo[i], v)) * 100) / 100);
-fs.writeFileSync(new URL('../src/data/raceline.js', import.meta.url),
+fs.writeFileSync(new URL(`../src/data/raceline${TRACK_ID === 'suzuka' ? '' : '-' + TRACK_ID}.js`, import.meta.url),
   `// レーシングライン: コース中心線からの横オフセット[m] (右+)。tools/build-line.mjs による自動生成。\nexport const RACELINE_N = ${N};\nexport const RACELINE_OFF = ${JSON.stringify(off)};\n`);
 console.log('written', off.length);

@@ -2,7 +2,6 @@
 import { fmtTime } from './race.js';
 import { PEDAL_DEAD, PEDAL_EDGE } from './input.js';
 import { TYRES, CAR, tyreGripFactor } from './physics.js';
-import { SECTIONS } from './track.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const sat = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -331,12 +330,12 @@ export class Hud {
     bar('F', c.wearF, c.tempF, y1); bar('R', c.wearR, c.tempR, y1 + 14 * u);
     // 燃料
     const fy = y1 + 30 * u;
-    const cap = S.mode === 'race' ? S.laps * CAR.fuelPerLap * 1.04 + 4 : 40;
+    const cap = S.mode === 'race' ? S.laps * S.T.fuelPerLap * 1.04 + 4 : 40;
     text(ctx, '燃', rx - 16 * u, fy + 8 * u, 9 * u, 'rgba(255,255,255,0.7)', 'left', '700');
     rr(ctx, rx, fy, tw - 34 * u, 8 * u, 2); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
     const ff = sat(c.fuel / cap);
-    rr(ctx, rx, fy, Math.max(2, (tw - 34 * u) * ff), 8 * u, 2); ctx.fillStyle = c.fuel < CAR.fuelPerLap * 1.2 ? '#ff5040' : '#7fb6ff'; ctx.fill();
-    text(ctx, `${(c.fuel / CAR.fuelPerLap).toFixed(1)}周`, rx + tw, fy + 8 * u, 10 * u, '#fff', 'right', '700');
+    rr(ctx, rx, fy, Math.max(2, (tw - 34 * u) * ff), 8 * u, 2); ctx.fillStyle = c.fuel < S.T.fuelPerLap * 1.2 ? '#ff5040' : '#7fb6ff'; ctx.fill();
+    text(ctx, `${(c.fuel / S.T.fuelPerLap).toFixed(1)}周`, rx + tw, fy + 8 * u, 10 * u, '#fff', 'right', '700');
     // ダメージ
     const dmg = c.dmgF + c.dmgR + c.dmgS;
     if (dmg > 0.03) {

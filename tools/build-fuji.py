@@ -162,4 +162,3 @@ export const FUJI_CORNERS = %s;
 """ % (LENGTH, json.dumps(pts_out, separators=(',', ':')), json.dumps(keys, separators=(',', ':')), json.dumps(secs, separators=(',', ':'), ensure_ascii=False))
 open(out, 'w', encoding='utf8').write(js)
 print('written', out, len(pts_out), 'points')
-np.save('/tmp/claude-0/-home-user-desktop-tutorial/c877c125-826b-5949-89f3-e1256c3c1690/scratchpad/fuji/final.npy', F)

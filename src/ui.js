@@ -3,11 +3,11 @@ import { SETUPS, TYRES } from './physics.js';
 import { WEATHERS, DIFFICULTY, DRIVERS, TEAMS, fmtTime, estimateQualiTime } from './race.js';
 import { drawCarShowcase } from './carsprite.js';
 import { Store, DEFAULT_SETTINGS } from './storage.js';
-import { TRAIN_SECTIONS } from './trainer.js';
+import { TRACKS, TRACK_IDS, currentTrack } from './tracks.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const MODES = {
-  free: { name: 'フリー走行', en: 'FREE PRACTICE', desc: '鈴鹿を自由に走行。セッティングやタイヤを試せます。' },
+  free: { name: 'フリー走行', en: 'FREE PRACTICE', desc: 'サーキットを自由に走行。セッティングやタイヤを試せます。' },
   ta: { name: 'タイムアタック', en: 'TIME ATTACK', desc: 'ベストラップに挑戦。ゴーストと競えます。' },
   train: { name: 'トレーニング', en: 'TRAINING', desc: 'お手本ゴーストと目標ギヤ・速度、トレーナーの助言で区間を繰り返し練習。' },
   quali: { name: '予選', en: 'QUALIFYING', desc: 'アタック3周のベストタイムで決勝グリッドを決定。' },
@@ -62,18 +62,19 @@ export class UI {
   title() {
     return `<div class="title">
       <div class="logo"><span class="ok">Formula</span><span class="racing">simulator</span></div>
-      <div class="tag">SUZUKA CIRCUIT &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90</div>
+      <div class="tag">SUZUKA &nbsp;·&nbsp; FUJI &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90</div>
       <canvas class="showcase"></canvas>
       <button class="big" data-act="start">TAP TO START</button>
       <div class="foot">操作はアクセル・ブレーキ・シフトだけ — ステアリングは自動</div>
     </div>`;
   }
   menu() {
-    const bd = Store.bestLap(false), bw = Store.bestLap(true), q = Store.quali();
+    const bd = Store.bestLap(false), bw = Store.bestLap(true), q = Store.quali(), cur = currentTrack();
     const card = id => `<button class="card" data-act="mode" data-arg="${id}"><em>${MODES[id].en}</em><b>${MODES[id].name}</b><span>${MODES[id].desc}</span></button>`;
     return `<div class="panel wide">
       <header><div class="logo sm"><span class="ok">Formula</span><span class="racing">simulator</span></div>
         <div class="best">ベストラップ <b>${fmtTime(bd?.time)}</b>${bw ? ` &nbsp; ウェット <b>${fmtTime(bw.time)}</b>` : ''}${q ? ` &nbsp; 予選 <b>P${q.pos}</b>` : ''}</div></header>
+      <div class="trk"><span>サーキット</span>${TRACK_IDS.map(id => `<button class="${id === cur.id ? 'sel' : ''}" data-act="track" data-arg="${id}"><b>${TRACKS[id].name}</b><small>${(TRACKS[id].length / 1000).toFixed(3)} km</small></button>`).join('')}</div>
       <div class="cards">${card('free')}${card('train')}${card('ta')}${card('quali')}${card('race')}</div>
       <footer><button data-act="open" data-arg="settings">設定</button><button data-act="open" data-arg="howto">操作説明</button><button data-act="open" data-arg="records">記録</button><button data-act="open" data-arg="credits">クレジット</button></footer>
     </div>`;
@@ -83,16 +84,18 @@ export class UI {
     const setups = Object.values(SETUPS).map(x => ({ v: x.id, label: x.name, sub: x.desc }));
     const tyres = Object.values(TYRES).map(x => ({ v: x.id, label: x.name, dot: x.color, short: x.short, sub: { soft: '高グリップ・摩耗早い', medium: 'バランス型', hard: '長持ち・グリップ控えめ', rain: '雨天用' }[x.id] }));
     const weathers = Object.entries(WEATHERS).filter(([k]) => mode !== 'train' || k !== 'change').map(([k, w]) => ({ v: k, label: w.name }));
+    const trk = currentTrack(), lapsList = [5, 10, 20, trk.fullLaps];
+    if (!lapsList.includes(l.laps)) { l.laps = 5; Store.saveLast(l); }
     let extra = '';
     if (mode === 'train') extra = this.trainOptions(l, s);
     if (mode === 'race') {
       const gridOpts = [{ v: 'quali', label: '予選結果', sub: q ? `P${q.pos} スタート` : '未実施 (10番手)' }, { v: 'pole', label: 'ポール' }, { v: 'mid', label: '10番手' }, { v: 'last', label: '最後尾' }];
-      extra = `<h3>周回数</h3>${this.seg('opt', 'laps', l.laps, [5, 10, 20, 53].map(n => ({ v: n, label: `${n}周`, sub: n === 53 ? 'フルディスタンス' : `約${Math.round(n * 1.75)}分` })))}
+      extra = `<h3>周回数</h3>${this.seg('opt', 'laps', l.laps, lapsList.map(n => ({ v: n, label: `${n}周`, sub: n === trk.fullLaps ? 'フルディスタンス' : `約${Math.round(n * trk.baseLap * 1.03 / 60)}分` })))}
         <h3>スターティンググリッド</h3>${this.seg('opt', 'gridMode', l.gridMode, gridOpts)}`;
     }
     const diff = (mode === 'race' || mode === 'quali') ? `<h3>ライバルの強さ</h3>${this.seg('set', 'difficulty', s.difficulty, Object.entries(DIFFICULTY).map(([k, d]) => ({ v: k, label: d.name })))}` : '';
     return `<div class="panel wide">
-      <header><button class="back" data-act="back">‹ 戻る</button><h2>${MODES[mode].name}<em>${MODES[mode].en}</em></h2><button class="go" data-act="go" data-arg="${mode}">スタート ›</button></header>
+      <header><button class="back" data-act="back">‹ 戻る</button><h2>${MODES[mode].name}<em>${MODES[mode].en} · ${currentTrack().short}</em></h2><button class="go" data-act="go" data-arg="${mode}">スタート ›</button></header>
       <div class="scroll">
         <h3>セッティング</h3>${this.seg('opt', 'setup', l.setup, setups)}
         <h3>タイヤ</h3>${this.seg('opt', 'tyre', l.tyre, tyres)}
@@ -148,7 +151,7 @@ export class UI {
     const sec = cls => (R.sectors[cls] || [null, null, null]).map(v => v == null ? '--.---' : v.toFixed(3)).join(' / ');
     const races = R.races.map(r => `<tr><td>${esc(r.date)}</td><td>${r.laps}周</td><td>${esc(WEATHERS[r.weather]?.name || '')}</td><td>${r.grid}番手 → <b>${r.dnf ? 'リタイア' : r.pos + '位'}</b></td><td class="t">${fmtTime(r.best)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">まだ決勝の記録がありません</td></tr>';
     return `<div class="panel wide">
-      <header><button class="back" data-act="back">‹ 戻る</button><h2>記録<em>RECORDS</em></h2><button data-act="clearRecords">記録を消去</button></header>
+      <header><button class="back" data-act="back">‹ 戻る</button><h2>記録<em>RECORDS · ${currentTrack().short}</em></h2><button data-act="clearRecords">記録を消去</button></header>
       <div class="scroll">
         <h3>ベストラップ</h3><table class="tbl"><tr><th>#</th><th>タイム</th><th>タイヤ</th><th>セッティング</th><th>路面</th><th>モード</th><th>日付</th></tr>${laps}</table>
         <h3>セクターベスト <small>ドライ: ${sec('dry')} &nbsp; ウェット: ${sec('wet')}</small></h3>
@@ -161,7 +164,8 @@ export class UI {
       <div class="scroll credits">
         <p><b>Formula simulator</b> — 鈴鹿サーキットを舞台にした見下ろし型F1レーシングシミュレーター。チーム「OK RACING」、マシン「OK-90」および登場するチーム名・ドライバー名はすべて架空のものです。</p>
         <p><b>コースデータ</b><br>コース中心線と幅員: TUMFTM racetrack-database (LGPL-3.0) — https://github.com/TUMFTM/racetrack-database<br>中心線の原データ: © OpenStreetMap contributors (ODbL)<br>全長を 5,807m に正規化し、高低差 (約52m)・立体交差・ピットレーン・縁石・ランオフを追加しています。</p>
-        <p>本作は鈴鹿サーキットおよびいかなる実在のレース主催者・チームとも関係ありません。</p>
+        <p><b>富士スピードウェイ</b><br>提供されたコース図 (画像) の線を読み取り、図に記載の全長 4,563m・コーナー半径・標高グラフに合わせて補正した近似形状です。測量データではありません。ピットレーン・縁石・ランオフ・スタンドは本作で追加したものです。</p>
+        <p>本作は鈴鹿サーキット、富士スピードウェイ、およびいかなる実在のレース主催者・チームとも関係ありません。</p>
       </div></div>`;
   }
   pause({ mode }) {
@@ -207,7 +211,8 @@ export class UI {
   // トレーニングの設定 (区間・ガイド・ゴースト・リピート)
   trainOptions(l, s, compact) {
     const B = Store.trainBest();
-    const secs = TRAIN_SECTIONS.map((x, k) => ({ v: k, label: x.name, sub: B[x.id] ? `ベスト ${'★'.repeat(B[x.id].stars)}${'☆'.repeat(5 - B[x.id].stars)}` : '未挑戦' }));
+    const list = currentTrack().train; if (!(l.trainSec < list.length)) l.trainSec = 1;
+    const secs = list.map((x, k) => ({ v: k, label: x.name, sub: B[x.id] ? `ベスト ${'★'.repeat(B[x.id].stars)}${'☆'.repeat(5 - B[x.id].stars)}` : '未挑戦' }));
     return `<h3>練習する区間 <small>お手本の少し手前から、同じ速度でスタートします</small></h3><div class="secs">${this.seg('opt', 'trainSec', l.trainSec, secs)}</div>
       <h3>トレーニング補助</h3>
       ${this.seg('set', 'trainGuide', s.trainGuide, [{ v: true, label: 'ガイド ON', sub: '目標速度・最適ギヤ・トレーナーの声かけ' }, { v: false, label: 'ガイド OFF', sub: 'ゴーストだけで練習' }])}

@@ -2,7 +2,6 @@
 // 車両とAIの更新、計時(ラップ・セクター)、順位、スタート手順、ピット、天候、ゴーストを扱う。
 import { createCar, stepCar, placeCar, collideCars, fitTyres, applySetup, requestShift, CAR, SETUPS, TYRES } from './physics.js';
 import { Driver, rand, seedRand } from './ai.js';
-import { SECTOR_SPLITS } from './track.js';
 import { Trainer } from './trainer.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -57,11 +56,12 @@ export const WEATHERS = {
 };
 
 // AI の予選タイムの目安 [s] (実走AIの計測値から作った近似式)
-export function estimateQualiTime(d, team, diff, wet) {
+// base: そのサーキットでの最速AIの想定ラップ [s] (省略時は鈴鹿)
+export function estimateQualiTime(d, team, diff, wet, base = 102.3) {
   const D = DIFFICULTY[diff] || DIFFICULTY.normal;
   const skill = clamp(d.skill + D.skill, 0, 1);
   const tp = 1 - (1 - team.power) * 0.55, tg = 1 - (1 - team.grip) * 0.55; // 決勝のAIと同じ圧縮
-  let t = 102.3 + (1 - skill) * 4.6 + (1 - tp * D.power) * 20 + (1 - tg * D.grip) * 42;
+  let t = (102.3 + (1 - skill) * 4.6 + (1 - tp * D.power) * 20 + (1 - tg * D.grip) * 42) * (base / 102.3);
   if (wet > 0.05) t *= 1 + 0.26 * Math.pow(sat(wet), 0.35);
   return t;
 }
@@ -144,7 +144,7 @@ export class Session {
 
     // 燃料
     for (const e of this.entries) {
-      if (this.mode === 'race') e.car.fuel = opts.laps * CAR.fuelPerLap * 1.04 + 4;
+      if (this.mode === 'race') e.car.fuel = opts.laps * T.fuelPerLap * 1.04 + 4;
       else if (this.mode === 'free') e.car.fuel = 40;
       else e.car.fuel = 12;
     }
@@ -423,7 +423,7 @@ export class Session {
     const lapPos = ((e.dist % L) + L) % L, lapPosB = ((before % L) + L) % L;
     if (e.lap >= 1 && dsg > 0) {
       for (let k = 0; k < 2; k++) {
-        const sp = SECTOR_SPLITS[k];
+        const sp = T.sectorSplits[k];
         if (lapPosB < sp && lapPos >= sp && e.sector === k) {
           const tc = now - dt * (lapPos - sp) / Math.max(dsg, 1e-6);
           this.closeSector(e, k, tc);
@@ -669,7 +669,7 @@ export class Session {
     } else if (this.mode === 'quali') {
       const rows = DRIVERS.map((d, di) => {
         if (d.player) return { di, name: d.name, team: TEAMS[d.team].name, no: d.no, best: pl.bestLap, player: true };
-        const t = estimateQualiTime(d, TEAMS[d.team], this.opts.difficulty, this.wet) + (rand() - 0.35) * 0.9;
+        const t = estimateQualiTime(d, TEAMS[d.team], this.opts.difficulty, this.wet, this.T.def.baseLap) + (rand() - 0.35) * 0.9;
         return { di, name: d.name, team: TEAMS[d.team].name, no: d.no, best: t, player: false };
       });
       rows.sort((a, b) => (a.best ?? 1e9) - (b.best ?? 1e9));

@@ -1,8 +1,10 @@
 // AI単独走行でラップタイムと各種状態を確認する
-import { buildTrack, SECTIONS } from '../src/track.js';
+import { buildTrack } from '../src/track.js';
+import { TRACKS } from '../src/tracks.js';
 import { createCar, stepCar, placeCar, CAR } from '../src/physics.js';
 import { computeRacingLine, Driver } from '../src/ai.js';
-const T = buildTrack();
+const T = buildTrack(TRACKS[process.env.TRACK || 'suzuka']);
+const SECTIONS = T.def.sections;
 let t0 = performance.now();
 const line = computeRacingLine(T);
 console.log('line ms', (performance.now() - t0).toFixed(0));

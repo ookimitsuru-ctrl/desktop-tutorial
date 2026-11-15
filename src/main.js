@@ -10,10 +10,12 @@ import { GameAudio } from './audio.js';
 import { UI, MODES } from './ui.js';
 import { Store, DEFAULT_SETTINGS } from './storage.js';
 import { tyreBaseMu, totalMass, TYRES } from './physics.js';
+import { TRACKS, setCurrentTrack } from './tracks.js';
 
 const canvas = document.getElementById('game');
-const T = buildTrack();
-const line = computeRacingLine(T);
+// 選択中のサーキット (メニューで切り替える)
+let T = buildTrack(setCurrentTrack(TRACKS[Store.last().track] ? Store.last().track : 'suzuka'));
+let line = computeRacingLine(T);
 const R = new Renderer(canvas, T, line);
 const hud = new Hud();
 let cfg = Store.settings();
@@ -29,6 +31,15 @@ let wakeLock = null;
 // 60fps を目標とした自動負荷調整 (画質「自動」のとき): 解像度 → 描画品質の順に下げる
 const perf = { dprCap: 2.5, low: false, acc: 0, n: 0, level: 0 };
 const rcfg = () => (cfg.quality === 'auto' ? (perf.low ? { ...cfg, quality: 'low' } : cfg) : cfg);
+
+// サーキットの切り替え: コース・理想ライン・描画データを作り直す
+function loadTrack(id) {
+  if (!TRACKS[id] || id === T.id) return;
+  T = buildTrack(setCurrentTrack(id)); line = computeRacingLine(T);
+  R.setTrack(T, line);
+  const l = Store.last(); l.track = id; Store.saveLast(l);
+  session = null; demo = null; lastOpts = null; assistKey = '';
+}
 
 // ---------------------------------------------------------------- 画面サイズ
 function resize() {
@@ -126,6 +137,7 @@ const ui = new UI(document.getElementById('ui'), {
     state = 'menu'; ui.show('menu');
   },
   mode(m) { menuStack.push('menu'); ui.show('config', { mode: m }); },
+  track(id) { loadTrack(id); startDemo(); ui.refresh(); },
   open(name) {
     if (name === 'settingsInGame') { ui.show('settings', { inGame: true }); return; }
     menuStack.push('menu'); ui.show(name);
@@ -346,7 +358,7 @@ window.__okrBack = () => {
   return false;
 };
 // デバッグ/自動テスト用フック
-window.__okr = { auto, get session() { return session; }, get state() { return state; }, T, line, R, input, startSession, Store, ui, hud, get cfg() { return cfg; } };
+window.__okr = { auto, get session() { return session; }, get state() { return state; }, get T() { return T; }, get line() { return line; }, R, input, startSession, loadTrack, Store, ui, hud, get cfg() { return cfg; } };
 
 startDemo();
 ui.show('title');

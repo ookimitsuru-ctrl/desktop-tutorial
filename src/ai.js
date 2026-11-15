@@ -1,5 +1,4 @@
 // AIドライバー: レーシングライン生成・速度プロファイル・操縦・追い越し/防御
-import { RACELINE_N, RACELINE_OFF } from './data/raceline.js';
 import { CAR, G, steerLock, tyreBaseMu, tyreGripFactor, totalMass, engineTorque } from './physics.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -19,7 +18,8 @@ export function computeRacingLine(T) {
   const W = i => ((i % N) + N) % N;
   // 事前計算済みの最小曲率ライン (tools/build-line.mjs) を読み込む
   for (let i = 0; i < N; i++) {
-    const v = RACELINE_N === N ? RACELINE_OFF[i] : RACELINE_OFF[Math.round(i * RACELINE_N / N) % RACELINE_N];
+    const RL = T.def.raceline || [], RN = RL.length;
+    const v = !RN ? 0 : RN === N ? RL[i] : RL[Math.round(i * RN / N) % RN];
     d[i] = clamp(v, lo[i], hi[i]);
     px[i] = T.x[i] + T.nx[i] * d[i]; py[i] = T.y[i] + T.ny[i] * d[i];
   }

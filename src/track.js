@@ -1,41 +1,9 @@
 // コースモデル: 中心線・幅員・縁石・ランオフ・バリア・高低差・立体交差・ピットレーン
 // 座標系: x=東, y=南 (画面と同じ y 下向き)。角度は時計回りが正。横位置 d は進行方向右が正。
 // 1ユニット = 1m。
-import { SUZUKA_POINTS, SUZUKA_LENGTH } from './data/suzuka.js';
+import { TRACKS } from './tracks.js';
 
 export const DS = 2; // サンプル間隔の目標[m]
-
-// 高低差キーポイント [コントロールラインからの距離m, 高さm] (最低点=2コーナー付近, 最高点=スプーン)
-const ELEVATION_KEYS = [
-  [0, 8], [200, 4.5], [400, 1.2], [540, 0], [700, 1.2], [820, 3.5], [1000, 9], [1250, 16],
-  [1450, 22], [1850, 33], [2030, 34], [2180, 32], [2275, 30], [2500, 31], [2650, 33],
-  [3000, 38.5], [3350, 46.5], [3500, 51], [3650, 52], [3800, 49], [4200, 43], [4648, 37],
-  [4780, 34.5], [5100, 30], [5300, 22.5], [5537, 13.5],
-];
-
-// コーナー名 (距離はコントロールライン基準)
-export const SECTIONS = [
-  { name: '1コーナー', from: 360, to: 480, no: 1 },
-  { name: '2コーナー', from: 500, to: 680, no: 2 },
-  { name: 'S字', from: 780, to: 1200, no: 3 },
-  { name: '逆バンク', from: 1200, to: 1390, no: 6 },
-  { name: 'ダンロップ', from: 1410, to: 1900, no: 7 },
-  { name: 'デグナー1', from: 1980, to: 2080, no: 8 },
-  { name: 'デグナー2', from: 2120, to: 2230, no: 9 },
-  { name: '立体交差', from: 2240, to: 2310, no: 0 },
-  { name: '110R', from: 2430, to: 2570, no: 10 },
-  { name: 'ヘアピン', from: 2590, to: 2740, no: 11 },
-  { name: '200R', from: 2800, to: 3400, no: 12 },
-  { name: 'スプーン', from: 3480, to: 3840, no: 13 },
-  { name: '西ストレート', from: 3860, to: 4640, no: 0 },
-  { name: '130R', from: 4660, to: 4900, no: 15 },
-  { name: 'シケイン', from: 5060, to: 5210, no: 16 },
-  { name: '最終コーナー', from: 5220, to: 5510, no: 18 },
-  { name: 'メインストレート', from: 5520, to: 5807, no: 0 },
-  { name: 'メインストレート', from: 0, to: 350, no: 0 },
-];
-
-export const SECTOR_SPLITS = [1950, 3950]; // セクター1終了, セクター2終了 [m]
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -62,8 +30,10 @@ function smoothArr(a, r, passes = 1) {
   return src;
 }
 
-export function buildTrack() {
-  const raw = SUZUKA_POINTS, m = raw.length;
+// def: サーキット定義 (src/tracks.js)。省略時は鈴鹿。
+export function buildTrack(def = TRACKS.suzuka) {
+  const raw = def.points, m = raw.length;
+  const LENGTH = def.length;
   // --- 1) 高密度補間して弧長を測る ---
   const SUB = 10;
   const fx = [], fy = [], fwr = [], fwl = [], fs = [0];
@@ -83,11 +53,12 @@ export function buildTrack() {
     fs.push(fs[i] + Math.hypot(fx[j] - fx[i], fy[j] - fy[i]));
   }
   const rawLen = fs[fn];
-  const k = SUZUKA_LENGTH / rawLen; // 全長を公式値へ厳密に合わせる
-  const N = Math.round(SUZUKA_LENGTH / DS);
-  const ds = SUZUKA_LENGTH / N;
+  const k = LENGTH / rawLen; // 全長を公式値へ厳密に合わせる
+  const N = Math.round(LENGTH / DS);
+  const ds = LENGTH / N;
   const T = {
-    N, ds, length: SUZUKA_LENGTH,
+    def, id: def.id, name: def.name, sections: def.sections, sectorSplits: def.sectorSplits,
+    N, ds, length: LENGTH,
     x: new Float32Array(N), y: new Float32Array(N), hdg: new Float32Array(N), curv: new Float32Array(N),
     wl: new Float32Array(N), wr: new Float32Array(N), z: new Float32Array(N), slope: new Float32Array(N),
     kerbL: new Float32Array(N), kerbR: new Float32Array(N),
@@ -110,7 +81,7 @@ export function buildTrack() {
   }
   // OSM由来の折れ(局所的な曲率ノイズ)を均す。コーナー形状はほぼ変えない程度の弱い平滑化。
   // 高速コーナーほど広い窓で均す (低速コーナーの形は保つ)。
-  {
+  if (def.smooth) {
     let sx = smoothArr(T.x, 3, 2), sy = smoothArr(T.y, 3, 2);
     const kap = new Float32Array(N);
     for (let i = 0; i < N; i++) {
@@ -157,7 +128,7 @@ export function buildTrack() {
       T.x.set(smoothArr(nx2, 1, 1)); T.y.set(smoothArr(ny2, 1, 1));
     }
     let len = 0; for (let i = 0; i < N; i++) { const q = (i + 1) % N; len += Math.hypot(T.x[q] - T.x[i], T.y[q] - T.y[i]); }
-    const f = SUZUKA_LENGTH / len; // 残った僅かな誤差を補正して全長を公式値に一致させる
+    const f = LENGTH / len; // 残った僅かな誤差を補正して全長を公式値に一致させる
     for (let i = 0; i < N; i++) { T.x[i] *= f; T.y[i] *= f; }
     T.lengthFix = f;
   }
@@ -167,7 +138,7 @@ export function buildTrack() {
   {
     const wr = smoothArr(T.wr, 6, 2), wl = smoothArr(T.wl, 6, 2);
     for (let i = 0; i < N; i++) {
-      const tot = clamp((wr[i] + wl[i]) * 1.05, 10, 16);
+      const tot = clamp((wr[i] + wl[i]) * def.width.scale, def.width.min, def.width.max);
       const ratio = wr[i] / (wr[i] + wl[i]);
       T.wr[i] = tot * ratio; T.wl[i] = tot * (1 - ratio);
     }
@@ -200,23 +171,23 @@ export function buildTrack() {
 
   // --- 4) 高低差 ---
   {
-    const K = ELEVATION_KEYS, kn = K.length;
+    const K = def.elevation.keys, kn = K.length;
     const zr = new Float32Array(N);
     for (let i = 0; i < N; i++) {
       const s = i * ds; let a = kn - 1;
       for (let q = 0; q < kn; q++) if (K[q][0] <= s) a = q;
       const p1 = K[a], p2 = K[(a + 1) % kn], p0 = K[(a - 1 + kn) % kn], p3 = K[(a + 2) % kn];
-      const s1 = p1[0], s2 = p2[0] + (a + 1 >= kn ? SUZUKA_LENGTH : 0);
+      const s1 = p1[0], s2 = p2[0] + (a + 1 >= kn ? LENGTH : 0);
       const t = (s - s1) / (s2 - s1);
       zr[i] = catmull(p0[1], p1[1], p2[1], p3[1], t);
     }
     const zs = smoothArr(zr, 20, 2);
     let mn = 1e9, mx = -1e9;
     for (let i = 0; i < N; i++) { mn = Math.min(mn, zs[i]); mx = Math.max(mx, zs[i]); }
-    const sc = 52 / (mx - mn); // 高低差 約52m
+    const sc = def.elevation.range ? def.elevation.range / (mx - mn) : 1; // range 指定時はその高低差に正規化
     for (let i = 0; i < N; i++) T.z[i] = (zs[i] - mn) * sc;
     for (let i = 0; i < N; i++) T.slope[i] = (T.z[(i + 1) % N] - T.z[(i - 1 + N) % N]) / (2 * ds);
-    T.zMin = 0; T.zMax = 52;
+    T.zMin = 0; T.zMax = (mx - mn) * sc;
   }
 
   // --- 5) 立体交差の検出 ---
@@ -303,14 +274,15 @@ export function buildTrack() {
   }
   // ピットレーン区間の定義 (距離m)
   const P = T.pit = {
-    sEntry: 5222, sEntryEnd: 5330, sExitStart: 262, sExit: 372,
+    sEntry: def.pit.sEntry, sEntryEnd: def.pit.sEntryEnd, sExitStart: def.pit.sExitStart, sExit: def.pit.sExit,
+    garage: def.pit.garage, apron: def.pit.apron, paddock: def.pit.paddock,
     speedLimit: 80 / 3.6,
   };
   const inRange = (s, a, b) => (a <= b ? s >= a && s <= b : s >= a || s <= b);
   for (let i = 0; i < N; i++) {
     const s = i * ds;
     if (inRange(s, P.sEntry - 30, P.sExit + 20)) runR[i] = Math.min(runR[i], 1.4); // ピットウォール
-    if (inRange(s, 5560, 330)) runL[i] = Math.min(runL[i], 6); // グランドスタンド側
+    if (inRange(s, def.standWall[0], def.standWall[1])) runL[i] = Math.min(runL[i], 6); // グランドスタンド側
   }
   {
     const sl = smoothArr(runL, 5, 2), sr = smoothArr(runR, 5, 2);
@@ -341,7 +313,8 @@ export function buildTrack() {
     P.length = (T.length - P.sEntry) + P.sExit;
     P.boxOffset = 5.2; // レーン中心からピットボックス中心まで
     P.boxS = []; // チームごとの停止位置 s
-    for (let t = 0; t < 10; t++) P.boxS.push((5560 + t * 21) % T.length);
+    for (let t = 0; t < 10; t++) P.boxS.push((def.pit.boxStart + t * 21) % T.length);
+    P.inZone = (s, pad = 50) => inRange(s, T.wrapS(P.sEntry - pad), T.wrapS(P.sExit + pad));
     P.contains = s => inRange(s, P.sEntry, P.sExit);
   }
 
@@ -361,6 +334,7 @@ export function buildTrack() {
   for (let i = 0; i < N; i++) { mnx = Math.min(mnx, T.x[i]); mxx = Math.max(mxx, T.x[i]); mny = Math.min(mny, T.y[i]); mxy = Math.max(mxy, T.y[i]); }
   T.bbox = { minX: mnx, maxX: mxx, minY: mny, maxY: mxy };
 
+  T.fuelPerLap = 2.1 * LENGTH / 5807;   // 1周あたりの燃料消費の目安 [kg]
   attachQueries(T);
   return T;
 }
@@ -418,7 +392,7 @@ function attachQueries(T) {
     return arr[i] + (arr[i2] - arr[i]) * t;
   };
   T.sectionAt = s => {
-    for (const c of SECTIONS) if (s >= c.from && s < c.to) return c;
+    for (const c of T.def.sections) if (s >= c.from && s < c.to) return c;
     return null;
   };
   // 路面種別: 0=舗装 1=縁石 2=芝 3=グラベル

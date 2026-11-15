@@ -2,9 +2,11 @@
 import { buildTrack } from '../src/track.js';
 import { computeRacingLine, speedProfile } from '../src/ai.js';
 import { Session, fmtTime } from '../src/race.js';
-import { buildReference, TRAIN_SECTIONS } from '../src/trainer.js';
+import { buildReference } from '../src/trainer.js';
+import { TRACKS } from '../src/tracks.js';
 import { tyreBaseMu, totalMass } from '../src/physics.js';
-const T = buildTrack(), line = computeRacingLine(T), N = T.N;
+const T = buildTrack(TRACKS[process.env.TRACK || 'suzuka']), line = computeRacingLine(T), N = T.N;
+const TRAIN_SECTIONS = T.def.train;
 let t0 = performance.now();
 const ref = buildReference(T, line, { setup: 'mid', tyre: 'soft', wet: 0 });
 console.log('お手本ラップ', fmtTime(ref.lapTime), '生成', (performance.now() - t0).toFixed(0), 'ms', 'ghost', ref.pose.x.length);

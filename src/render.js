@@ -30,6 +30,12 @@ export class Renderer {
     this.buildSprites();
     this.assist = null;
   }
+  // サーキットを切り替える
+  setTrack(T, line) {
+    this.T = T; this.line = line; this._vis = null;
+    this.clearEffects(); this.assist = null; this.cam.init = false;
+    this.buildStatic();
+  }
 
   resize(w, h, dpr) {
     this.w = w; this.h = h; this.dpr = dpr;
@@ -111,11 +117,11 @@ export class Renderer {
     M.pitLane = this.stripPath(P.sEntry, P.sExit, s => P.dAt(s) - 3.4, s => P.dAt(s) + 3.4, 3);
     M.pitLineA = this.linePath(P.sEntry + 20, P.sExit - 20, s => P.dAt(s) - 3.2, 3);
     M.pitLineB = this.linePath(P.sEntryEnd, P.sExitStart, s => P.dAt(s) + 3.2, 3);
-    M.pitApron = this.stripPath(5540, 250, s => wr(s) + 1.4 + 9.5 + 3.4, s => wr(s) + 1.4 + 9.5 + 9.2, 6);
+    M.pitApron = this.stripPath(P.apron[0], P.apron[1], s => wr(s) + 1.4 + 9.5 + 3.4, s => wr(s) + 1.4 + 9.5 + 9.2, 6);
     M.pitWall = this.linePath(P.sEntryEnd - 30, P.sExitStart + 12, s => wr(s) + 1.4, 4);
-    M.garage = this.stripPath(5548, 236, s => wr(s) + 20.3, s => wr(s) + 36, 6);
-    M.garageRoof = this.stripPath(5548, 236, s => wr(s) + 22.5, s => wr(s) + 34.5, 6);
-    M.paddock = this.stripPath(5520, 262, s => wr(s) + 36, s => wr(s) + 78, 8);
+    M.garage = this.stripPath(P.garage[0], P.garage[1], s => wr(s) + 20.3, s => wr(s) + 36, 6);
+    M.garageRoof = this.stripPath(P.garage[0], P.garage[1], s => wr(s) + 22.5, s => wr(s) + 34.5, 6);
+    M.paddock = this.stripPath(P.paddock[0], P.paddock[1], s => wr(s) + 36, s => wr(s) + 78, 8);
     M.boxes = [];
     for (let t = 0; t < TEAMS.length; t++) {
       const s = P.boxS[t], d = P.dAt(s) + P.boxOffset;
@@ -143,7 +149,7 @@ export class Renderer {
     M.centerRef = this.PT(0, 0);
     // 距離看板 (ブレーキング目安)
     M.boards = [];
-    const brakeFor = [[395, -1], [2612, 1], [5078, -1], [3500, 1], [2010, -1], [4680, 1]];
+    const brakeFor = T.def.boards;
     for (const [sc, side] of brakeFor) for (const dist of [150, 100, 50]) {
       const s = T.wrapS(sc - dist), i = T.idx(s), d = side < 0 ? -(T.wl[i] + 2.4) : T.wr[i] + 2.4;
       T.pos(s, d, o); M.boards.push({ x: o.x, y: o.y, h: o.h, n: dist });
@@ -165,32 +171,28 @@ export class Renderer {
       const mid = this.PT(T.wrapS(s0 + len / 2), (f1(s0) + f2(s0)) / 2);
       add({ type: 'stand', x: mid.x, y: mid.y, r: len / 2 + depth + 20, body: this.stripPath(s0, s1, f1, f2, 6), rows, roof: this.stripPath(s0, s1, s => lerp(f1(s), f2(s), 0.62), f2, 6), col });
     };
-    stand(5575, 318, -1, 3.5, 26, '#6d7682');        // メイングランドスタンド
-    stand(392, 470, -1, 4, 13, '#77808b');           // 1コーナー
-    stand(520, 640, -1, 4, 13, '#77808b');           // 2コーナー
-    stand(1640, 1820, 1, 4, 11, '#7b8590');          // ダンロップ
-    stand(2625, 2700, 1, 4, 12, '#77808b');          // ヘアピン
-    stand(3580, 3740, 1, 4, 11, '#7b8590');          // スプーン
-    stand(4960, 5050, -1, 4, 12, '#77808b');         // シケイン手前
-    stand(5260, 5440, -1, 4, 14, '#6d7682');         // 最終コーナー
-    // 観覧車 (最終コーナー外側の遊園地)
-    { const p = this.PT(5380, -(wallL(5380) + 70)); add({ type: 'wheel', x: p.x, y: p.y, r: 60 }); }
-    // 遊園地の建物・テント
+    const def = T.def;
+    for (const st of def.stands) stand(...st);
+    // 遊園地 (観覧車と建物・テント)。ある場合のみ
     const rnd = mulberry(77);
-    for (let k = 0; k < 14; k++) {
-      const s = 5270 + rnd() * 260, d = -(wallL(s) + 40 + rnd() * 80);
-      const p = this.PT(T.wrapS(s), d);
-      add({ type: 'tent', x: p.x, y: p.y, r: 14, size: 5 + rnd() * 7, rot: rnd() * 3, col: ['#d94b4b', '#e8b33a', '#3d8fd9', '#f0f0f0', '#58b368'][k % 5] });
+    if (def.park) {
+      { const p = this.PT(def.park.wheel, -(wallL(def.park.wheel) + 70)); add({ type: 'wheel', x: p.x, y: p.y, r: 60 }); }
+      for (let k = 0; k < 14; k++) {
+        const s = def.park.from + rnd() * def.park.len, d = -(wallL(s) + 40 + rnd() * 80);
+        const p = this.PT(T.wrapS(s), d);
+        add({ type: 'tent', x: p.x, y: p.y, r: 14, size: 5 + rnd() * 7, rot: rnd() * 3, col: ['#d94b4b', '#e8b33a', '#3d8fd9', '#f0f0f0', '#58b368'][k % 5] });
+      }
     }
     // マーシャルポスト
     for (let s = 150; s < T.length; s += 260) {
       const i = T.idx(s), side = (Math.round(s / 260) & 1) ? 1 : -1;
       if (T.cross && (Math.abs(i - T.cross.lo) < 40 || Math.abs(i - T.cross.hi) < 40)) continue;
-      if (s > 5200 || s < 420) continue;
+      if (T.pit.inZone(s, 60)) continue;
       const d = side < 0 ? -(T.wallL[i] + 2.2) : T.wallR[i] + 2.2;
       T.pos(s, d, o); add({ type: 'post', x: o.x, y: o.y, r: 6, h: o.h });
     }
     // 樹木
+    const sw = T.def.standWall, inStandWall = s => (sw[0] <= sw[1] ? s >= sw[0] && s <= sw[1] : s >= sw[0] || s <= sw[1]);
     const bb = T.bbox, trees = this.trees = [], G = 120;
     this.treeGrid = new Map();
     const noise = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
@@ -214,8 +216,8 @@ export class Renderer {
           const lim = dd > 0 ? T.wallR[i] : T.wallL[i];
           const s = i * T.ds;
           let extra = 5 + size;
-          if (s > 5180 || s < 420) extra = dd > 0 ? 90 : 48;           // ピット/メインスタンド
-          if (s > 5200 && s < 5560 && dd < 0) extra = 190;             // 遊園地
+          if (T.pit.inZone(s, 60) || inStandWall(s)) extra = dd > 0 ? 90 : 48;   // ピット/メインスタンド
+          if (T.def.park && s > T.def.park.clear[0] && s < T.def.park.clear[1] && dd < 0) extra = 190;   // 遊園地
           if (Math.abs(dd) < lim + extra) { ok = false; break; }
         }
       }
@@ -503,7 +505,7 @@ export class Renderer {
 
     // --- 車両 (下段) ---
     const cr = T.cross;
-    const onBridge = c => cr && Math.abs(T.sDiff(c.s, cr.sHi)) < 44;
+    const onBridge = c => !!cr && Math.abs(T.sDiff(c.s, cr.sHi)) < 44;
     const cars = session.entries;
     const pl = session.player;
     const drawCars = (upper) => {

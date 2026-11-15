@@ -1,5 +1,8 @@
 // 設定・記録・ゴーストの保存 (localStorage)
+import { trackSuffix } from './tracks.js';
 const KEY = 'okracing.v1';
+// 記録・予選結果・ゴースト・練習のベストはサーキットごとに分けて保存する (鈴鹿は従来のキーのまま)
+const K = name => name + trackSuffix();
 
 export const DEFAULT_SETTINGS = {
   pedalSwap: false,       // false: 左=アクセル 右=ブレーキ / true: 逆
@@ -28,11 +31,11 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (
 export const Store = {
   settings() { return Object.assign({}, DEFAULT_SETTINGS, db.settings || {}); },
   saveSettings(s) { db.settings = s; save(); },
-  last() { return Object.assign({ setup: 'mid', tyre: 'soft', weather: 'dry', laps: 5, gridMode: 'quali', trainSec: 1 }, db.last || {}); },
-  trainBest() { return db.trainBest || (db.trainBest = {}); },
+  last() { return Object.assign({ track: 'suzuka', setup: 'mid', tyre: 'soft', weather: 'dry', laps: 5, gridMode: 'quali', trainSec: 1 }, db.last || {}); },
+  trainBest() { return db[K('trainBest')] || (db[K('trainBest')] = {}); },
   addTrainBest(id, r) { const B = this.trainBest(); if (!B[id] || r.score > B[id].score) { B[id] = { score: r.score, stars: r.stars, delta: r.delta }; save(); return true; } return false; },
   saveLast(l) { db.last = l; save(); },
-  records() { return db.records || (db.records = { laps: [], best: {}, sectors: {}, races: [] }); },
+  records() { return db[K('records')] || (db[K('records')] = { laps: [], best: {}, sectors: {}, races: [] }); },
   // ラップ記録を追加。新記録なら true
   addLap(rec) {
     const R = this.records(), cls = rec.wet ? 'wet' : 'dry';
@@ -48,9 +51,9 @@ export const Store = {
     return false;
   },
   addRace(r) { const R = this.records(); R.races.unshift(r); if (R.races.length > 12) R.races.length = 12; save(); },
-  quali() { return db.quali || null; },
-  saveQuali(q) { db.quali = q; save(); },
-  clearRecords() { db.records = { laps: [], best: {}, sectors: {}, races: [] }; db.quali = null; db.trainBest = {}; try { localStorage.removeItem(KEY + '.ghost.dry'); localStorage.removeItem(KEY + '.ghost.wet'); } catch (e) { /* 無視 */ } save(); },
+  quali() { return db[K('quali')] || null; },
+  saveQuali(q) { db[K('quali')] = q; save(); },
+  clearRecords() { db[K('records')] = { laps: [], best: {}, sectors: {}, races: [] }; db[K('quali')] = null; db[K('trainBest')] = {}; try { localStorage.removeItem(KEY + K('.ghost') + '.dry'); localStorage.removeItem(KEY + K('.ghost') + '.wet'); } catch (e) { /* 無視 */ } save(); },
 
   // ---- ゴースト ----
   saveGhost(g, wet) {
@@ -58,12 +61,12 @@ export const Store = {
       const n = g.x.length, a = new Int16Array(n * 3);
       for (let i = 0; i < n; i++) { a[i * 3] = Math.round(g.x[i] * 8); a[i * 3 + 1] = Math.round(g.y[i] * 8); a[i * 3 + 2] = Math.round(Math.atan2(Math.sin(g.h[i]), Math.cos(g.h[i])) * 10000); }
       const u8 = new Uint8Array(a.buffer); let bin = ''; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
-      localStorage.setItem(KEY + '.ghost.' + (wet ? 'wet' : 'dry'), JSON.stringify({ lap: g.lap, dt: g.dt, n, data: btoa(bin), trace: (g.trace || []).map(v => Math.round(v * 1000) / 1000) }));
+      localStorage.setItem(KEY + K('.ghost') + '.' + (wet ? 'wet' : 'dry'), JSON.stringify({ lap: g.lap, dt: g.dt, n, data: btoa(bin), trace: (g.trace || []).map(v => Math.round(v * 1000) / 1000) }));
     } catch (e) { /* 無視 */ }
   },
   loadGhost(wet) {
     try {
-      const raw = localStorage.getItem(KEY + '.ghost.' + (wet ? 'wet' : 'dry')); if (!raw) return null;
+      const raw = localStorage.getItem(KEY + K('.ghost') + '.' + (wet ? 'wet' : 'dry')); if (!raw) return null;
       const o = JSON.parse(raw), bin = atob(o.data), u8 = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const a = new Int16Array(u8.buffer), x = [], y = [], h = [];

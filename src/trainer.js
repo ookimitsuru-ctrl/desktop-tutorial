@@ -11,23 +11,14 @@ const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const KMH = 3.6;
 
-// 練習区間 (n0〜n1 はコントロールラインからの距離[m]。ブレーキ開始点はお手本から自動で検出する)
-export const TRAIN_SECTIONS = [
-  { id: 'lap', name: 'ラップ全体', short: '全周' },
-  { id: 'c12', name: '1〜2コーナー', short: '1-2', n0: 300, n1: 700 },
-  { id: 'esses', name: 'S字・逆バンク', short: 'S字', n0: 760, n1: 1400 },
-  { id: 'dunlop', name: 'ダンロップ', short: 'ダンロップ', n0: 1400, n1: 1960 },
-  { id: 'degner', name: 'デグナー', short: 'デグナー', n0: 1960, n1: 2330 },
-  { id: 'hairpin', name: 'ヘアピン', short: 'ヘアピン', n0: 2400, n1: 2820 },
-  { id: 'spoon', name: '200R〜スプーン', short: 'スプーン', n0: 2900, n1: 3950 },
-  { id: 'chicane', name: '130R・シケイン', short: 'シケイン', n0: 4560, n1: 5300 },
-  { id: 'final', name: '最終コーナー', short: '最終', n0: 5300, n1: 5650 },
-];
+// 練習区間はサーキット定義 (src/tracks.js の train) にある。n0〜n1 はコントロールラインからの距離[m]で、
+// ブレーキ開始点はお手本から自動で検出する。
+export const trainSections = T => T.def.train;
 
 // ---------------------------------------------------------------- お手本ラップ
 const refCache = new Map();
 export function buildReference(T, line, { setup = 'mid', tyre = 'soft', wet = 0 } = {}) {
-  const key = `${setup}|${tyre}|${Math.round(wet * 20)}`;
+  const key = `${T.id}|${setup}|${tyre}|${Math.round(wet * 20)}`;
   if (refCache.has(key)) return refCache.get(key);
   const N = T.N, L = T.length, ds = T.ds;
   const car = createCar({ setup, tyre }); car.fuel = 14; fitTyres(car, tyre);
@@ -129,22 +120,23 @@ export const stars = (dT, len) => {
 export class Trainer {
   constructor(session, ref, secIdx = 0) {
     this.S = session; this.T = session.T; this.line = session.line;
-    this.ref = ref; this.secIdx = clamp(secIdx | 0, 0, TRAIN_SECTIONS.length - 1);
+    this.secs = trainSections(this.T);
+    this.ref = ref; this.secIdx = clamp(secIdx | 0, 0, this.secs.length - 1);
     this.N = this.T.N;
     this.pT = new Float32Array(this.N); this.pV = new Float32Array(this.N); this.pThr = new Float32Array(this.N); this.pBrk = new Float32Array(this.N);
     this.pGear = new Uint8Array(this.N); this.pLock = new Uint8Array(this.N); this.pSpin = new Uint8Array(this.N); this.pOff = new Uint8Array(this.N); this.pVis = new Uint8Array(this.N);
-    this.prepared = TRAIN_SECTIONS.map(sec => prepareSection(this.T, ref, sec));
+    this.prepared = this.secs.map(sec => prepareSection(this.T, ref, sec));
     this.cue = null; this.cueCd = {}; this.zoneShown = new Set(); this.zoneDone = new Set();
     this.runs = 0; this.lastReport = null; this.report = null; this.done = false; this.lastRunTime = null;
     this.target = { speed: 0, gear: 1, gearNow: 1, dv: 0, thr: 0, brk: 0, delta: 0, gearState: 'ok', nextBrake: null };
     this.gearWrongT = 0;
   }
-  get sec() { return TRAIN_SECTIONS[this.secIdx]; }
+  get sec() { return this.secs[this.secIdx]; }
   get prep() { return this.prepared[this.secIdx]; }
   get isLap() { return !this.sec.n0; }
 
-  setReference(ref) { this.ref = ref; this.prepared = TRAIN_SECTIONS.map(sec => prepareSection(this.T, ref, sec)); }
-  setSection(idx) { this.secIdx = clamp(idx | 0, 0, TRAIN_SECTIONS.length - 1); }
+  setReference(ref) { this.ref = ref; this.prepared = this.secs.map(sec => prepareSection(this.T, ref, sec)); }
+  setSection(idx) { this.secIdx = clamp(idx | 0, 0, this.secs.length - 1); }
 
   // 走行の開始(やり直し): 区間の手前へ、お手本と同じ速度・ギヤで配置する
   begin() {
