@@ -548,10 +548,6 @@ export class Renderer {
 
   drawOneCar(ctx, e) {
     const c = e.car;
-    ctx.save(); ctx.translate(c.x + 0.35, c.y + 0.5); ctx.rotate(c.yaw);
-    ctx.fillStyle = 'rgba(0,0,0,0.30)';
-    ctx.beginPath(); ctx.ellipse(0.1, 0, 2.35, 1.12, 0, 0, TAU); ctx.fill();
-    ctx.restore();
     drawCar(ctx, c, e.team, { number: e.d.no, tyreColor: c.tyre.color });
   }
 

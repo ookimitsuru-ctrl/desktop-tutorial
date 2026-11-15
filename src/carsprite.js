@@ -58,16 +58,16 @@ export function carSprite(team, opts = {}) {
   // --- サイドポンツーン (細長い) ---
   const pod = sgn => {
     g.beginPath();
-    g.moveTo(0.95, sgn * 0.34); g.lineTo(1.0, sgn * 0.5); g.quadraticCurveTo(0.3, sgn * 0.58, -0.7, sgn * 0.5);
-    g.quadraticCurveTo(-1.2, sgn * 0.42, -1.5, sgn * 0.22); g.lineTo(-0.9, sgn * 0.28); g.closePath();
+    g.moveTo(0.95, sgn * 0.34); g.lineTo(1.0, sgn * 0.7); g.quadraticCurveTo(0.3, sgn * 0.75, -0.45, sgn * 0.72);
+    g.quadraticCurveTo(-0.9, sgn * 0.64, -1.5, sgn * 0.22); g.lineTo(-0.9, sgn * 0.28); g.closePath();
   };
   for (const sg of [1, -1]) {
     g.fillStyle = c1; pod(sg); g.fill();
     // ラジエター吸気口
-    g.fillStyle = '#0c0d0f'; g.beginPath(); g.moveTo(1.0, sg * 0.36); g.lineTo(1.0, sg * 0.5); g.lineTo(0.86, sg * 0.49); g.lineTo(0.86, sg * 0.38); g.closePath(); g.fill();
+    g.fillStyle = '#0c0d0f'; g.beginPath(); g.moveTo(1.0, sg * 0.36); g.lineTo(1.0, sg * 0.69); g.lineTo(0.86, sg * 0.68); g.lineTo(0.86, sg * 0.38); g.closePath(); g.fill();
     // ストライプ
-    g.fillStyle = c2; g.beginPath(); g.moveTo(0.6, sg * 0.43); g.lineTo(-0.7, sg * 0.41); g.lineTo(-0.85, sg * 0.48); g.lineTo(0.55, sg * 0.55); g.closePath(); g.fill();
-    g.fillStyle = c3; g.fillRect(-0.6, sg > 0 ? 0.36 : -0.4, 1.1, 0.04);
+    g.fillStyle = c2; g.beginPath(); g.moveTo(0.6, sg * 0.57); g.lineTo(-0.45, sg * 0.55); g.lineTo(-0.58, sg * 0.67); g.lineTo(0.55, sg * 0.71); g.closePath(); g.fill();
+    g.fillStyle = c3; g.fillRect(-0.42, sg > 0 ? 0.49 : -0.53, 0.98, 0.04);
   }
 
   // --- モノコック / ノーズ (低いノーズ) ---
@@ -116,10 +116,10 @@ export function carSprite(team, opts = {}) {
   // --- フロントウイング (幅広) ---
   if (!opts.noFront) {
     g.fillStyle = shade(c2, -0.1);
-    g.beginPath(); g.moveTo(2.44, 0.1); g.lineTo(2.44, 0.98); g.lineTo(2.02, 0.98); g.lineTo(2.08, 0.12); g.closePath(); g.fill();
-    g.beginPath(); g.moveTo(2.44, -0.1); g.lineTo(2.44, -0.98); g.lineTo(2.02, -0.98); g.lineTo(2.08, -0.12); g.closePath(); g.fill();
-    g.fillStyle = shade(c2, 0.2); g.fillRect(2.28, 0.12, 0.14, 0.86); g.fillRect(2.28, -0.98, 0.14, 0.86);
-    g.fillStyle = c1; g.fillRect(1.98, 0.98, 0.5, 0.06); g.fillRect(1.98, -1.04, 0.5, 0.06); // 翼端板
+    g.beginPath(); g.moveTo(2.44, 0.1); g.lineTo(2.44, 0.67); g.lineTo(2.02, 0.67); g.lineTo(2.08, 0.12); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(2.44, -0.1); g.lineTo(2.44, -0.67); g.lineTo(2.02, -0.67); g.lineTo(2.08, -0.12); g.closePath(); g.fill();
+    g.fillStyle = shade(c2, 0.2); g.fillRect(2.28, 0.12, 0.14, 0.54); g.fillRect(2.28, -0.66, 0.14, 0.54);
+    g.fillStyle = c1; g.fillRect(1.98, 0.67, 0.5, 0.055); g.fillRect(1.98, -0.725, 0.5, 0.055); // 翼端板
   }
 
   if (opts.ghost) {
@@ -134,7 +134,7 @@ export function carSprite(team, opts = {}) {
 // タイヤ位置 [x, y, 長さ, 幅, 操舵するか]
 export const WHEELS = [
   [CAR.a, -0.9, 0.68, 0.34, 1], [CAR.a, 0.9, 0.68, 0.34, 1],
-  [-CAR.b, -0.86, 0.78, 0.54, 0], [-CAR.b, 0.86, 0.78, 0.54, 0],
+  [-CAR.b, -0.86, 0.72, 0.48, 0], [-CAR.b, 0.86, 0.72, 0.48, 0],
 ];
 
 // ctx はワールド座標系(1=1m)に変換済みであること
@@ -170,7 +170,6 @@ export function drawCarShowcase(canvas, team, number) {
   g.clearRect(0, 0, W, H);
   const sc = Math.min(W / 5.4, H / 3.0);
   g.save(); g.translate(W / 2, H / 2); g.scale(sc, sc);
-  g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(0.05, 0.1, 2.35, 0.95, 0, 0, 6.3); g.fill();
   drawCar(g, { x: 0, y: 0, yaw: 0, delta: 0, dmgF: 0, dmgR: 0 }, team, { number });
   g.restore();
 }
