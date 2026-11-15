@@ -61,8 +61,8 @@ export class UI {
   // ---------------- 画面 ----------------
   title() {
     return `<div class="title">
-      <div class="logo"><span class="ok">OK</span><span class="racing">RACING</span></div>
-      <div class="tag">SUZUKA CIRCUIT &nbsp;·&nbsp; F1 SIMULATOR &nbsp;·&nbsp; OK-90</div>
+      <div class="logo"><span class="ok">Formula</span><span class="racing">simulator</span></div>
+      <div class="tag">SUZUKA CIRCUIT &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90</div>
       <canvas class="showcase"></canvas>
       <button class="big" data-act="start">TAP TO START</button>
       <div class="foot">操作はアクセル・ブレーキ・シフトだけ — ステアリングは自動</div>
@@ -72,7 +72,7 @@ export class UI {
     const bd = Store.bestLap(false), bw = Store.bestLap(true), q = Store.quali();
     const card = id => `<button class="card" data-act="mode" data-arg="${id}"><em>${MODES[id].en}</em><b>${MODES[id].name}</b><span>${MODES[id].desc}</span></button>`;
     return `<div class="panel wide">
-      <header><div class="logo sm"><span class="ok">OK</span><span class="racing">RACING</span></div>
+      <header><div class="logo sm"><span class="ok">Formula</span><span class="racing">simulator</span></div>
         <div class="best">ベストラップ <b>${fmtTime(bd?.time)}</b>${bw ? ` &nbsp; ウェット <b>${fmtTime(bw.time)}</b>` : ''}${q ? ` &nbsp; 予選 <b>P${q.pos}</b>` : ''}</div></header>
       <div class="cards">${card('free')}${card('train')}${card('ta')}${card('quali')}${card('race')}</div>
       <footer><button data-act="open" data-arg="settings">設定</button><button data-act="open" data-arg="howto">操作説明</button><button data-act="open" data-arg="records">記録</button><button data-act="open" data-arg="credits">クレジット</button></footer>
@@ -159,7 +159,7 @@ export class UI {
     return `<div class="panel wide">
       <header><button class="back" data-act="back">‹ 戻る</button><h2>クレジット<em>CREDITS</em></h2><span></span></header>
       <div class="scroll credits">
-        <p><b>OK RACING</b> — 鈴鹿サーキットを舞台にした見下ろし型F1レーシングシミュレーター。チーム「OK RACING」、マシン「OK-90」および登場するチーム名・ドライバー名はすべて架空のものです。</p>
+        <p><b>Formula simulator</b> — 鈴鹿サーキットを舞台にした見下ろし型F1レーシングシミュレーター。チーム「OK RACING」、マシン「OK-90」および登場するチーム名・ドライバー名はすべて架空のものです。</p>
         <p><b>コースデータ</b><br>コース中心線と幅員: TUMFTM racetrack-database (LGPL-3.0) — https://github.com/TUMFTM/racetrack-database<br>中心線の原データ: © OpenStreetMap contributors (ODbL)<br>全長を 5,807m に正規化し、高低差 (約52m)・立体交差・ピットレーン・縁石・ランオフを追加しています。</p>
         <p>本作は鈴鹿サーキットおよびいかなる実在のレース主催者・チームとも関係ありません。</p>
       </div></div>`;

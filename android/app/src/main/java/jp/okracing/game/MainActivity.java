@@ -14,7 +14,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-/** OK RACING: 同梱した HTML5 ゲーム (assets/index.html) を全画面の WebView で実行する。 */
+/** Formula simulator: 同梱した HTML5 ゲーム (assets/index.html) を全画面の WebView で実行する。 */
 public class MainActivity extends Activity {
     private WebView web;
 

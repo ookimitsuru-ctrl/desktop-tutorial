@@ -1,4 +1,4 @@
-// OK RACING エントリーポイント
+// Formula simulator エントリーポイント
 import { buildTrack } from './track.js';
 import { computeRacingLine, speedProfile, Driver } from './ai.js';
 import { Session, DRIVERS, fmtTime, estimateQualiTime, TEAMS, WEATHERS } from './race.js';

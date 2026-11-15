@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "OK RACING - 見下ろし型F1レーシングシミュレーター (鈴鹿サーキット)",
+  "description": "Formula simulator - 見下ろし型F1レーシングシミュレーター (鈴鹿サーキット)",
   "scripts": {
     "dev": "node tools/serve.mjs",
     "build": "node tools/build.mjs",

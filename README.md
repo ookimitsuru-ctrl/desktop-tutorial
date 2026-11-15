@@ -1,7 +1,7 @@
-# OK RACING
+# Formula simulator
 
 鈴鹿サーキットを舞台にした、Android 向け見下ろし型 F1 レーシングシミュレーター。
-1990年前後の F1 をイメージした架空チーム「OK RACING」のマシン **OK-90** を操縦します。
+1990年前後の F1 をイメージした架空チーム「OK RACING」のマシン **OK-90** を操縦します。(ゲームのタイトルは Formula simulator、「OK RACING」は作中の架空チーム名です)
 
 - **ハンドル操作なし。** プレイヤーが操作するのはアクセル・ブレーキ・シフトだけで、ステアリングは端末が自動で行う
 - 速く走れるか・抜けるかは、アクセルワークとブレーキングのタイミング次第
@@ -13,7 +13,7 @@
 
 | 方法 | 手順 |
 |---|---|
-| **Android (APK)** | `release/OKRacing-1.1.0-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
+| **Android (APK)** | `release/FormulaSimulator-1.1.1-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
 | **ブラウザ** | `npm run dev` → `http://localhost:8080/` を開く。HTTPS で公開すればホーム画面に追加(PWA)も可能 |
 | **単体HTML** | `npm run build` で作られる `dist/index.html` 1ファイルだけで動作 |
 
