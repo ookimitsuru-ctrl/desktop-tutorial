@@ -226,7 +226,7 @@ export class Hud {
 
   // アクセル/ブレーキ兼用の横スライドパッド: 中央より左がアクセル、右がブレーキ
   drawPedal(ctx, r, input, cfg, c, u) {
-    const swap = !!cfg.pedalSwap;
+    const swap = cfg.pedalAccelRight !== false;   // true: 右=アクセル / 左=ブレーキ (標準)
     const thr = input.throttle, brk = input.brake;
     const GREEN = '#35d07f', RED = '#ff4a3d';
     const mid = r.x + r.w / 2, dead = r.w * PEDAL_DEAD, edge = r.w * PEDAL_EDGE, span = r.w / 2 - dead - edge;

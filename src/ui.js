@@ -114,7 +114,7 @@ export class UI {
       <div class="scroll">
         <div class="note">ステアリングは端末が自動で行います。操作するのはアクセル・ブレーキ・シフトだけです。</div>
         <h3>ペダルパッド (左下)</h3>
-        ${this.seg('set', 'pedalSwap', s.pedalSwap, [{ v: false, label: '左 アクセル / 右 ブレーキ (標準)', sub: '中央から離すほど強くなる' }, { v: true, label: '左 ブレーキ / 右 アクセル' }])}
+        ${this.seg('set', 'pedalAccelRight', s.pedalAccelRight, [{ v: true, label: '右 アクセル / 左 ブレーキ (標準)', sub: '中央から離すほど強くなる' }, { v: false, label: '左 アクセル / 右 ブレーキ' }])}
         <h3>指を離したとき</h3>
         ${this.seg('set', 'pedalRelease', s.pedalRelease, [{ v: 'zero', label: 'ゼロに戻す (標準)' }, { v: 'hold', label: '直前の入力を保持' }])}
         <h3>カメラ</h3>
@@ -134,8 +134,8 @@ export class UI {
       <header><button class="back" data-act="back">‹ 戻る</button><h2>操作説明<em>HOW TO DRIVE</em></h2><span></span></header>
       <div class="scroll howto">
         <div class="how"><b class="k str">AUTO</b><p><strong>ステアリングは自動</strong><br>ハンドル操作はありません。マシンは理想の走行ラインを自動でたどり、前の車に追いつくと空いている側へ自動で並びかけます。速く走れるか・抜けるかは、アクセルとブレーキのタイミング次第です。</p></div>
-        <div class="how"><b class="k acc">ACCEL</b><p><strong>アクセル (左下パッドの左半分)</strong><br>パッドの中央がニュートラル。中央から左へスライドするほど開度が上がります (0〜100%)。低いギアで全開にすると後輪が空転します。じわっと開けるのがコツ。</p></div>
-        <div class="how"><b class="k brk">BRAKE</b><p><strong>ブレーキ (左下パッドの右半分)</strong><br>中央から右へスライドするほど強く効きます。ABSは無いので、速度が落ちてダウンフォースが減ったら踏力を抜かないとタイヤがロックします。速度が高すぎるとコーナーを曲がり切れません。</p></div>
+        <div class="how"><b class="k acc">ACCEL</b><p><strong>アクセル (左下パッドの右半分)</strong><br>パッドの中央がニュートラル。中央から右へスライドするほど開度が上がります (0〜100%)。低いギアで全開にすると後輪が空転します。じわっと開けるのがコツ。</p></div>
+        <div class="how"><b class="k brk">BRAKE</b><p><strong>ブレーキ (左下パッドの左半分)</strong><br>中央から左へスライドするほど強く効きます。ABSは無いので、速度が落ちてダウンフォースが減ったら踏力を抜かないとタイヤがロックします。速度が高すぎるとコーナーを曲がり切れません。</p></div>
         <div class="how"><b class="k pad">▼ ▲</b><p><strong>6速パドルシフト (右下)</strong><br>左が DOWN、右が UP。回転ランプが青く点滅したらシフトアップ。回転が高すぎるシフトダウンは受け付けません。停止中に1速から DOWN でリバース。</p></div>
         <div class="how"><b class="k line">PASS</b><p><strong>追い越し</strong><br>コーナーの立ち上がりで早くアクセルを開けて直線で並ぶ、スリップストリームに入る、ブレーキングを遅らせてインに飛び込む — タイミングが良ければ抜けます。</p></div>
         <div class="how"><b class="k tr">TRAIN</b><p><strong>トレーニングモード</strong><br>練習したい区間を選ぶと、その少し手前からお手本と同じ速度でスタート。半透明の<span style="color:#7fd6ff">お手本ゴースト</span>が理想のラインと速度で先行し、左の<strong>目標パネル</strong>に、いまの位置でのお手本の速度と<strong>最適ギヤ</strong>が大きく出ます。トレーナーがブレーキ開始点やアクセルのタイミングをその場で声かけし、区間を走り終えるとお手本との差(★1〜5)と改善点を講評。「自動リピート」で何度でも続けて挑戦できます。</p></div>

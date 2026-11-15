@@ -5,7 +5,7 @@ const KEY = 'okracing.v1';
 const K = name => name + trackSuffix();
 
 export const DEFAULT_SETTINGS = {
-  pedalSwap: false,       // false: 左=アクセル 右=ブレーキ / true: 逆
+  pedalAccelRight: true,  // true: 右=アクセル 左=ブレーキ (標準) / false: 逆
   pedalRelease: 'zero',   // zero: 指を離すと0 / hold: 保持
   autoShift: false,
   assist: false,          // TC + ABS (初心者向け)

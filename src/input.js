@@ -14,7 +14,7 @@ export function computeLayout(w, h, cfg = {}, safe = { l: 0, r: 0, t: 0, b: 0 })
   const ml = m + safe.l, mr = m + safe.r, mb = m + safe.b, mt = m + safe.t;
   const padW = clamp(w * 0.40, 230, 430), padH = clamp(h * 0.21, 62, 96);
   const padY = h - mb - padH;
-  const pedal = { x: ml, y: padY, w: padW, h: padH };
+  const pedal = { x: safe.l, y: padY, w: padW, h: padH };   // 左端いっぱい
   const gap = Math.max(8, w * 0.012);
   const pw = clamp(w * 0.145, 92, 160), ph = clamp(h * 0.3, 84, 132);
   const shiftUp = { x: w - mr - pw, y: h - mb - ph, w: pw, h: ph };
@@ -23,7 +23,7 @@ export function computeLayout(w, h, cfg = {}, safe = { l: 0, r: 0, t: 0, b: 0 })
   const L = {
     w, h, m, safe, pedal, shiftUp, shiftDown,
     // タッチ判定域 (パッドは上下・外側へ広げる)
-    pedalZone: { x: 0, y: padY - padH * 0.45, w: ml + padW + 16, h: h - padY + padH * 0.45 },
+    pedalZone: { x: 0, y: padY - padH * 0.45, w: pedal.x + padW + 16, h: h - padY + padH * 0.45 },
     pause: { x: ml, y: mt, w: bs, h: bs },
     pit: { x: ml + bs + 8, y: mt, w: bs * 1.7, h: bs },
     reset: { x: ml + bs * 2.7 + 16, y: mt, w: bs * 1.5, h: bs },
@@ -116,7 +116,8 @@ export class Input {
     let pp = null;
     for (const q of this.pointers.values()) if (q.role === 'pedal') pp = q;
     const hold = cfg.pedalRelease === 'hold';
-    if (pp) this.pedal = this.pedalFromX(pp.x) * (cfg.pedalSwap ? -1 : 1);
+    // 標準は 右=アクセル / 左=ブレーキ (pedal は負がアクセル側)
+    if (pp) this.pedal = this.pedalFromX(pp.x) * (cfg.pedalAccelRight !== false ? -1 : 1);
     else if (!hold) this.pedal = 0;
     let thr = this.pedal < 0 ? -this.pedal : 0, brk = this.pedal > 0 ? this.pedal : 0;
 
