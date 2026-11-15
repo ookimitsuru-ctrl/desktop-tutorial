@@ -12,7 +12,7 @@ export const PEDAL_EDGE = 0.04;   // 端の余白 (ここまで動かせば100%)
 export function computeLayout(w, h, cfg = {}, safe = { l: 0, r: 0, t: 0, b: 0 }) {
   const m = Math.max(8, Math.round(h * 0.022));
   const ml = m + safe.l, mr = m + safe.r, mb = m + safe.b, mt = m + safe.t;
-  const padW = clamp(w * 0.40, 230, 430), padH = clamp(h * 0.21, 62, 96);
+  const padW = clamp(w * 0.40, 230, 430) * 0.9, padH = clamp(h * 0.21, 62, 96);
   const padY = h - mb - padH;
   const pedal = { x: safe.l, y: padY, w: padW, h: padH };   // 左端いっぱい
   const gap = Math.max(8, w * 0.012);
