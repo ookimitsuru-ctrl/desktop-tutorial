@@ -82,6 +82,14 @@ export function tyreBaseMu(ty, wet) {
   return ty.mu + (ty.muWet - ty.mu) * w;
 }
 
+// コース専用の空力仕様 (例: スーパースピードウェイ用の薄いウイングと長いギヤ比) をセッティングに掛ける
+export function trimSetup(setup, trim) {
+  if (!trim) return setup;
+  // spread: セッティング間の差をどれだけ残すか (1=そのまま)。薄いウイングでは差を縮めないと高速寄りが走れなくなる
+  const ref = SETUPS.mid, sp = trim.spread ?? 1, k = (v, r) => r * Math.pow(v / r, sp);
+  return Object.assign({}, setup, { cla: k(setup.cla, ref.cla) * trim.cl, cda: k(setup.cda, ref.cda) * trim.cd, final: k(setup.final, ref.final) * trim.final });
+}
+
 export function createCar(opts = {}) {
   const car = {
     id: opts.id || 0,
@@ -89,7 +97,7 @@ export function createCar(opts = {}) {
     wF: 0, wR: 0, gear: 1, shiftT: 0, nextGear: 1, rpm: CAR.idle,
     throttle: 0, brake: 0, steerIn: 0, delta: 0,
     fuel: 10,
-    setup: SETUPS[opts.setup || 'mid'],
+    setup: trimSetup(SETUPS[opts.setup || 'mid'], opts.trim),
     tyre: TYRES[opts.tyre || 'medium'],
     tempF: 75, tempR: 75, wearF: 0, wearR: 0,
     dmgF: 0, dmgR: 0, dmgS: 0, pull: 0, retired: false,
@@ -218,7 +226,9 @@ export function stepCar(car, dt, env) {
   // --- 輪荷重 ---
   const slope = T.slope[ci];
   const zdd = (T.slope[(ci + 3) % T.N] - T.slope[(ci - 3 + T.N) % T.N]) / (6 * T.ds);
-  const gEff = G + clamp(car.vx * car.vx * zdd, -3, 3);
+  // バンク: 路面が内側へ傾いている分、重力が内向きに働き、遠心力の一部が路面を押す力になる
+  const sinB = T.bank ? Math.sin(T.bank[ci]) : 0;
+  const gEff = G + clamp(car.vx * car.vx * zdd, -3, 3) + car.vx * car.vx * T.curv[ci] * sinB;
   const trans = m * car.ax * CAR.cgh / L;
   let fzF = Math.max(50, m * gEff * b / L + dfF - trans);
   let fzR = Math.max(50, m * gEff * a / L + dfR + trans);
@@ -322,8 +332,9 @@ export function stepCar(car, dt, env) {
   const vsgn = Math.abs(car.vx) > 0.3 ? Math.sign(car.vx) : car.vx / 0.3;
   const hx = T.tx[ci], hy = T.ty[ci];
   const gx = -m * G * slope * (cosr * hx + sinr * hy), gy = -m * G * slope * (-sinr * hx + cosr * hy);
-  let Fx = FxF * cd - FyF * sd + FxR - drag - rollRes * vsgn + gx;
-  let Fy = FxF * sd + FyF * cd + FyR + gy;
+  const bkF = m * G * sinB, bnx = T.nx[ci], bny = T.ny[ci];   // バンクによる内向きの力 (コースの右向き法線が正)
+  let Fx = FxF * cd - FyF * sd + FxR - drag - rollRes * vsgn + gx + bkF * (cosr * bnx + sinr * bny);
+  let Fy = FxF * sd + FyF * cd + FyR + gy + bkF * (-sinr * bnx + cosr * bny);
   // 路面による横方向の引きずり抵抗 (グラベル/芝で横滑りも減速)
   if (car.offCount) Fy -= clamp(car.vy, -1, 1) * rollRes * 0.8;
   // 左右で路面が異なる時のヨーモーメント

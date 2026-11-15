@@ -114,12 +114,12 @@ check('プレイヤーが3周を完走', !!S.results.find(r => r.player && r.lap
   check('インディ: 反時計回りの1周 (総旋回角 ≒ -360°)', Math.abs(it + 2 * Math.PI) < 0.1, (it * 180 / Math.PI).toFixed(1));
   check('インディ: ターン半径 ≒ 256m', 1 / kmax > 245 && 1 / kmax < 265, (1 / kmax).toFixed(0));
   check('インディ: ピットレーンは左側 (内側)', I.pit.side === -1 && I.pit.dAt(3700) < -(I.wl[I.idx(3700)] + 5), I.pit.dAt(3700).toFixed(1));
-  const car = createCar({ setup: 'mid', tyre: 'soft' }); car.fuel = 12; fitTyres(car, 'soft');
+  const car = createCar({ setup: 'mid', tyre: 'soft', trim: I.def.aero }); car.fuel = 12; fitTyres(car, 'soft');
   const drv = new Driver(car, I, il, { skill: 1 }); drv.errT = 1e9;
   placeCar(car, I, I.length - 470, il.off[I.idx(I.length - 470)], 46);
   const env = { track: I, wet: 0, noFuel: true }; let t = 0, prev = car.s, st = -1, best = 1e9, n = 0, off = 0;
   while (n < 2 && t < 300) { drv.update(1 / 60, 0, null, null); for (let k = 0; k < 4; k++) { stepCar(car, 1 / 240, env); t += 1 / 240; if (prev > I.length - 50 && car.s < 50) { if (st >= 0) { best = Math.min(best, t - st); n++; } st = t; } prev = car.s; } if (car.offCount >= 3) off++; }
-  check('インディ: AIがコースアウトせず周回 (44〜52秒)', best > 44 && best < 52 && off === 0, best.toFixed(2));
+  check('インディ: AIがコースアウトせず周回 (38〜43秒)', best > 38 && best < 43 && off === 0, best.toFixed(2));
   const g2 = DRIVERS.map((_, i) => i); g2.splice(0, 1); g2.splice(9, 0, 0);
   const S2 = new Session(I, il, { mode: 'race', laps: 4, weather: 'dry', setup: 'mid', tyre: 'soft', difficulty: 'normal', damage: true, grid: g2 });
   const p2 = S2.player, d2 = new Driver(p2.car, I, il, { skill: 0.9 });
@@ -142,7 +142,7 @@ check('プレイヤーが3周を完走', !!S.results.find(r => r.player && r.lap
   const rf = buildReference(I, il, { setup: 'mid', tyre: 'soft', wet: 0 });
   const S4 = new Session(I, il, { mode: 'train', laps: 0, weather: 'dry', setup: 'mid', tyre: 'soft', difficulty: 'normal', damage: false, reference: rf, trainSection: 1 });
   for (let k = 0; k < 600; k++) { Object.assign(S4.playerInput, { throttle: 1, brake: 0 }); S4.tick(1 / 60); S4.events.length = 0; }
-  check('インディ: お手本ラップと練習区間 (全周+2区間)', rf.lapTime > 44 && rf.lapTime < 52 && I.def.train.length === 3 && S4.trainer.prepared.length === 3, `${rf.lapTime.toFixed(2)}s`);
+  check('インディ: お手本ラップと練習区間 (全周+2区間)', rf.lapTime > 38 && rf.lapTime < 43 && I.def.train.length === 3 && S4.trainer.prepared.length === 3, `${rf.lapTime.toFixed(2)}s`);
 }
 console.log(fail ? `\n${fail} 件失敗` : '\nすべて成功');
 process.exit(fail ? 1 : 0);

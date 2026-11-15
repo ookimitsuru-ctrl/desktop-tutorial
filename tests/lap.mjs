@@ -9,7 +9,7 @@ let t0 = performance.now();
 const line = computeRacingLine(T);
 console.log('line ms', (performance.now() - t0).toFixed(0));
 export function runLaps({ setup = 'mid', tyre = 'soft', skill = 1, wet = 0, laps = 3, fuel = 15, verbose = false, power = 1 }) {
-  const car = createCar({ setup, tyre, power }); car.fuel = fuel;
+  const car = createCar({ setup, tyre, power, trim: T.def.aero }); car.fuel = fuel;
   if (tyre === 'rain') { car.tempF = car.tempR = 55; }
   const drv = new Driver(car, T, line, { skill });
   placeCar(car, T, T.length - 300, line.off[T.idx(T.length - 300)], 50);

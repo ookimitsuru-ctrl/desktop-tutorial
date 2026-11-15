@@ -21,7 +21,7 @@ export function buildReference(T, line, { setup = 'mid', tyre = 'soft', wet = 0 
   const key = `${T.id}|${setup}|${tyre}|${Math.round(wet * 20)}`;
   if (refCache.has(key)) return refCache.get(key);
   const N = T.N, L = T.length, ds = T.ds;
-  const car = createCar({ setup, tyre }); car.fuel = 14; fitTyres(car, tyre);
+  const car = createCar({ setup, tyre, trim: T.def.aero }); car.fuel = 14; fitTyres(car, tyre);
   const drv = new Driver(car, T, line, { skill: 1 }); drv.errT = 1e9;
   const sStart = L - 470, s0 = L - 150, i0 = T.idx(s0);
   placeCar(car, T, sStart, line.off[T.idx(sStart)], 46);

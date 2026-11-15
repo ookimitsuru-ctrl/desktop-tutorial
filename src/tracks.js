@@ -116,6 +116,8 @@ export const TRACKS = {
     smooth: false,
     width: { min: 15, max: 18, scale: 1 },
     elevation: { range: null, keys: [[0, 1.5], [500, 0], [1100, 0.6], [1800, 2.2], [2500, 3], [3100, 2.4], [3600, 1.8], [4023, 1.5]] },   // 高低差 3m
+    banking: { deg: 9.2, radius: 256 },              // ターンのバンク角 (9度12分)
+    aero: { cl: 0.35, cd: 0.5, final: 0.8, spread: 0.4 },         // スーパースピードウェイ仕様: 薄いウイングと長いギヤ比
     runoff: { l: 13, r: 2.2 },                       // 内側は芝、外側はすぐ壁
     sections: [
       { name: 'ターン1', from: 270, to: 740, no: 1 },
@@ -142,7 +144,7 @@ export const TRACKS = {
       { id: 't12', name: 'ターン1〜2', short: 'T1-2', n0: 120, n1: 1420 },
       { id: 't34', name: 'ターン3〜4', short: 'T3-4', n0: 2130, n1: 3430 },
     ],
-    fullLaps: 200, baseLap: 47.5,
+    fullLaps: 200, baseLap: 41.0,
   },
 };
 export const TRACK_IDS = Object.keys(TRACKS);

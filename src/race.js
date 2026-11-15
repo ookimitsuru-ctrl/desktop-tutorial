@@ -109,7 +109,7 @@ export class Session {
       const d = DRIVERS[di], team = TEAMS[d.team];
       const isPlayer = !!d.player;
       const car = createCar({
-        id: di, setup: isPlayer ? opts.setup : 'mid', tyre: 'medium',
+        id: di, setup: isPlayer ? opts.setup : 'mid', tyre: 'medium', trim: T.def.aero,
         power: isPlayer ? 1 : (1 - (1 - team.power) * 0.55) * diff.power, gripK: isPlayer ? 1 : (1 - (1 - team.grip) * 0.55) * diff.grip,
       });
       const e = {

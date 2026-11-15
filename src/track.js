@@ -187,6 +187,9 @@ export function buildTrack(def = TRACKS.suzuka) {
     const sc = def.elevation.range ? def.elevation.range / (mx - mn) : 1; // range 指定時はその高低差に正規化
     for (let i = 0; i < N; i++) T.z[i] = (zs[i] - mn) * sc;
     for (let i = 0; i < N; i++) T.slope[i] = (T.z[(i + 1) % N] - T.z[(i - 1 + N) % N]) / (2 * ds);
+    // バンク角 [rad]: 曲率に比例して立ち上がり、ターンの中では一定。符号は曲率と同じ (右コーナー=正)
+    T.bank = new Float32Array(N);
+    if (def.banking) { const b = def.banking.deg * Math.PI / 180; for (let i = 0; i < N; i++) T.bank[i] = b * clamp(T.curv[i] * def.banking.radius, -1, 1); }
     T.zMin = 0; T.zMax = (mx - mn) * sc;
   }
 

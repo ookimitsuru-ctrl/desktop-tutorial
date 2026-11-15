@@ -45,11 +45,12 @@ export function speedProfile(T, line, p, out) {
   const v = out || new Float32Array(N);
   const kdf = 0.5 * RHO * p.cla / p.mass, kdr = 0.5 * RHO * p.cda / p.mass;
   const mu = p.mu * (p.use ?? 1);
-  const VTOP = 96;
+  const VTOP = p.vtop ?? 96;
+  const sb = i => (T.bank ? Math.sin(Math.abs(T.bank[i])) : 0);   // バンク
   for (let i = 0; i < N; i++) {
-    const k = Math.abs(line.curv[i]) + 1e-5;
-    const den = k - mu * kdf * (p.dfUse ?? 0.93);
-    let vv = den > 1e-6 ? Math.sqrt(mu * G * (p.gUse ?? 0.97) / den) : VTOP;
+    const k = Math.abs(line.curv[i]) + 1e-5, s = sb(i), c = Math.sqrt(1 - s * s);
+    const den = k * (c - mu * s) - mu * kdf * (p.dfUse ?? 0.93);
+    let vv = den > 1e-6 ? Math.sqrt(G * (mu * (p.gUse ?? 0.97) * c + s) / den) : VTOP;
     v[i] = Math.min(vv, VTOP);
   }
   // 後ろ向き: ブレーキング
@@ -59,7 +60,7 @@ export function speedProfile(T, line, p, out) {
       const i = q, j = (q + 1) % N;
       const vj = v[j];
       const amax = mu * (G + kdf * vj * vj);
-      const alat = vj * vj * Math.abs(line.curv[j]);
+      const alat = Math.max(0, vj * vj * Math.abs(line.curv[j]) - G * sb(j));
       const along = amax * Math.pow(Math.max(0, 1 - (alat * alat) / (amax * amax)), 0.85) * bk + kdr * vj * vj + G * T.slope[i];
       const vi = Math.sqrt(vj * vj + 2 * Math.max(1, along) * ds);
       if (vi < v[i]) v[i] = vi;
@@ -71,7 +72,7 @@ export function speedProfile(T, line, p, out) {
     for (let i = 0; i < N; i++) {
       const j = (i + 1) % N, vi = v[i];
       const amax = mu * (G + kdf * vi * vi);
-      const alat = vi * vi * Math.abs(line.curv[i]);
+      const alat = Math.max(0, vi * vi * Math.abs(line.curv[i]) - G * sb(i));
       const atr = Math.sqrt(Math.max(0, amax * amax - alat * alat)) * 0.58;
       const apw = pw / (p.mass * Math.max(vi, 12)) ;
       const acc = Math.min(atr, apw) - kdr * vi * vi - G * T.slope[i];
@@ -120,7 +121,7 @@ export class Driver {
     this.profileMu = mu;
     speedProfile(this.T, this.line, {
       mu, use: this.use * (wet > 0.3 ? 0.97 : 1), cla: c.setup.cla * (1 - 0.3 * c.dmgF - 0.25 * c.dmgR), cda: c.setup.cda,
-      mass: totalMass(c), power: c.power, brake: 0.86 + 0.06 * this.skill, dfUse: Driver.DF_USE, gUse: Driver.G_USE,
+      mass: totalMass(c), power: c.power, brake: 0.86 + 0.06 * this.skill, dfUse: Driver.DF_USE, gUse: Driver.G_USE, vtop: this.T.def.aero ? 125 : undefined,
     }, this.profile);
   }
   // cars: 全車, me index。 dt 秒ごとに呼ぶ (60Hz)
