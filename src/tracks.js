@@ -4,6 +4,8 @@ import { SUZUKA_POINTS, SUZUKA_LENGTH } from './data/suzuka.js';
 import { RACELINE_OFF as SUZUKA_LINE } from './data/raceline.js';
 import { FUJI_POINTS, FUJI_LENGTH, FUJI_ELEVATION } from './data/fuji.js';
 import { RACELINE_OFF as FUJI_LINE } from './data/raceline-fuji.js';
+import { INDY_POINTS, INDY_LENGTH } from './data/indy.js';
+import { RACELINE_OFF as INDY_LINE } from './data/raceline-indy.js';
 
 export const TRACKS = {
   // ------------------------------------------------------------------ 鈴鹿サーキット
@@ -104,6 +106,43 @@ export const TRACKS = {
       { id: 'pana', name: 'パナソニックコーナー', short: 'パナソニック', n0: 3470, n1: 3830 },
     ],
     fullLaps: 67, baseLap: 82.4,
+  },
+
+  // ------------------------------------------------------------------ インディ (スーパースピードウェイ)
+  //  反時計回りのオーバル。ピットはコースの内側 (進行方向の左)、外側はすぐ壁。
+  indy: {
+    id: 'indy', name: 'インディ スーパースピードウェイ', short: 'INDY', country: 'アメリカ・インディアナ州',
+    points: INDY_POINTS, length: INDY_LENGTH, raceline: INDY_LINE,
+    smooth: false,
+    width: { min: 15, max: 18, scale: 1 },
+    elevation: { range: null, keys: [[0, 1.5], [500, 0], [1100, 0.6], [1800, 2.2], [2500, 3], [3100, 2.4], [3600, 1.8], [4023, 1.5]] },   // 高低差 3m
+    runoff: { l: 13, r: 2.2 },                       // 内側は芝、外側はすぐ壁
+    sections: [
+      { name: 'ターン1', from: 270, to: 740, no: 1 },
+      { name: 'ショートシュート', from: 740, to: 880, no: 0 },
+      { name: 'ターン2', from: 880, to: 1340, no: 2 },
+      { name: 'バックストレッチ', from: 1340, to: 2280, no: 0 },
+      { name: 'ターン3', from: 2280, to: 2750, no: 3 },
+      { name: 'ショートシュート', from: 2750, to: 2890, no: 0 },
+      { name: 'ターン4', from: 2890, to: 3350, no: 4 },
+      { name: 'フロントストレッチ', from: 3350, to: 4023, no: 0 },
+      { name: 'フロントストレッチ', from: 0, to: 270, no: 0 },
+    ],
+    sectorSplits: [1340, 2750],
+    pit: { side: -1, sEntry: 3400, sEntryEnd: 3510, sExitStart: 120, sExit: 230, boxStart: 3600, garage: [3588, 96], apron: [3580, 108], paddock: [3560, 120] },
+    standWall: [3360, 260],
+    stands: [
+      [3380, 250, 1, 3.5, 28, '#6d7682'], [300, 720, 1, 4, 16, '#77808b'], [900, 1320, 1, 4, 16, '#7b8590'],
+      [2300, 2730, 1, 4, 16, '#77808b'], [2910, 3330, 1, 4, 16, '#6d7682'],
+    ],
+    park: null,
+    boards: [[300, 1], [2310, 1]],
+    train: [
+      { id: 'lap', name: 'ラップ全体', short: '全周' },
+      { id: 't12', name: 'ターン1〜2', short: 'T1-2', n0: 120, n1: 1420 },
+      { id: 't34', name: 'ターン3〜4', short: 'T3-4', n0: 2130, n1: 3430 },
+    ],
+    fullLaps: 200, baseLap: 47.5,
   },
 };
 export const TRACK_IDS = Object.keys(TRACKS);

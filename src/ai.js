@@ -224,7 +224,7 @@ export class Driver {
     if (this.errT <= 0) { this.errT = 6 + rand() * 30; this.err = (rand() - 0.3) * (1 - this.skill) * 0.05; }
     this.err *= (1 - dt * 0.4);
 
-    if (info?.keepRight) this.offsetTarget += ((L.hi[c.i] - L.off[c.i] - 0.6) - this.offsetTarget) * Math.min(1, dt * 2.5); // ピット入口へ
+    if (info?.keepRight) { const edge = this.T.pit.side > 0 ? L.hi[c.i] - 0.6 : L.lo[c.i] + 0.6; this.offsetTarget += ((edge - L.off[c.i]) - this.offsetTarget) * Math.min(1, dt * 2.5); } // ピット入口の側へ寄る
     // オフセットをコース幅に収める
     const oi = (c.i + 8) % N;
     this.offsetTarget = clamp(this.offsetTarget, L.lo[oi] - L.off[oi], L.hi[oi] - L.off[oi]);

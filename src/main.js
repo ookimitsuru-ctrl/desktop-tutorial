@@ -345,7 +345,8 @@ function autoDrive(pi) {
   const pl = session.player, c = pl.car;
   if (auto.car !== c) { const a = c.assistTC, b = c.autoShift; auto.drv = new Driver(c, T, line, { skill: auto.skill }); auto.car = c; }
   if (session.state !== 'green' || pl.pit || pl.finished) { pi.throttle = 0; pi.brake = 1; return; }
-  auto.drv.update(1 / 60, session.wet, session.cars, {});
+  const toPit = T.sDiff(T.pit.sEntry, c.s);
+  auto.drv.update(1 / 60, session.wet, session.cars, pl.pitRequest && toPit > 0 && toPit < 260 ? { keepRight: true, vmax: 70 } : {});
   pi.throttle = c.throttle; pi.brake = c.brake;
   input.throttle = c.throttle; input.brake = c.brake; input.pedal = c.brake > 0.01 ? c.brake : -c.throttle;
 }

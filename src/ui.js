@@ -62,7 +62,7 @@ export class UI {
   title() {
     return `<div class="title">
       <div class="logo"><span class="ok">Formula</span><span class="racing">simulator</span></div>
-      <div class="tag">SUZUKA &nbsp;·&nbsp; FUJI &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90</div>
+      <div class="tag">SUZUKA &nbsp;·&nbsp; FUJI &nbsp;·&nbsp; INDY &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90</div>
       <canvas class="showcase"></canvas>
       <button class="big" data-act="start">TAP TO START</button>
       <div class="foot">操作はアクセル・ブレーキ・シフトだけ — ステアリングは自動</div>

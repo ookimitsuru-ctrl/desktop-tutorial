@@ -1,6 +1,6 @@
 # Formula simulator
 
-鈴鹿サーキットと富士スピードウェイを舞台にした、Android 向け見下ろし型 F1 レーシングシミュレーター。
+鈴鹿サーキット・富士スピードウェイ・インディ (オーバル) を舞台にした、Android 向け見下ろし型 F1 レーシングシミュレーター。
 1990年前後の F1 をイメージした架空チーム「OK RACING」のマシン **OK-90** を操縦します。(ゲームのタイトルは Formula simulator、「OK RACING」は作中の架空チーム名です)
 
 - **ハンドル操作なし。** プレイヤーが操作するのはアクセル・ブレーキ・シフトだけで、ステアリングは端末が自動で行う
@@ -8,6 +8,7 @@
 - コースは2つ。メニューの「サーキット」で切り替え
   - **鈴鹿サーキット**: 実測ベース(全長 5,807m・18コーナー・高低差約52m・立体交差)
   - **富士スピードウェイ**: コース図から作成(全長 4,563m・16コーナー・メインストレート約1.5km・最大勾配 上り約8%/下り約9%)
+  - **インディ スーパースピードウェイ**: コース図の形と諸元から推定(全長 4,023m・ストレート 1,006m・ターン4つ・反時計回りのオーバル。ピットは内側=左。バンクは再現していません)
 - ABS / TCS に頼らない物理(複合スリップタイヤ、空力、荷重移動、タイヤ温度・摩耗、燃料重量、雨)
 - フリー走行 / **トレーニング** / タイムアタック(ゴースト)/ 予選 / 決勝(20台・5/10/20/53周・ピットイン)
 
@@ -15,7 +16,7 @@
 
 | 方法 | 手順 |
 |---|---|
-| **Android (APK)** | `release/FormulaSimulator-1.2.5-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
+| **Android (APK)** | `release/FormulaSimulator-1.3.0-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
 | **ブラウザ** | `npm run dev` → `http://localhost:8080/` を開く。HTTPS で公開すればホーム画面に追加(PWA)も可能 |
 | **単体HTML** | `npm run build` で作られる `dist/index.html` 1ファイルだけで動作 |
 
@@ -68,7 +69,7 @@ cd android && gradle assembleDebug   # APK (要 Android SDK。先に npm run bui
 
 | パス | 内容 |
 |---|---|
-| `src/tracks.js` | サーキット定義(鈴鹿・富士の区間名、ピット、スタンド、練習区間など) |
+| `src/tracks.js` | サーキット定義(鈴鹿・富士・インディの区間名、ピット、スタンド、練習区間など) |
 | `src/track.js` | コース生成(中心線・幅員・縁石・ランオフ・バリア・高低差・立体交差・ピット) |
 | `src/physics.js` | 車両物理、タイヤ4種、セッティング3種 |
 | `src/ai.js` | AIドライバー(速度プロファイル、追い越し・防御) |
@@ -77,6 +78,7 @@ cd android && gradle assembleDebug   # APK (要 Android SDK。先に npm run bui
 | `src/render.js` `src/carsprite.js` `src/hud.js` | 描画 |
 | `src/input.js` `src/audio.js` `src/ui.js` `src/storage.js` | 入力・サウンド(合成)・メニュー・保存 |
 | `tools/build-track.mjs` `tools/build-line.mjs` | コースデータ変換、最小曲率レーシングラインの事前計算 |
+| `tools/build-indy.mjs` | インディ (オーバル) のコースデータを諸元から生成 |
 | `tools/build-fuji.py` | 富士のコースデータをコース図の画像から生成 (Python: numpy, pillow, scipy, scikit-image) |
 | `android/` | WebView でゲームを全画面表示する Android プロジェクト |
 

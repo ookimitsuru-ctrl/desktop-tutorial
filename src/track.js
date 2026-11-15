@@ -270,6 +270,7 @@ export function buildTrack(def = TRACKS.suzuka) {
       if (side < 0) rl = t; else rr = t;
     }
     if (nearCross(i)) { rl = Math.min(rl, 1.6); rr = Math.min(rr, 1.6); }
+    if (def.runoff) { rl = Math.min(rl, def.runoff.l); rr = Math.min(rr, def.runoff.r); }   // オーバルなど: 外側はすぐ壁
     runL[i] = rl; runR[i] = rr;
   }
   // ピットレーン区間の定義 (距離m)
@@ -277,12 +278,15 @@ export function buildTrack(def = TRACKS.suzuka) {
     sEntry: def.pit.sEntry, sEntryEnd: def.pit.sEntryEnd, sExitStart: def.pit.sExitStart, sExit: def.pit.sExit,
     garage: def.pit.garage, apron: def.pit.apron, paddock: def.pit.paddock,
     speedLimit: 80 / 3.6,
+    side: def.pit.side || 1,                         // +1: ピットは進行方向の右 / -1: 左
   };
+  const ps = P.side;
   const inRange = (s, a, b) => (a <= b ? s >= a && s <= b : s >= a || s <= b);
   for (let i = 0; i < N; i++) {
     const s = i * ds;
-    if (inRange(s, P.sEntry - 30, P.sExit + 20)) runR[i] = Math.min(runR[i], 1.4); // ピットウォール
-    if (inRange(s, def.standWall[0], def.standWall[1])) runL[i] = Math.min(runL[i], 6); // グランドスタンド側
+    const pitRun = ps > 0 ? runR : runL, standRun = ps > 0 ? runL : runR;
+    if (inRange(s, P.sEntry - 30, P.sExit + 20)) pitRun[i] = Math.min(pitRun[i], 1.4); // ピットウォール
+    if (inRange(s, def.standWall[0], def.standWall[1])) standRun[i] = Math.min(standRun[i], 6); // グランドスタンド側
   }
   {
     const sl = smoothArr(runL, 5, 2), sr = smoothArr(runR, 5, 2);
@@ -301,17 +305,17 @@ export function buildTrack(def = TRACKS.suzuka) {
     P.dAt = (s) => {
       // レーン中心の横位置(右+)。入口/出口でコースへ滑らかに合流
       const i = Math.round(s / ds) % N;
-      const base = T.wr[i];
+      const base = ps > 0 ? T.wr[i] : T.wl[i];
       const lane = base + 1.4 + laneOff;
       const onTrack = base - 2.6;
       let u;
       if (inRange(s, P.sEntry, P.sEntryEnd)) u = smooth((s - P.sEntry) / (P.sEntryEnd - P.sEntry));
       else if (inRange(s, P.sExitStart, P.sExit)) u = 1 - smooth((s - P.sExitStart) / (P.sExit - P.sExitStart));
       else u = 1;
-      return onTrack + (lane - onTrack) * u;
+      return ps * (onTrack + (lane - onTrack) * u);
     };
     P.length = (T.length - P.sEntry) + P.sExit;
-    P.boxOffset = 5.2; // レーン中心からピットボックス中心まで
+    P.boxOffset = 5.2 * ps; // レーン中心からピットボックス中心まで (ピット側が正)
     P.boxS = []; // チームごとの停止位置 s
     for (let t = 0; t < 10; t++) P.boxS.push((def.pit.boxStart + t * 21) % T.length);
     P.inZone = (s, pad = 50) => inRange(s, T.wrapS(P.sEntry - pad), T.wrapS(P.sExit + pad));

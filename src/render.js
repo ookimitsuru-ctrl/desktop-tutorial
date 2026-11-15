@@ -114,18 +114,19 @@ export class Renderer {
     const T = this.T, P = T.pit, M = this.mark = {};
     const wr = s => T.wr[T.idx(s)], wl = s => T.wl[T.idx(s)];
     // ピットレーン
+    const ps = P.side, pw = ps > 0 ? wr : s => T.wl[T.idx(s)];   // ピット側のコース端までの幅
     M.pitLane = this.stripPath(P.sEntry, P.sExit, s => P.dAt(s) - 3.4, s => P.dAt(s) + 3.4, 3);
-    M.pitLineA = this.linePath(P.sEntry + 20, P.sExit - 20, s => P.dAt(s) - 3.2, 3);
-    M.pitLineB = this.linePath(P.sEntryEnd, P.sExitStart, s => P.dAt(s) + 3.2, 3);
-    M.pitApron = this.stripPath(P.apron[0], P.apron[1], s => wr(s) + 1.4 + 9.5 + 3.4, s => wr(s) + 1.4 + 9.5 + 9.2, 6);
-    M.pitWall = this.linePath(P.sEntryEnd - 30, P.sExitStart + 12, s => wr(s) + 1.4, 4);
-    M.garage = this.stripPath(P.garage[0], P.garage[1], s => wr(s) + 20.3, s => wr(s) + 36, 6);
-    M.garageRoof = this.stripPath(P.garage[0], P.garage[1], s => wr(s) + 22.5, s => wr(s) + 34.5, 6);
-    M.paddock = this.stripPath(P.paddock[0], P.paddock[1], s => wr(s) + 36, s => wr(s) + 78, 8);
+    M.pitLineA = this.linePath(P.sEntry + 20, P.sExit - 20, s => P.dAt(s) - ps * 3.2, 3);
+    M.pitLineB = this.linePath(P.sEntryEnd, P.sExitStart, s => P.dAt(s) + ps * 3.2, 3);
+    M.pitApron = this.stripPath(P.apron[0], P.apron[1], s => ps * (pw(s) + 1.4 + 9.5 + 3.4), s => ps * (pw(s) + 1.4 + 9.5 + 9.2), 6);
+    M.pitWall = this.linePath(P.sEntryEnd - 30, P.sExitStart + 12, s => ps * (pw(s) + 1.4), 4);
+    M.garage = this.stripPath(P.garage[0], P.garage[1], s => ps * (pw(s) + 20.3), s => ps * (pw(s) + 36), 6);
+    M.garageRoof = this.stripPath(P.garage[0], P.garage[1], s => ps * (pw(s) + 22.5), s => ps * (pw(s) + 34.5), 6);
+    M.paddock = this.stripPath(P.paddock[0], P.paddock[1], s => ps * (pw(s) + 36), s => ps * (pw(s) + 78), 8);
     M.boxes = [];
     for (let t = 0; t < TEAMS.length; t++) {
       const s = P.boxS[t], d = P.dAt(s) + P.boxOffset;
-      M.boxes.push({ team: TEAMS[t], rect: this.stripPath(s - 3.2, s + 3.4, d - 1.7, d + 1.7, 2), bar: this.stripPath(s - 3.2, s + 3.4, d + 1.7, d + 2.5, 2), door: this.stripPath(s - 6, s + 6, wr(s) + 20.3, wr(s) + 22.5, 3) });
+      M.boxes.push({ team: TEAMS[t], rect: this.stripPath(s - 3.2, s + 3.4, d - 1.7, d + 1.7, 2), bar: this.stripPath(s - 3.2, s + 3.4, d + ps * 1.7, d + ps * 2.5, 2), door: this.stripPath(s - 6, s + 6, ps * (pw(s) + 20.3), ps * (pw(s) + 22.5), 3) });
     }
     // スタートライン (チェッカー)
     const ck = M.checkA = new Path2D(), ck2 = M.checkB = new Path2D();
@@ -216,7 +217,7 @@ export class Renderer {
           const lim = dd > 0 ? T.wallR[i] : T.wallL[i];
           const s = i * T.ds;
           let extra = 5 + size;
-          if (T.pit.inZone(s, 60) || inStandWall(s)) extra = dd > 0 ? 90 : 48;   // ピット/メインスタンド
+          if (T.pit.inZone(s, 60) || inStandWall(s)) extra = dd * T.pit.side > 0 ? 90 : 48;   // ピット/メインスタンド
           if (T.def.park && s > T.def.park.clear[0] && s < T.def.park.clear[1] && dd < 0) extra = 190;   // 遊園地
           if (Math.abs(dd) < lim + extra) { ok = false; break; }
         }

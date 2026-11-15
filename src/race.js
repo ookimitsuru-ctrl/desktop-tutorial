@@ -251,6 +251,8 @@ export class Session {
         else {
           e.started = true;
           const info = { blue: e.blue, vmax: e.finished ? 45 : (e.retired ? 0.01 : undefined), caution: this.mode === 'race' && this.raceTime < 40 };
+          // ピットへ入る車は入口の手前でピット側へ寄り、進入できる速度まで落とす (高速オーバルでは全開のままだと入れない)
+          if (e.pitRequest && !e.finished && !e.retired) { const toPit = T.sDiff(T.pit.sEntry, c.s); if (toPit > 0 && toPit < 260) { info.keepRight = true; info.vmax = 70; } }
           e.ai.update(dt, this.wet, this.cars, info);
           if (e.finished) { c.throttle = Math.min(c.throttle, 0.5); }
         }
@@ -345,7 +347,7 @@ export class Session {
       if (e.out || e.pit || !e.pitRequest || e.retired) continue;
       const c = e.car;
       const ds = T.sDiff(c.s, P.sEntry);
-      if (ds >= 0 && ds < 14 && c.d > -2.5 && c.vx > 3 && c.speed < 75) this.enterPit(e);
+      if (ds >= 0 && ds < 14 && c.d * P.side > -2.5 && c.vx > 3 && c.speed < 75) this.enterPit(e);
     }
     this.sortPositions();
     // 周回遅れへの青旗

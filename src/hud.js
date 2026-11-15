@@ -194,7 +194,7 @@ export class Hud {
     } else if (Math.abs(c.relH) > 2.0 && c.speed > 3 && S.state === 'green') warn = '逆走しています';
     else if (c.retired) warn = 'マシン破損 — リタイア';
     else if (c.fuel <= 0) warn = '燃料切れ';
-    else if (pl.pitRequest) { warn = 'ピットイン予約中 — 最終コーナーで右側のピットレーンへ'; wcol = '#ffb347'; }
+    else if (pl.pitRequest) { warn = `ピットイン予約中 — ${S.T.pit.side > 0 ? '右' : '左'}側のピットレーンへ` + (c.speed > 75 ? ' (270km/h以下に減速)' : ''); wcol = '#ffb347'; }
     else if (!pl.lapValid && S.mode !== 'race' && S.mode !== 'train' && pl.lap >= 1) { warn = 'このラップは無効 (コースアウト)'; wcol = '#ffd23a'; }
     else if (S.mode === 'race' && S.leaderFinished && !pl.finished) { warn = 'ファイナルラップ'; wcol = '#fff'; }
     if (warn) {
@@ -467,9 +467,10 @@ export class Hud {
 
   drawMinimap(ctx, L, S, R, u) {
     const mm = R.minimap; if (!mm) return;
-    const mw = clamp(L.w * 0.2, 130, 210), sc = mw / mm.W, mh = mm.H * sc;
-    const x0 = L.w - L.m - L.safe.r - mw, y0 = this.narrow ? this.timingBottom + 8 : L.pause.y;
-    panel(ctx, x0 - 4, y0 - 2, mw + 8, mh + 4, 8, 0.4);
+    // 縦長のコース (オーバルなど) は高さを抑え、枠の中央に置く
+    const pw = clamp(L.w * 0.2, 130, 210), sc = Math.min(pw / mm.W, clamp(L.h * 0.26, 96, 150) / mm.H), mw = mm.W * sc, mh = mm.H * sc;
+    const px0 = L.w - L.m - L.safe.r - pw, x0 = px0 + (pw - mw) / 2, y0 = this.narrow ? this.timingBottom + 8 : L.pause.y;
+    panel(ctx, px0 - 4, y0 - 2, pw + 8, mh + 4, 8, 0.4);
     ctx.drawImage(mm.c, x0, y0, mw, mh);
     const pl = S.player;
     for (const e of S.entries) {
@@ -481,7 +482,7 @@ export class Hud {
     const px = x0 + mm.mx(pl.car.x) * sc, py = y0 + mm.my(pl.car.y) * sc;
     ctx.beginPath(); ctx.arc(px, py, 4.4, 0, 6.3); ctx.fillStyle = '#ff7a1a'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; ctx.stroke();
     this.mapBottom = y0 + mh + 6;
-    this.mapX = x0; this.mapW = mw;
+    this.mapX = px0; this.mapW = pw;
   }
 
   drawBoard(ctx, L, S, pl, u) {
