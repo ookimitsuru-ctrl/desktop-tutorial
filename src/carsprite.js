@@ -163,13 +163,83 @@ export function drawCar(ctx, car, team, opts = {}) {
   ctx.restore();
 }
 
-// メニュー等で使う大きめの静止画 (横向き)
+// タイトル画面の静止画: 左向きの側面図 (1990年頃のF1のプロポーション。単位 m、地面 y=0、上が負)
 export function drawCarShowcase(canvas, team, number) {
   const g = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   g.clearRect(0, 0, W, H);
-  const sc = Math.min(W / 5.4, H / 3.0);
-  g.save(); g.translate(W / 2, H / 2); g.scale(sc, sc);
-  drawCar(g, { x: 0, y: 0, yaw: 0, delta: 0, dmgF: 0, dmgR: 0 }, team, { number });
+  const sc = Math.min(W / 5.1, H / 1.45);
+  g.save(); g.translate(W / 2 + 0.12 * sc, H / 2 + 0.56 * sc); g.scale(sc, sc);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  const c1 = team.c1, c2 = team.c2, c3 = team.c3, DK = '#15171c';
+  const FX = -1.47, RX = 1.43, FR = 0.315, RR = 0.34;      // 前後の車軸と車輪半径
+  const path = pts => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); };
+  // 接地の影
+  g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(0, 0.015, 2.35, 0.035, 0, 0, 6.3); g.fill();
+  // 反対側の後輪 (奥)
+  // フロア / ディフューザー
+  g.fillStyle = DK; path([[-1.05, -0.05], [1.62, -0.05], [1.85, -0.2], [1.62, -0.11], [-1.05, -0.11]]); g.fill();
+  // リヤウイング (翼端板・支柱)
+  g.fillStyle = DK; g.fillRect(1.5, -0.52, 0.07, 0.3);
+  g.fillStyle = c2; path([[1.5, -0.97], [2.06, -0.97], [2.06, -0.36], [1.94, -0.3], [1.62, -0.3], [1.5, -0.42]]); g.fill();
+  g.fillStyle = c3; g.fillRect(1.5, -0.97, 0.56, 0.045);
+  // フロントウイング
+  g.fillStyle = c3; path([[-2.5, -0.075], [-2.0, -0.115], [-1.98, -0.085], [-2.5, -0.045]]); g.fill();
+  g.fillStyle = c2; path([[-2.52, -0.2], [-1.98, -0.2], [-1.98, -0.04], [-2.52, -0.04]]); g.fill();
+  g.fillStyle = c3; g.fillRect(-2.52, -0.2, 0.54, 0.03);
+  // モノコック〜エンジンカバー
+  const body = () => {
+    g.beginPath(); g.moveTo(-2.48, -0.13);
+    g.bezierCurveTo(-2.3, -0.2, -1.7, -0.36, -1.05, -0.5);     // 低いノーズが緩やかに上がる
+    g.lineTo(-0.72, -0.56);                                     // コクピット前縁
+    g.lineTo(-0.5, -0.5); g.lineTo(-0.02, -0.5);                // コクピット開口
+    g.bezierCurveTo(0.0, -0.78, 0.1, -0.97, 0.3, -0.97);       // ロールフープ / インダクションポッド
+    g.bezierCurveTo(0.62, -0.97, 1.05, -0.62, 1.66, -0.4);     // エンジンカバー
+    g.lineTo(1.7, -0.2); g.lineTo(1.4, -0.1); g.lineTo(-1.0, -0.1);
+    g.bezierCurveTo(-1.6, -0.1, -2.2, -0.1, -2.48, -0.13); g.closePath();
+  };
+  body(); g.fillStyle = c1; g.fill();
+  g.save(); body(); g.clip();
+  g.fillStyle = c2; path([[-2.6, -0.1], [1.8, -0.1], [1.8, -0.25], [0.9, -0.2], [-2.6, -0.16]]); g.fill();   // 下縁の帯
+  g.fillStyle = c3; path([[-2.6, -0.185], [0.9, -0.225], [1.8, -0.275], [1.8, -0.25], [0.9, -0.2], [-2.6, -0.16]]); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.16)'; path([[-2.5, -0.2], [-1.0, -0.53], [-0.7, -0.57], [-0.7, -0.52], [-2.5, -0.17]]); g.fill();   // 上面のハイライト
+  g.fillStyle = 'rgba(0,0,0,0.14)'; path([[0.25, -1.0], [0.6, -1.0], [1.7, -0.42], [1.7, -0.3], [0.5, -0.62]]); g.fill();
+  g.restore();
+  // インダクションポッドの吸気口
+  g.fillStyle = DK; g.beginPath(); g.ellipse(0.1, -0.86, 0.035, 0.075, 0.25, 0, 6.3); g.fill();
+  // サイドポンツーン
+  g.beginPath(); g.moveTo(-0.58, -0.12); g.lineTo(-0.58, -0.4); g.quadraticCurveTo(-0.5, -0.47, -0.3, -0.47);
+  g.bezierCurveTo(0.3, -0.47, 0.75, -0.42, 1.12, -0.3); g.lineTo(1.2, -0.12); g.closePath();
+  g.fillStyle = c1; g.fill(); g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 0.014; g.stroke();
+  g.fillStyle = DK; path([[-0.58, -0.38], [-0.5, -0.4], [-0.5, -0.16], [-0.58, -0.14]]); g.fill();          // 吸気口
+  g.fillStyle = c2; path([[-0.5, -0.12], [1.2, -0.12], [1.16, -0.2], [-0.5, -0.2]]); g.fill();
+  g.fillStyle = c3; g.fillRect(-0.5, -0.215, 1.655, 0.02);
+  // ゼッケン
+  g.fillStyle = c3; g.beginPath(); g.arc(-1.02, -0.33, 0.115, 0, 6.3); g.fill();
+  g.fillStyle = c2; g.font = '800 0.17px "Roboto Condensed","Helvetica Neue",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(number), -1.02, -0.32);
+  // チーム名 (架空)
+  g.fillStyle = c3; g.font = 'italic 800 0.15px "Roboto Condensed","Helvetica Neue",sans-serif'; g.fillText('OK-90', 0.3, -0.325);
+  // ドライバー
+  g.fillStyle = DK; path([[-0.5, -0.5], [-0.02, -0.5], [-0.03, -0.6], [-0.45, -0.56]]); g.fill();
+  g.fillStyle = c3; g.beginPath(); g.arc(-0.2, -0.66, 0.125, 0, 6.3); g.fill();
+  g.fillStyle = c1; g.beginPath(); g.arc(-0.2, -0.66, 0.125, Math.PI * 1.05, Math.PI * 1.75); g.lineTo(-0.2, -0.66); g.fill();
+  g.fillStyle = DK; path([[-0.33, -0.69], [-0.22, -0.7], [-0.22, -0.63], [-0.325, -0.62]]); g.fill();       // バイザー
+  g.strokeStyle = DK; g.lineWidth = 0.02; g.beginPath(); g.moveTo(-0.62, -0.57); g.lineTo(-0.66, -0.66); g.stroke();   // ミラー
+  g.fillStyle = c1; g.fillRect(-0.7, -0.7, 0.08, 0.05);
+  // サスペンション
+  g.strokeStyle = DK; g.lineWidth = 0.022;
+  g.beginPath(); g.moveTo(FX, -FR - 0.12); g.lineTo(-1.15, -0.44); g.moveTo(FX, -FR + 0.1); g.lineTo(-1.2, -0.2); g.stroke();
+  // 車輪
+  const wheel = (x, r) => {
+    g.fillStyle = '#17181b'; g.beginPath(); g.arc(x, -r, r, 0, 6.3); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = 0.02; g.beginPath(); g.arc(x, -r, r * 0.9, 0, 6.3); g.stroke();
+    g.strokeStyle = '#e9c63a'; g.lineWidth = 0.012; g.beginPath(); g.arc(x, -r, r * 0.74, 0, 6.3); g.stroke();   // タイヤのロゴ帯
+    g.fillStyle = '#c9ccd2'; g.beginPath(); g.arc(x, -r, r * 0.52, 0, 6.3); g.fill();
+    g.fillStyle = '#6d727c'; g.beginPath(); g.arc(x, -r, r * 0.42, 0, 6.3); g.fill();
+    g.strokeStyle = '#c9ccd2'; g.lineWidth = 0.03;
+    for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5 - 0.3; g.beginPath(); g.moveTo(x, -r); g.lineTo(x + Math.cos(a) * r * 0.48, -r + Math.sin(a) * r * 0.48); g.stroke(); }
+    g.fillStyle = '#2a2d33'; g.beginPath(); g.arc(x, -r, r * 0.13, 0, 6.3); g.fill();
+  };
+  wheel(FX, FR); wheel(RX, RR);
   g.restore();
 }

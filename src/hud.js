@@ -121,6 +121,7 @@ export class Hud {
 
     // ================= 右上: ミニマップ =================
     this.drawMinimap(ctx, L, S, R, u);
+    if (R.minimap) this.drawInfo(ctx, L, S, c, u);
 
     // ================= 決勝: 順位表 =================
     if (S.mode === 'race' && cfg.showBoard !== false) this.drawBoard(ctx, L, S, pl, u);
@@ -278,77 +279,81 @@ export class Hud {
     ctx.textBaseline = 'alphabetic';
   }
 
+  // 自車の下: シフトランプ(回転数)・ギヤ・速度だけの低いパネル
   drawCluster(ctx, L, S, c, input, cfg, u) {
-    const pl = S.player;
-    const cw = clamp(L.centre.w, 150, 330), cx = L.centre.x + L.centre.w / 2, x0 = cx - cw / 2;
-    const ch = clamp(L.h * 0.25, 84, 118), y0 = L.h - L.m - L.safe.b - ch;
+    const cw = clamp(L.centre.w, 150, 250), cx = L.centre.x + L.centre.w / 2, x0 = cx - cw / 2;
+    const ch = clamp(L.h * 0.15, 52, 66), y0 = L.h - L.m - L.safe.b - ch;
     panel(ctx, x0, y0, cw, ch, 12, 0.6);
-    // 自動操舵の舵角表示
-    {
-      const bw = cw - 24, bx = x0 + 12, by = y0 - 9;
-      rr(ctx, bx, by, bw, 5, 2.5); ctx.fillStyle = 'rgba(8,12,22,0.6)'; ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(cx - 0.5, by - 2, 1, 9);
-      const sx = cx + clamp(c.steerIn, -1, 1) * bw / 2;
-      ctx.fillStyle = '#ffb347'; ctx.fillRect(Math.min(cx, sx), by, Math.abs(sx - cx), 5);
-      rr(ctx, sx - 3, by - 3, 6, 11, 2); ctx.fillStyle = '#fff'; ctx.fill();
-    }
     // シフトランプ (回転数)
-    const n = 14, lw2 = (cw - 24 - (n - 1) * 3) / n, rpm = c.rpm;
+    const n = 14, lw2 = (cw - 20 - (n - 1) * 3) / n, rpm = c.rpm;
     const lo = 6500, hi = 13300;
     const lit = Math.round(sat((rpm - lo) / (hi - lo)) * n);
     const flashAll = rpm > 13150 && Math.floor(this.t * 12) % 2 === 0;
     for (let k = 0; k < n; k++) {
       const on = k < lit;
       const col = k < 6 ? '#35d07f' : k < 10 ? '#f2c230' : '#ff4030';
-      rr(ctx, x0 + 12 + k * (lw2 + 3), y0 + 8, lw2, 9 * u, 2);
+      rr(ctx, x0 + 10 + k * (lw2 + 3), y0 + 6, lw2, 8 * u, 2);
       ctx.fillStyle = flashAll ? '#58a8ff' : on ? col : 'rgba(255,255,255,0.12)'; ctx.fill();
     }
-    // ギア
-    const gy = y0 + ch * 0.74;
+    const by = y0 + ch - 9;
+    // ギヤ
     const gtxt = c.gear === 0 ? 'R' : String(c.shiftT > 0 ? c.nextGear || 'R' : c.gear);
-    text(ctx, gtxt, cx, gy + 4 * u, 46 * u, c.limiter ? '#ff5040' : '#fff', 'center', '800', true);
-    text(ctx, 'GEAR', cx, y0 + ch - 7, 9 * u, 'rgba(255,255,255,0.6)', 'center', '700');
+    text(ctx, gtxt, cx, by + 2, 36 * u, c.limiter ? '#ff5040' : '#fff', 'center', '800', true);
     // 速度
     const kmh = Math.round(Math.abs(c.speed) * 3.6);
-    text(ctx, String(kmh), x0 + cw * 0.3, gy, 28 * u, '#fff', 'right', '800', true);
-    text(ctx, 'km/h', x0 + cw * 0.3 + 3, gy, 9 * u, 'rgba(255,255,255,0.65)', 'left', '700');
-    text(ctx, `${Math.round(rpm / 10) * 10}`, x0 + cw * 0.3, y0 + ch - 8, 12 * u, 'rgba(255,255,255,0.85)', 'right', '700');
-    text(ctx, 'rpm', x0 + cw * 0.3 + 3, y0 + ch - 8, 9 * u, 'rgba(255,255,255,0.6)', 'left', '700');
-    // タイヤ・燃料 (右側)
-    const rx = x0 + cw * 0.66, ty = c.tyre;
-    const tw = (cw * 0.34 - 14);
-    const bar = (label, wear, temp, y) => {
-      text(ctx, label, rx, y + 8 * u, 9 * u, 'rgba(255,255,255,0.7)', 'left', '700');
-      const bx = rx + 12 * u, bw = tw - 12 * u - 26 * u;
-      rr(ctx, bx, y, bw, 9 * u, 2); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
-      rr(ctx, bx, y, Math.max(2, bw * (1 - wear)), 9 * u, 2); ctx.fillStyle = tempColor(ty, temp); ctx.fill();
-      text(ctx, `${Math.round((1 - wear) * 100)}`, rx + tw, y + 8.5 * u, 10 * u, wear > 0.72 ? '#ff5040' : '#fff', 'right', '700');
+    text(ctx, String(kmh), x0 + cw * 0.3, by, 25 * u, '#fff', 'right', '800', true);
+    text(ctx, 'km/h', x0 + cw * 0.3 + 3, by, 8.5 * u, 'rgba(255,255,255,0.65)', 'left', '700');
+    // 回転数
+    text(ctx, `${Math.round(rpm / 10) * 10}`, x0 + cw - 30 * u, by, 13 * u, 'rgba(255,255,255,0.9)', 'right', '700');
+    text(ctx, 'rpm', x0 + cw - 27 * u, by, 8.5 * u, 'rgba(255,255,255,0.6)', 'left', '700');
+  }
+
+  // コースマップの下: タイヤ・燃料・路面/破損・舵角
+  drawInfo(ctx, L, S, c, u) {
+    const x0 = this.mapX - 4, bw = this.mapW + 8, y0 = this.mapBottom + 2;
+    const rh = 13 * u, ph = rh * 4 + 16 * u;
+    panel(ctx, x0, y0, bw, ph, 8, 0.5);
+    const ty = c.tyre, lx = x0 + 8, rxe = x0 + bw - 8;
+    // タイヤ銘柄
+    const br = 9 * u, bcx = lx + br, bcy = y0 + 5 + rh;
+    ctx.beginPath(); ctx.arc(bcx, bcy, br, 0, 6.3); ctx.fillStyle = '#111'; ctx.fill(); ctx.strokeStyle = ty.color; ctx.lineWidth = 3; ctx.stroke();
+    ctx.textBaseline = 'middle'; text(ctx, ty.short, bcx, bcy + 0.5, 10 * u, '#fff', 'center', '800'); ctx.textBaseline = 'alphabetic';
+    const tx = lx + br * 2 + 7;
+    const bar = (label, frac, col, val, warn, y) => {
+      text(ctx, label, tx, y + 8.5 * u, 9 * u, 'rgba(255,255,255,0.7)', 'left', '700');
+      const bx = tx + 12 * u, w = rxe - 30 * u - bx;
+      rr(ctx, bx, y, w, 9 * u, 2); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
+      rr(ctx, bx, y, Math.max(2, w * frac), 9 * u, 2); ctx.fillStyle = col; ctx.fill();
+      text(ctx, val, rxe, y + 8.5 * u, 10 * u, warn ? '#ff5040' : '#fff', 'right', '700');
     };
-    const y1 = y0 + 24 * u + 4;
-    ctx.beginPath(); ctx.arc(rx - 12 * u, y1 + 12 * u, 9 * u, 0, 6.3); ctx.fillStyle = '#111'; ctx.fill(); ctx.strokeStyle = ty.color; ctx.lineWidth = 3; ctx.stroke();
-    ctx.textBaseline = 'middle'; text(ctx, ty.short, rx - 12 * u, y1 + 12.5 * u, 10 * u, '#fff', 'center', '800'); ctx.textBaseline = 'alphabetic';
-    bar('F', c.wearF, c.tempF, y1); bar('R', c.wearR, c.tempR, y1 + 14 * u);
+    let y = y0 + 6;
+    bar('F', 1 - c.wearF, tempColor(ty, c.tempF), `${Math.round((1 - c.wearF) * 100)}`, c.wearF > 0.72, y); y += rh;
+    bar('R', 1 - c.wearR, tempColor(ty, c.tempR), `${Math.round((1 - c.wearR) * 100)}`, c.wearR > 0.72, y); y += rh;
     // 燃料
-    const fy = y1 + 30 * u;
-    const cap = S.mode === 'race' ? S.laps * S.T.fuelPerLap * 1.04 + 4 : 40;
-    text(ctx, '燃', rx - 16 * u, fy + 8 * u, 9 * u, 'rgba(255,255,255,0.7)', 'left', '700');
-    rr(ctx, rx, fy, tw - 34 * u, 8 * u, 2); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
-    const ff = sat(c.fuel / cap);
-    rr(ctx, rx, fy, Math.max(2, (tw - 34 * u) * ff), 8 * u, 2); ctx.fillStyle = c.fuel < S.T.fuelPerLap * 1.2 ? '#ff5040' : '#7fb6ff'; ctx.fill();
-    text(ctx, `${(c.fuel / S.T.fuelPerLap).toFixed(1)}周`, rx + tw, fy + 8 * u, 10 * u, '#fff', 'right', '700');
-    // ダメージ
-    const dmg = c.dmgF + c.dmgR + c.dmgS;
+    const cap = S.mode === 'race' ? S.laps * S.T.fuelPerLap * 1.04 + 4 : 40, low = c.fuel < S.T.fuelPerLap * 1.2;
+    bar('燃', sat(c.fuel / cap), low ? '#ff5040' : '#7fb6ff', `${(c.fuel / S.T.fuelPerLap).toFixed(1)}周`, low, y); y += rh;
+    // 破損 / スリップストリーム / 路面
+    const dmg = c.dmgF + c.dmgR + c.dmgS, sy = y + 9.5 * u;
     if (dmg > 0.03) {
       const parts = []; if (c.dmgF > 0.03) parts.push(`前${Math.round(c.dmgF * 100)}`); if (c.dmgR > 0.03) parts.push(`後${Math.round(c.dmgR * 100)}`); if (c.dmgS > 0.03) parts.push(`足${Math.round(c.dmgS * 100)}`);
-      text(ctx, '破損 ' + parts.join(' '), rx - 16 * u, y0 + ch - 7, 9.5 * u, '#ff7a5a', 'left', '700');
+      text(ctx, '破損 ' + parts.join(' '), lx, sy, 9.5 * u, '#ff7a5a', 'left', '700');
     } else if (c.draft > 0.15) {
-      text(ctx, 'スリップストリーム', rx - 16 * u, y0 + ch - 7, 9.5 * u, '#7fd6ff', 'left', '700');
+      text(ctx, 'スリップストリーム', lx, sy, 9.5 * u, '#7fd6ff', 'left', '700');
     } else {
       const wetTxt = S.wet < 0.05 ? 'DRY' : S.wet < 0.45 ? `DAMP ${Math.round(S.wet * 100)}%` : `WET ${Math.round(S.wet * 100)}%`;
-      text(ctx, (S.rain > 0.1 ? '雨 ' : '') + '路面 ' + wetTxt, rx - 16 * u, y0 + ch - 7, 9.5 * u, S.wet < 0.05 ? 'rgba(255,255,255,0.7)' : '#7fd6ff', 'left', '700');
+      text(ctx, (S.rain > 0.1 ? '雨 ' : '') + '路面 ' + wetTxt, lx, sy, 9.5 * u, S.wet < 0.05 ? 'rgba(255,255,255,0.7)' : '#7fd6ff', 'left', '700');
     }
-    // アシスト表示
-    if (c.assistTC || c.autoShift) text(ctx, (c.assistTC ? 'ASSIST ' : '') + (c.autoShift ? 'AT' : ''), x0 + 12, y0 + 30 * u, 8.5 * u, '#ffd23a', 'left', '700');
+    if (c.assistTC || c.autoShift) text(ctx, (c.assistTC ? 'ASSIST ' : '') + (c.autoShift ? 'AT' : ''), rxe, sy, 8.5 * u, '#ffd23a', 'right', '700');
+    // 自動操舵の舵角
+    {
+      const w = bw - 16, bx = x0 + 8, yy = y0 + ph - 9 * u, cx = bx + w / 2;
+      rr(ctx, bx, yy, w, 4, 2); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(cx - 0.5, yy - 2, 1, 8);
+      const sx = cx + clamp(c.steerIn, -1, 1) * w / 2;
+      ctx.fillStyle = '#ffb347'; ctx.fillRect(Math.min(cx, sx), yy, Math.abs(sx - cx), 4);
+      rr(ctx, sx - 2.5, yy - 3, 5, 10, 2); ctx.fillStyle = '#fff'; ctx.fill();
+    }
+    this.mapBottom = y0 + ph + 2;
   }
 
   // 目標速度・最適ギヤ(大)と、トレーナーの吹き出し
