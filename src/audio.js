@@ -69,14 +69,7 @@ export class GameAudio {
     return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4, nf, ng };
   }
   setEngine(e, rpm, load, gain, pan = 0) {
-    // エンジンを回転数で 4 つの帯に分けて扱う (帯の境目はなめらかにつなぐ)
-    //   低回転 (〜5,000) / 中回転 (5,000〜9,000) / 中高回転 (9,000〜11,500) / 高回転 (11,500〜)
-    const sm = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
-    const a1 = sm((rpm - 4500) / 2500), a2 = sm((rpm - 8000) / 2000), a3 = sm((rpm - 11000) / 1500);
-    const wLow = 1 - a1, wMid = a1 * (1 - a2), wMidHi = a2 * (1 - a3), wHigh = a3;
-    // 高回転ほど音程を少し持ち上げる (13,000rpm 付近で約 2 半音高く)。低〜中回転の音程はそのまま
-    const lift = 1 + 0.03 * a2 + 0.09 * a3;
-    const t = this.ctx.currentTime, f = clamp(rpm, 1500, 14500) / 60 * 5 * lift; // V10: 1回転で5回点火
+    const t = this.ctx.currentTime, f = clamp(rpm, 1500, 14500) / 60 * 5; // V10: 1回転で5回点火
     // 濁り: 低〜中回転 (約9,000rpm まで) で強く、11,000rpm 以上では 0 (高回転は澄んだ高音)
     const x = clamp((rpm - 8500) / 3000, 0, 1), murk = 1 - x * x * (3 - 2 * x);
     e.o1.frequency.setTargetAtTime(f, t, 0.02);
@@ -86,10 +79,14 @@ export class GameAudio {
     e.g4.gain.setTargetAtTime(0.30 * murk, t, 0.05);
     e.g2.gain.setTargetAtTime(0.30 + 0.12 * murk, t, 0.05);   // 1/2 次を足して太く
     e.g3.gain.setTargetAtTime(0.35 + 0.12 * murk, t, 0.05);
-    e.lp.frequency.setTargetAtTime((900 + load * 4200 + rpm * 0.16) * (1 - 0.30 * murk) * (1 + 0.35 * a3), t, 0.04); // 高域を少し丸める (高回転では逆に開けて明るく)
-    e.pk.gain.setTargetAtTime(5 - 2.5 * murk + 2 * a3, t, 0.06);
-    e.pk.frequency.setTargetAtTime(1300 + 900 * a3, t, 0.06);   // 高回転は張りのある帯域を上へ
+    e.lp.frequency.setTargetAtTime((900 + load * 4200 + rpm * 0.16) * (1 - 0.30 * murk), t, 0.04); // 高域を少し丸める
+    e.pk.gain.setTargetAtTime(5 - 2.5 * murk, t, 0.06);
     e.mix.gain.setTargetAtTime(0.55 + load * 0.75, t, 0.03);
+    // エンジンを回転数で 4 つの帯に分けて扱う (帯の境目はなめらかにつなぐ)
+    //   低回転 (〜5,000) / 中回転 (5,000〜9,000) / 中高回転 (9,000〜11,500) / 高回転 (11,500〜)
+    const sm = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
+    const a1 = sm((rpm - 4500) / 2500), a2 = sm((rpm - 8000) / 2000), a3 = sm((rpm - 11000) / 1500);
+    const wLow = 1 - a1, wMid = a1 * (1 - a2), wMidHi = a2 * (1 - a3), wHigh = a3;
     // ノイズ量: 低・中回転はしっかり、中高回転は軽く、高回転はなし (これまでの澄んだ音のまま)
     const nz = wLow * 1.6 + wMid * 1.3 + wMidHi * 0.4 + wHigh * 0;
     e.ng._target = nz * NOISE_LEVEL;   // (音量の測定用に目標値を保持)
