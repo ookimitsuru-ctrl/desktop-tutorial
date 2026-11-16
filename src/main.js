@@ -304,7 +304,7 @@ function frame(now) {
     input.showTyres = input.showPit && (session.player.pitRequest || (session.player.pit && session.player.pit.state !== 'out'));
     input.update(dt);
     const pi = session.playerInput; pi.throttle = Math.pow(input.throttle, 1.25); pi.brake = input.brake; // アクセルは低開度側を細かく
-    if (auto.on) autoDrive(pi);
+    if (auto.on) autoDrive(pi); else if (auto.car) autoRelease();
     session.update(dt);
     for (let k = 1; k < auto.speed && state === 'drive'; k++) { if (auto.on) autoDrive(pi); session.update(dt); handleEvents(); if (resultsTimer > 0) break; }
     handleEvents(); updateAssist();
@@ -342,9 +342,15 @@ function frame(now) {
 
 // 自動運転 (動作確認用: コンソールで __okr.auto.on = true)
 const auto = { on: false, drv: null, car: null, skill: 0.9, speed: 1 };
+function autoRelease() {
+  const c = auto.car; if (!c) return;
+  if (auto.saved) { c.assistTC = c.assistABS = auto.saved.assist; c.autoShift = auto.saved.shift; }
+  auto.car = null; auto.drv = null; auto.saved = null;
+}
 function autoDrive(pi) {
   const pl = session.player, c = pl.car;
-  if (auto.car !== c) { const a = c.assistTC, b = c.autoShift; auto.drv = new Driver(c, T, line, { skill: auto.skill }); c.assistTC = c.assistABS = a; c.autoShift = b; auto.car = c; }
+  // AI ドライバーは TC・ABS・オートシフトを使って走る。自動運転が続く間はそのままにし、止めたとき (autoRelease) に元の設定へ戻す
+  if (auto.car !== c) { auto.saved = { assist: c.assistTC, shift: c.autoShift }; auto.drv = new Driver(c, T, line, { skill: auto.skill }); auto.car = c; }
   if (session.state !== 'green' || pl.pit || pl.finished) { pi.throttle = 0; pi.brake = 1; return; }
   const toPit = T.sDiff(T.pit.sEntry, c.s);
   auto.drv.update(1 / 60, session.wet, session.cars, pl.pitRequest && toPit > 0 && toPit < 260 ? { keepRight: true, vmax: 70 } : {});
