@@ -1,6 +1,7 @@
 // OK-90 (1990年前後のF1を参考にした架空マシン) のトップビュー描画
 // スプライトは車体中心(重心)を原点、ノーズを +x 方向として生成する。
 import { CAR } from './physics.js';
+import { swapToImage } from './spriteimage.js';
 
 export const SPR_SCALE = 34;          // px / m
 const SW = 5.4, SH = 2.9;             // スプライトが覆う範囲 [m]
@@ -128,6 +129,7 @@ export function carSprite(team, opts = {}) {
   }
   s = { cv, w: SW, h: SH };
   cache.set(key, s);
+  swapToImage(cv, img => { s.cv = img; });
   return s;
 }
 

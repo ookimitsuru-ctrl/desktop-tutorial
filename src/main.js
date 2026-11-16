@@ -86,14 +86,12 @@ function buildGrid(mode) {
 function startSession(mode, keep) {
   const l = Store.last();
   cfg = Store.settings(); input.cfg = cfg;
-  const wetClass = l.weather === 'wet' || l.weather === 'damp';
   const opts = keep && lastOpts ? { ...lastOpts } : {
     mode, laps: l.laps, weather: l.weather, setup: l.setup, tyre: l.tyre, difficulty: cfg.difficulty,
     damage: cfg.damage, assist: cfg.assist, autoShift: cfg.autoShift, qualiLaps: 3,
     grid: mode === 'race' ? buildGrid(l.gridMode) : null,
   };
-  if (opts.mode === 'ta') { const g = Store.loadGhost(wetClass); opts.ghost = g; opts.bestTrace = g ? g.trace : null; }
-  else { opts.ghost = null; opts.bestTrace = null; }
+  opts.ghost = null; opts.bestTrace = null;
   if (opts.mode === 'train') { // お手本ラップを (セッティング・タイヤ・路面ごとに) 用意する
     const W = WEATHERS[opts.weather] || WEATHERS.dry;
     opts.damage = false; opts.trainSection = Store.last().trainSec | 0;
@@ -101,6 +99,8 @@ function startSession(mode, keep) {
   }
   lastOpts = opts;
   session = new Session(T, line, opts);
+  // ゴーストは実際の路面 (「変わりやすい」は開始時に晴れ/雨が決まる) で選ぶ。保存時と同じ判定 (wet > 0.15)
+  if (opts.mode === 'ta') { const g = Store.loadGhost(session.wet > 0.15); session.ghost = g; session.bestTrace = g ? g.trace : null; }
   session.gridPos = opts.grid ? opts.grid.indexOf(0) + 1 : 0;
   demo = null;
   hud.reset(); R.clearEffects(); R.cam.init = false; input.reset();
@@ -140,6 +140,7 @@ const ui = new UI(document.getElementById('ui'), {
   track(id) { loadTrack(id); startDemo(); ui.refresh(); },
   open(name) {
     if (name === 'settingsInGame') { ui.show('settings', { inGame: true }); return; }
+    if (name === 'trainPick') autoT = 0; // 区間を選んでいる間に自動リピートで再スタートしない
     menuStack.push('menu'); ui.show(name);
   },
   back() { ui.show(menuStack.pop() || 'menu'); },
@@ -343,7 +344,7 @@ function frame(now) {
 const auto = { on: false, drv: null, car: null, skill: 0.9, speed: 1 };
 function autoDrive(pi) {
   const pl = session.player, c = pl.car;
-  if (auto.car !== c) { const a = c.assistTC, b = c.autoShift; auto.drv = new Driver(c, T, line, { skill: auto.skill }); auto.car = c; }
+  if (auto.car !== c) { const a = c.assistTC, b = c.autoShift; auto.drv = new Driver(c, T, line, { skill: auto.skill }); c.assistTC = c.assistABS = a; c.autoShift = b; auto.car = c; }
   if (session.state !== 'green' || pl.pit || pl.finished) { pi.throttle = 0; pi.brake = 1; return; }
   const toPit = T.sDiff(T.pit.sEntry, c.s);
   auto.drv.update(1 / 60, session.wet, session.cars, pl.pitRequest && toPit > 0 && toPit < 260 ? { keepRight: true, vmax: 70 } : {});

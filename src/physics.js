@@ -262,7 +262,7 @@ export function stepCar(car, dt, env) {
     } else if (wheelRpm > CAR.revLimit) {
       Te = -engineBrake(wheelRpm); car.limiter = true;
     } else {
-      Te = thr * engineTorque(wheelRpm) * car.power * (1 - 0.2 * car.dmgR * 0) - (1 - thr) * engineBrake(wheelRpm);
+      Te = thr * engineTorque(wheelRpm) * car.power - (1 - thr) * engineBrake(wheelRpm);
     }
   } else {
     rpm = Math.max(CAR.idle, car.rpm + (Math.abs(car.wR * car.ratios[car.nextGear] * 60 / TAU) - car.rpm) * Math.min(1, dt * 30));

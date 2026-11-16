@@ -136,7 +136,7 @@ export class Trainer {
   get prep() { return this.prepared[this.secIdx]; }
   get isLap() { return !this.sec.n0; }
 
-  setReference(ref) { this.ref = ref; this.prepared = this.secs.map(sec => prepareSection(this.T, ref, sec)); }
+  setReference(ref) { this.ref = ref; this.prepared = this.secs.map(sec => prepareSection(this.T, ref, sec)); this._zones = null; }
   setSection(idx) { this.secIdx = clamp(idx | 0, 0, this.secs.length - 1); }
 
   // 走行の開始(やり直し): 区間の手前へ、お手本と同じ速度・ギヤで配置する

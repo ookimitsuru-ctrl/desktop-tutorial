@@ -1,6 +1,6 @@
 // セッション進行: フリー走行 / タイムアタック / 予選 / 決勝
 // 車両とAIの更新、計時(ラップ・セクター)、順位、スタート手順、ピット、天候、ゴーストを扱う。
-import { createCar, stepCar, placeCar, collideCars, fitTyres, applySetup, requestShift, CAR, SETUPS, TYRES } from './physics.js';
+import { createCar, stepCar, placeCar, collideCars, fitTyres, applySetup, requestShift, trimSetup, CAR, SETUPS, TYRES } from './physics.js';
 import { Driver, rand, seedRand } from './ai.js';
 import { Trainer } from './trainer.js';
 
@@ -95,7 +95,7 @@ export class Session {
     if (opts.weather === 'change') {
       const startWet = rand() < 0.4;
       this.wet = startWet ? 0.8 : 0; this.rain = this.rainTarget = startWet ? 0.7 : 0;
-      const dur = opts.mode === 'race' ? opts.laps * 108 : 600;
+      const dur = opts.mode === 'race' ? opts.laps * (T.def.baseLap || 102.3) * 1.056 : 600; // 決勝の想定所要時間 (サーキットのラップタイムから)
       this.weatherPlan = [{ t: dur * (0.2 + rand() * 0.3), rain: startWet ? 0 : 0.5 + rand() * 0.5 }];
       if (dur > 900) this.weatherPlan.push({ t: dur * (0.65 + rand() * 0.2), rain: startWet ? 0.6 : 0 });
     }
@@ -591,7 +591,7 @@ export class Session {
   // フリー走行中のセッティング/タイヤ変更
   changeConfig(setup, tyre) {
     const c = this.player.car;
-    if (setup && SETUPS[setup]) { c.setup = SETUPS[setup]; applySetup(c); this.opts.setup = setup; }
+    if (setup && SETUPS[setup]) { c.setup = trimSetup(SETUPS[setup], this.T.def.aero); applySetup(c); this.opts.setup = setup; }
     if (tyre && TYRES[tyre]) { fitTyres(c, tyre); this.opts.tyre = tyre; this.player.nextTyre = tyre; }
     c.dmgF = c.dmgR = c.dmgS = 0; c.pull = 0;
     if (this.mode === 'free') c.fuel = 40;

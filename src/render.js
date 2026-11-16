@@ -2,6 +2,7 @@
 import { drawCar, WHEELS } from './carsprite.js';
 import { TEAMS } from './race.js';
 import { CAR } from './physics.js';
+import { swapToImage } from './spriteimage.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const sat = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -245,10 +246,12 @@ export class Renderer {
       g.fillStyle = cols[k][0]; g.beginPath(); g.arc(30, 30, 23, 0, TAU); g.fill();
       for (let q = 0; q < 9; q++) { g.fillStyle = cols[k][1 + (q % 2)]; g.beginPath(); g.arc(18 + rnd() * 22, 16 + rnd() * 22, 6 + rnd() * 7, 0, TAU); g.fill(); }
       this.treeSpr.push(c);
+      swapToImage(c, img => { this.treeSpr[k] = img; });
     }
     // パーティクル
     const soft = (r, gcol, b, a0) => { const c = makeCanvas(32, 32), g = c.getContext('2d'); const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, `rgba(${r},${gcol},${b},${a0})`); gr.addColorStop(1, `rgba(${r},${gcol},${b},0)`); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); return c; };
     this.partSpr = [soft(235, 235, 235, 0.55), soft(196, 170, 120, 0.6), soft(80, 150, 70, 0.75), soft(215, 230, 245, 0.42), soft(255, 220, 110, 1)];
+    this.partSpr.forEach((c, k) => swapToImage(c, img => { this.partSpr[k] = img; }));
     // 芝パターン (1px = 0.5m)
     const pc = makeCanvas(128, 128), pg = pc.getContext('2d');
     pg.fillStyle = '#3f8a3c'; pg.fillRect(0, 0, 128, 128);
@@ -282,6 +285,7 @@ export class Renderer {
     g.strokeStyle = '#ff5a2a'; g.lineWidth = 2.5; g.beginPath();
     g.moveTo(mx(T.x[0] - T.nx[0] * 22), my(T.y[0] - T.ny[0] * 22)); g.lineTo(mx(T.x[0] + T.nx[0] * 22), my(T.y[0] + T.ny[0] * 22)); g.stroke();
     this.minimap = { c, W, H, sc, pad, mx, my };
+    const mm = this.minimap; swapToImage(c, img => { if (this.minimap === mm) mm.c = img; });
   }
 
   // 走行ライン表示 (ブレーキング区間を色分け)
