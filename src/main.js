@@ -89,7 +89,7 @@ function startSession(mode, keep) {
   const opts = keep && lastOpts ? { ...lastOpts } : {
     mode, laps: l.laps, weather: l.weather, setup: l.setup, tyre: l.tyre, difficulty: cfg.difficulty,
     damage: cfg.damage, assist: cfg.assist, autoShift: cfg.autoShift, qualiLaps: 3,
-    grid: mode === 'race' ? buildGrid(l.gridMode) : null,
+    grid: mode === 'race' ? (window.__okrSolo ? [0] : buildGrid(l.gridMode)) : null,   // __okrSolo: 撮影用に自車1台だけで決勝を始める (デバッグ用)
   };
   opts.ghost = null; opts.bestTrace = null;
   if (opts.mode === 'train') { // お手本ラップを (セッティング・タイヤ・路面ごとに) 用意する
