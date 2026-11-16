@@ -84,7 +84,9 @@ export class GameAudio {
     const pl = session.player, c = pl.car, t = this.ctx.currentTime;
     const load = pl.pit ? 0.25 : clamp(c.throttle, 0, 1);
     const cut = c.limiter && Math.floor(t * 28) % 2 === 0 ? 0.35 : 1;
-    this.setEngine(this.player, c.rpm, load * (c.shiftT > 0 ? 0.25 : 1), (0.16 + 0.26 * load) * cut);
+    // シフト中はエンジンが切り離される。アップシフトでは一瞬音を引くが、シフトダウンでは音量を下げない (ブリッピングのように回転だけ上がる)
+    const upShifting = c.shiftT > 0 && c.nextGear >= c.gear;
+    this.setEngine(this.player, c.rpm, load * (upShifting ? 0.25 : 1), (0.16 + 0.26 * load) * cut);
     // 近い他車 3 台
     const near = [];
     for (const e of session.entries) {
