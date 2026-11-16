@@ -82,11 +82,20 @@ export class GameAudio {
   update(session, cam) {
     if (!this.ready || !session) return;
     const pl = session.player, c = pl.car, t = this.ctx.currentTime;
-    const load = pl.pit ? 0.25 : clamp(c.throttle, 0, 1);
+    const dt = clamp(t - (this.lastT ?? t), 0, 0.1); this.lastT = t;
     const cut = c.limiter && Math.floor(t * 28) % 2 === 0 ? 0.35 : 1;
-    // シフト中はエンジンが切り離される。アップシフトでは一瞬音を引くが、シフトダウンでは音量を下げない (ブリッピングのように回転だけ上がる)
-    const upShifting = c.shiftT > 0 && c.nextGear >= c.gear;
-    this.setEngine(this.player, c.rpm, load * (upShifting ? 0.25 : 1), (0.16 + 0.26 * load) * cut);
+    // 音量は「アクセル開度」だけでなく回転数にも連動させる:
+    //   アクセルを戻しても音は一気に消えず、エンジンブレーキで回転が落ちていくのに合わせて下がる。
+    const rf = clamp((c.rpm - 3000) / 9500, 0, 1);
+    const target = pl.pit ? 0.25 : Math.max(clamp(c.throttle, 0, 1), 0.15 + 0.5 * rf);
+    this.loadSm = (this.loadSm ?? target) + (target - (this.loadSm ?? target)) * (1 - Math.exp(-dt / (target > (this.loadSm ?? 0) ? 0.04 : 0.28)));
+    // シフトダウン: 回転が跳ね上がるので、音も一瞬持ち上げる (ブリッピングの吹け上がり)
+    const down = c.shiftT > 0 && c.nextGear < c.gear;
+    if (down && !this.prevDown) this.dnT = 1;
+    this.prevDown = down; this.dnT = Math.max(0, (this.dnT || 0) - dt / 0.4);
+    const upShifting = c.shiftT > 0 && c.nextGear >= c.gear;   // アップシフトの切れ目だけは一瞬音を引く
+    const load = clamp(this.loadSm + 0.35 * this.dnT, 0, 1.15) * (upShifting ? 0.25 : 1);
+    this.setEngine(this.player, c.rpm, load, (0.16 + 0.26 * load) * cut * (1 + 0.25 * this.dnT));
     // 近い他車 3 台
     const near = [];
     for (const e of session.entries) {
