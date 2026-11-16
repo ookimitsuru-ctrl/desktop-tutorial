@@ -2,6 +2,7 @@
 // 3.5L NA V10 の高回転サウンドを、点火周波数 (回転数/60×5) を基音とする倍音合成で表現する。
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const NOISE_LEVEL = 0.55;   // エンジンのノイズ層の基準量 (低・中回転でこの値)
 
 export class GameAudio {
   constructor() { this.ctx = null; this.ready = false; this.volume = 0.8; this.others = []; this.muted = false; }
@@ -12,7 +13,11 @@ export class GameAudio {
     const ctx = this.ctx = new AC({ latencyHint: 'interactive' });
     const master = this.master = ctx.createGain(); master.gain.value = this.volume;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 5; comp.attack.value = 0.004; comp.release.value = 0.2;
-    master.connect(comp); comp.connect(ctx.destination);
+    // 全体の音をわずかに歪ませる (ソフトクリップ。小さい音はほぼそのまま、大きい音ほど丸く潰れる)
+    const sat = this.sat = ctx.createWaveShaper(); sat.oversample = '2x';
+    const sc = new Float32Array(2048); for (let i = 0; i < 2048; i++) { const x = i / 1023.5 - 1; sc[i] = Math.tanh(x * 1.9) / Math.tanh(1.9) * 0.96 + x * 0.04; }
+    sat.curve = sc;
+    master.connect(sat); sat.connect(comp); comp.connect(ctx.destination);
     // ノイズバッファ
     const nb = this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -47,16 +52,21 @@ export class GameAudio {
     // o4: 基音をわずかにずらした波。o1 とのうなりで低〜中回転の「濁り」を作る (高回転では音量を 0 にして澄ませる)
     o1.connect(g1); o2.connect(g2); o3.connect(g3); o4.connect(g4); g1.connect(mix); g2.connect(mix); g3.connect(mix); g4.connect(mix);
     const sh = ctx.createWaveShaper();
-    const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 2.6) * 0.85; }
+    const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 3.5 + 0.12) * 0.8 - 0.07; }
     sh.curve = curve; sh.oversample = main ? '2x' : 'none';
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2000; lp.Q.value = 0.8;
     const pk = ctx.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 1300; pk.Q.value = 1.2; pk.gain.value = 5;
     const out = ctx.createGain(); out.gain.value = 0;
     const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    // ノイズ層: 回転帯ごとに量を変える (setEngine)。燃焼の荒れ・排気のざらつきを、点火周波数に追従する帯域ノイズで表す
+    const ns = ctx.createBufferSource(); ns.buffer = this.noiseBuf; ns.loop = true;
+    const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1500; nf.Q.value = 0.9;
+    const ng = ctx.createGain(); ng.gain.value = 0;
+    ns.connect(nf); nf.connect(ng); ng.connect(mix);
     mix.connect(sh); sh.connect(lp); lp.connect(pk); pk.connect(out);
     if (pan) { out.connect(pan); pan.connect(this.master); } else out.connect(this.master);
-    o1.start(); o2.start(); o3.start(); o4.start();
-    return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4 };
+    o1.start(); o2.start(); o3.start(); o4.start(); ns.start(0, Math.random() * 1.5);
+    return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4, nf, ng };
   }
   setEngine(e, rpm, load, gain, pan = 0) {
     const t = this.ctx.currentTime, f = clamp(rpm, 1500, 14500) / 60 * 5; // V10: 1回転で5回点火
@@ -72,6 +82,16 @@ export class GameAudio {
     e.lp.frequency.setTargetAtTime((900 + load * 4200 + rpm * 0.16) * (1 - 0.30 * murk), t, 0.04); // 高域を少し丸める
     e.pk.gain.setTargetAtTime(5 - 2.5 * murk, t, 0.06);
     e.mix.gain.setTargetAtTime(0.55 + load * 0.75, t, 0.03);
+    // エンジンを回転数で 4 つの帯に分けて扱う (帯の境目はなめらかにつなぐ)
+    //   低回転 (〜5,000) / 中回転 (5,000〜9,000) / 中高回転 (9,000〜11,500) / 高回転 (11,500〜)
+    const sm = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
+    const a1 = sm((rpm - 4500) / 2500), a2 = sm((rpm - 8000) / 2000), a3 = sm((rpm - 11000) / 1500);
+    const wLow = 1 - a1, wMid = a1 * (1 - a2), wMidHi = a2 * (1 - a3), wHigh = a3;
+    // ノイズ量: 低・中回転はしっかり、中高回転は軽く、高回転はなし (これまでの澄んだ音のまま)
+    const nz = wLow * 1.6 + wMid * 1.3 + wMidHi * 0.4 + wHigh * 0;
+    e.ng._target = nz * NOISE_LEVEL;   // (音量の測定用に目標値を保持)
+    e.ng.gain.setTargetAtTime(nz * NOISE_LEVEL, t, 0.05);
+    e.nf.frequency.setTargetAtTime(clamp(f * (wLow * 2.0 + wMid * 2.4 + wMidHi * 3.2 + wHigh * 3.2), 350, 4200), t, 0.06);   // 低回転は低めの帯域のごろつき、上がるほどざらざら
     e.out.gain.setTargetAtTime(gain, t, 0.05);
     if (e.pan) e.pan.pan.setTargetAtTime(clamp(pan, -1, 1), t, 0.08);
   }
