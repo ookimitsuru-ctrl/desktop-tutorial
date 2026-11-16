@@ -3,6 +3,10 @@
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NOISE_LEVEL = 0.55;   // エンジンのノイズ層の基準量 (低・中回転でこの値)
+// 高回転では歪みを外す (歪んだ経路から歪みのない経路へなめらかに切り替える)。歪みのない経路の音量合わせの係数
+const ENGINE_CLEAN_K = 1.5, MASTER_CLEAN_K = 1.5;
+const smooth01 = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
+const highBand = rpm => smooth01((rpm - 11000) / 1500);   // 高回転帯 (11,500rpm〜) の重み 0〜1
 
 export class GameAudio {
   constructor() { this.ctx = null; this.ready = false; this.volume = 0.8; this.others = []; this.muted = false; }
@@ -17,7 +21,11 @@ export class GameAudio {
     const sat = this.sat = ctx.createWaveShaper(); sat.oversample = '2x';
     const sc = new Float32Array(2048); for (let i = 0; i < 2048; i++) { const x = i / 1023.5 - 1; sc[i] = Math.tanh(x * 1.9) / Math.tanh(1.9) * 0.96 + x * 0.04; }
     sat.curve = sc;
-    master.connect(sat); sat.connect(comp); comp.connect(ctx.destination);
+    // 歪みあり (sat) と歪みなし (clean) の 2 経路。自車が高回転のときは歪みなしへ寄せる (update)
+    const satG = this.satG = ctx.createGain(), cleanG = this.cleanG = ctx.createGain(); cleanG.gain.value = 0;
+    master.connect(sat); sat.connect(satG); satG.connect(comp);
+    master.connect(cleanG); cleanG.connect(comp);
+    comp.connect(ctx.destination);
     // ノイズバッファ
     const nb = this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -63,10 +71,14 @@ export class GameAudio {
     const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1500; nf.Q.value = 0.9;
     const ng = ctx.createGain(); ng.gain.value = 0;
     ns.connect(nf); nf.connect(ng); ng.connect(mix);
-    mix.connect(sh); sh.connect(lp); lp.connect(pk); pk.connect(out);
+    // 歪みあり (sh) と歪みなし の 2 経路を回転数で切り替える (setEngine): 高回転では歪みを外す
+    const shG = ctx.createGain(), cleanG = ctx.createGain(); cleanG.gain.value = 0;
+    mix.connect(sh); sh.connect(shG); shG.connect(lp);
+    mix.connect(cleanG); cleanG.connect(lp);
+    lp.connect(pk); pk.connect(out);
     if (pan) { out.connect(pan); pan.connect(this.master); } else out.connect(this.master);
     o1.start(); o2.start(); o3.start(); o4.start(); ns.start(0, Math.random() * 1.5);
-    return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4, nf, ng };
+    return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4, nf, ng, shG, cleanG };
   }
   setEngine(e, rpm, load, gain, pan = 0) {
     const t = this.ctx.currentTime, f = clamp(rpm, 1500, 14500) / 60 * 5; // V10: 1回転で5回点火
@@ -92,6 +104,8 @@ export class GameAudio {
     e.ng._target = nz * NOISE_LEVEL;   // (音量の測定用に目標値を保持)
     e.ng.gain.setTargetAtTime(nz * NOISE_LEVEL, t, 0.05);
     e.nf.frequency.setTargetAtTime(clamp(f * (wLow * 2.0 + wMid * 2.4 + wMidHi * 3.2 + wHigh * 3.2), 350, 4200), t, 0.06);   // 低回転は低めの帯域のごろつき、上がるほどざらざら
+    e.shG.gain.setTargetAtTime(Math.cos(wHigh * Math.PI / 2), t, 0.05);
+    e.cleanG.gain.setTargetAtTime(Math.sin(wHigh * Math.PI / 2) * ENGINE_CLEAN_K, t, 0.05);
     e.out.gain.setTargetAtTime(gain, t, 0.05);
     if (e.pan) e.pan.pan.setTargetAtTime(clamp(pan, -1, 1), t, 0.08);
   }
@@ -116,6 +130,7 @@ export class GameAudio {
     const upShifting = c.shiftT > 0 && c.nextGear >= c.gear;   // アップシフトの切れ目だけは一瞬音を引く
     const load = clamp(this.loadSm + 0.35 * this.dnT, 0, 1.15) * (upShifting ? 0.25 : 1);
     this.setEngine(this.player, c.rpm, load, (0.16 + 0.26 * load) * cut * (1 + 0.25 * this.dnT));
+    { const hw = pl.pit ? 0 : highBand(c.rpm); this.satG.gain.setTargetAtTime(1 - hw, t, 0.05); this.cleanG.gain.setTargetAtTime(hw * MASTER_CLEAN_K, t, 0.05); }
     // 近い他車 3 台
     const near = [];
     for (const e of session.entries) {
