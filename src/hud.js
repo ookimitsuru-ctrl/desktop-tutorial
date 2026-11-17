@@ -70,8 +70,7 @@ export class Hud {
           ctx.beginPath(); ctx.arc(b.x + b.w / 2, b.y + b.h / 2, b.h * 0.33, 0, 6.3); ctx.fillStyle = '#111'; ctx.fill(); ctx.strokeStyle = ty.color; ctx.lineWidth = 3.5; ctx.stroke();
           ctx.textBaseline = 'middle'; text(ctx, ty.short, b.x + b.w / 2, b.y + b.h / 2 + 1, 13 * u, '#fff', 'center', '800'); ctx.textBaseline = 'alphabetic';
         });
-        if (L.portrait) text(ctx, '次に履くタイヤ', L.tyreBtns[0].x + 2, L.tyreBtns[0].y + L.tyreBtns[0].h + 13 * u, 11 * u, 'rgba(255,255,255,0.85)', 'left', '600');   // 縦画面はボタンの下に
-        else text(ctx, '次に履くタイヤ', L.tyreBtns[3].x + L.tyreBtns[3].w + 8, L.tyreBtns[0].y + L.tyreBtns[0].h * 0.62, 11 * u, 'rgba(255,255,255,0.85)', 'left', '600');
+        text(ctx, '次に履くタイヤ', L.tyreBtns[3].x + L.tyreBtns[3].w + 8, L.tyreBtns[0].y + L.tyreBtns[0].h * 0.62, 11 * u, 'rgba(255,255,255,0.85)', 'left', '600');
       }
     }
     if (input.showReset) {
@@ -114,9 +113,6 @@ export class Hud {
       ctx.textBaseline = 'alphabetic';
     }
 
-    // 縦画面: 画面中央に出す表示 (ブレーキ・コーナー名・スタートライト・メッセージなど) は、上部の表示 (タイム・マップ・順位表・トレーナー) の下から並べる
-    const P = !!L.portrait, top = this.hudTop || h * 0.3;
-    this.topBottom = 0;
     // ================= トレーニング: 目標表示とトレーナーの助言 =================
     if (S.mode === 'train' && S.trainer) this.drawTrainer(ctx, L, S, cfg, u);
 
@@ -129,12 +125,6 @@ export class Hud {
 
     // ================= 決勝: 順位表 =================
     if (S.mode === 'race' && cfg.showBoard !== false) this.drawBoard(ctx, L, S, pl, u);
-    if (P) {
-      let b = Math.max(this.topBottom, this.timingBottom || 0, this.mapBottom || 0);
-      if (input.showTyres) b = Math.max(b, L.tyreBtns[0].y + L.tyreBtns[0].h + 16 * u);
-      if (input.showTrain) b = Math.max(b, L.trRow[0].y + L.trRow[0].h);
-      this.hudTop = b + 10;
-    }
 
     // ================= コーナー名 =================
     const sec = S.T.sectionAt(c.s);
@@ -143,7 +133,7 @@ export class Hud {
     if (this.cornerT > 0 && S.state === 'green') {
       this.cornerT -= dt; const a = sat(this.cornerT / 0.5) * sat((2.6 - this.cornerT) / 0.25);
       ctx.globalAlpha = a * 0.95;
-      const cy = P ? top + 74 * u : h * 0.115 + 62 * u + 44 * u;
+      const cy = h * 0.115 + 62 * u + 44 * u;
       ctx.font = `italic 800 ${17 * u}px ${FONT}`; const tw = ctx.measureText(this.cornerName).width;
       rr(ctx, w / 2 - tw / 2 - 14, cy - 15 * u, tw + 28, 24 * u, 12 * u); ctx.fillStyle = 'rgba(8,12,22,0.55)'; ctx.fill();
       text(ctx, this.cornerName, w / 2, cy + 3 * u, 17 * u, '#fff', 'center', '800', true);
@@ -158,7 +148,7 @@ export class Hud {
       if (inBrake || (dist > 0 && dist < 60 + c.speed * 4.2)) {
         // この先のコーナー名
         let nm = ''; const s2 = S.T.wrapS(c.s + Math.max(0, dist) + 90); const sc2 = S.T.sectionAt(s2); if (sc2 && sc2.no) nm = sc2.name;
-        const bw = 150 * u, bx = w / 2 - bw / 2, by = P ? top + 40 * u : h * 0.115 + 62 * u;
+        const bw = 150 * u, bx = w / 2 - bw / 2, by = h * 0.115 + 62 * u;
         panel(ctx, bx, by, bw, 22 * u, 6, 0.6);
         if (inBrake) { rr(ctx, bx, by, bw, 22 * u, 6); ctx.fillStyle = 'rgba(255,60,45,0.85)'; ctx.fill(); text(ctx, 'BRAKE  ' + nm, w / 2, by + 15.5 * u, 12 * u, '#fff', 'center', '800', true); }
         else {
@@ -172,7 +162,7 @@ export class Hud {
     // ================= スタートシグナル / カウントダウン =================
     if (S.state === 'lights' || (S.lightsOut && S.state === 'green' && S.stateT < 1.6) || S.state === 'grid') {
       const n = S.state === 'lights' ? S.lights : 0, r = 15 * u, gap = 10 * u, tw = 5 * r * 2 + 4 * gap;
-      const x0 = w / 2 - tw / 2, y0 = P ? top + 40 * u : h * 0.33;
+      const x0 = w / 2 - tw / 2, y0 = h * 0.33;
       panel(ctx, x0 - 14, y0 - r - 12, tw + 28, r * 2 + 24, 14, 0.82);
       for (let k = 0; k < 5; k++) {
         const go = S.lightsOut && S.state === 'green';
@@ -184,19 +174,17 @@ export class Hud {
     }
     if (S.state === 'countdown' && S.mode === 'train') {
       const f = sat(S.stateT / (S.cdDur || 1.7));
-      const ry = P ? top + 80 * u : h * 0.43;
-      text(ctx, 'READY', w / 2, ry, 54 * u, '#fff', 'center', '800', true);
-      rr(ctx, w / 2 - 90 * u, ry + 16 * u, 180 * u, 6, 3); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
-      rr(ctx, w / 2 - 90 * u, ry + 16 * u, Math.max(6, 180 * u * f), 6, 3); ctx.fillStyle = '#ffb347'; ctx.fill();
-      text(ctx, 'お手本と同じ速度から始まります', w / 2, ry + 44 * u, 13 * u, 'rgba(255,255,255,0.85)', 'center', '600');
+      text(ctx, 'READY', w / 2, h * 0.43, 54 * u, '#fff', 'center', '800', true);
+      rr(ctx, w / 2 - 90 * u, h * 0.43 + 16 * u, 180 * u, 6, 3); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
+      rr(ctx, w / 2 - 90 * u, h * 0.43 + 16 * u, Math.max(6, 180 * u * f), 6, 3); ctx.fillStyle = '#ffb347'; ctx.fill();
+      text(ctx, 'お手本と同じ速度から始まります', w / 2, h * 0.43 + 44 * u, 13 * u, 'rgba(255,255,255,0.85)', 'center', '600');
     } else if (S.state === 'countdown') {
       const n = Math.max(1, 3 - Math.floor(S.stateT));
       const f = S.stateT % 1;
       ctx.globalAlpha = 1 - f * 0.6;
-      text(ctx, String(n), w / 2, P ? top + 90 * u : h * 0.42, (70 + 30 * (1 - f)) * u, '#fff', 'center', '800', true);
+      text(ctx, String(n), w / 2, h * 0.42, (70 + 30 * (1 - f)) * u, '#fff', 'center', '800', true);
       ctx.globalAlpha = 1;
-      if (P) { text(ctx, 'ローリングスタート', w / 2, top + 130 * u, 13 * u, 'rgba(255,255,255,0.85)', 'center', '600'); text(ctx, 'コントロールライン通過で計測開始', w / 2, top + 148 * u, 13 * u, 'rgba(255,255,255,0.85)', 'center', '600'); }
-      else text(ctx, 'ローリングスタート — コントロールライン通過で計測開始', w / 2, h * 0.5, 13 * u, 'rgba(255,255,255,0.85)', 'center', '600');
+      text(ctx, 'ローリングスタート — コントロールライン通過で計測開始', w / 2, h * 0.5, 13 * u, 'rgba(255,255,255,0.85)', 'center', '600');
     }
 
     // ================= 警告表示 =================
@@ -210,22 +198,21 @@ export class Hud {
     else if (!pl.lapValid && S.mode !== 'race' && S.mode !== 'train' && pl.lap >= 1) { warn = 'このラップは無効 (コースアウト)'; wcol = '#ffd23a'; }
     else if (S.mode === 'race' && S.leaderFinished && !pl.finished) { warn = 'ファイナルラップ'; wcol = '#fff'; }
     if (warn) {
-      const y = P ? top + 12 * u : h * 0.2;
-      ctx.font = `800 ${14 * u}px ${FONT}`; const tw = Math.min(ctx.measureText(warn).width, w - 40);
+      const y = h * 0.2;
+      ctx.font = `800 ${14 * u}px ${FONT}`; const tw = ctx.measureText(warn).width;
       rr(ctx, w / 2 - tw / 2 - 14, y - 16 * u, tw + 28, 24 * u, 6); ctx.fillStyle = 'rgba(8,12,22,0.72)'; ctx.fill();
       text(ctx, warn, w / 2, y + 1 * u, 14 * u, wcol, 'center', '800');
     }
 
     // ================= メッセージ =================
-    let my = P ? top + 120 * u : h * 0.38;
+    let my = h * 0.38;
     for (let i = this.msgs.length - 1; i >= 0; i--) {
       const m = this.msgs[i]; m.t += dt;
       if (m.t > m.dur) { this.msgs.splice(i, 1); continue; }
       const a = sat(m.t / 0.15) * sat((m.dur - m.t) / 0.4);
       ctx.globalAlpha = a;
-      let sz = (m.big ? 34 : 20) * u;
-      ctx.font = `italic 800 ${sz}px ${FONT}`; let tw = ctx.measureText(m.text).width;
-      if (tw > w - 48) { sz *= (w - 48) / tw; tw = w - 48; ctx.font = `italic 800 ${sz}px ${FONT}`; }
+      const sz = (m.big ? 34 : 20) * u;
+      ctx.font = `italic 800 ${sz}px ${FONT}`; const tw = ctx.measureText(m.text).width;
       rr(ctx, w / 2 - tw / 2 - 18, my - sz * 0.95, tw + 36, sz * 1.4, 8); ctx.fillStyle = 'rgba(8,12,22,0.7)'; ctx.fill();
       text(ctx, m.text, w / 2, my, sz, m.color, 'center', '800', true);
       ctx.globalAlpha = 1; my += sz * 1.6;
@@ -295,7 +282,7 @@ export class Hud {
   // 自車の下: シフトランプ(回転数)・ギヤ・速度だけの低いパネル
   drawCluster(ctx, L, S, c, input, cfg, u) {
     const cw = clamp(L.centre.w, 150, 250), cx = L.centre.x + L.centre.w / 2, x0 = cx - cw / 2;
-    const ch = clamp(L.h * 0.15, 52, 66), y0 = (L.clusterBottom ?? L.h - L.m - L.safe.b) - ch;
+    const ch = clamp(L.h * 0.15, 52, 66), y0 = L.h - L.m - L.safe.b - ch;
     panel(ctx, x0, y0, cw, ch, 12, 0.6);
     // シフトランプ (回転数)
     const n = 14, lw2 = (cw - 20 - (n - 1) * 3) / n, rpm = c.rpm;
@@ -374,8 +361,7 @@ export class Hud {
     const tr = S.trainer, c = S.player.car, w = L.w, h = L.h;
     if (cfg.trainGuide !== false && (S.state === 'green' || S.state === 'countdown')) {
       const tg = tr.target;
-      const px = L.m + L.safe.l, py = L.trRow[0].y + L.trRow[0].h + 8, pw = L.portrait ? Math.min(L.timing.w, clamp(w * 0.5, 176, 236)) : clamp(w * 0.255, 176, 236), ph = 118 * u;
-      this.topBottom = Math.max(this.topBottom || 0, py + ph);
+      const px = L.m + L.safe.l, py = L.trRow[0].y + L.trRow[0].h + 8, pw = clamp(w * 0.255, 176, 236), ph = 118 * u;
       panel(ctx, px, py, pw, ph, 12, 0.7);
       ctx.strokeStyle = 'rgba(244,122,31,0.8)'; ctx.lineWidth = 1.5; rr(ctx, px, py, pw, ph, 12); ctx.stroke();
       text(ctx, 'お手本の目標', px + 10, py + 14 * u, 10 * u, '#ffc79a', 'left', '800');
@@ -412,7 +398,7 @@ export class Hud {
       ctx.globalAlpha = a;
       const sz = (big ? 22 : 15) * u;
       ctx.font = `800 ${sz}px ${FONT}`; const tw = ctx.measureText(cue.text).width;
-      const bw = tw + 58 * u, bh = (big ? 34 : 28) * u, bx = w / 2 - bw / 2, by = L.portrait ? (this.hudTop || h * 0.3) : L.pause.y + 61 * u;
+      const bw = tw + 58 * u, bh = (big ? 34 : 28) * u, bx = w / 2 - bw / 2, by = L.pause.y + 61 * u;
       rr(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = 'rgba(8,12,22,0.82)'; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
       ctx.beginPath(); ctx.arc(bx + bh / 2, by + bh / 2, bh * 0.36, 0, 6.3); ctx.fillStyle = col; ctx.fill();
       ctx.textBaseline = 'middle'; text(ctx, 'T', bx + bh / 2, by + bh / 2 + 1, bh * 0.42, '#111', 'center', '800'); ctx.textBaseline = 'alphabetic';
@@ -421,7 +407,7 @@ export class Hud {
     }
   }
   drawTiming(ctx, L, S, pl, u) {
-    const w = L.w; let y0 = L.pause.y;
+    const w = L.w, y0 = L.pause.y;
     const mapX = L.w - L.m - L.safe.r - clamp(L.w * 0.2, 130, 210) - 4;
     let pw = clamp(w * 0.3, 190, 290); const ph = 58 * u;
     let xL = Math.max(w / 2 - pw / 2, (this.posRight || 0) + 8);
@@ -429,8 +415,6 @@ export class Hud {
     this.narrow = mapX - 8 - ((this.posRight || 0) + 8) < 190;
     if (this.narrow) { const right = w - L.m - L.safe.r; pw = clamp(right - ((this.posRight || 0) + 8), 150, pw); xL = right - pw; this.timingBottom = y0 + ph; }
     else if (xL + pw > mapX - 8) pw = Math.max(170, mapX - 8 - xL);
-    if (L.timing) { y0 = L.timing.y; pw = L.timing.w; xL = L.timing.x; this.narrow = false; }   // 縦画面
-    this.timingBottom = y0 + ph;
     const cx = xL + pw / 2;
     panel(ctx, cx - pw / 2, y0, pw, ph, 10, 0.58);
     if (S.mode === 'train' && S.trainer) {
@@ -484,8 +468,8 @@ export class Hud {
   drawMinimap(ctx, L, S, R, u) {
     const mm = R.minimap; if (!mm) return;
     // 縦長のコース (オーバルなど) は高さを抑え、枠の中央に置く
-    const pw = L.map ? L.map.w : clamp(L.w * 0.2, 130, 210), sc = Math.min(pw / mm.W, (L.map ? L.map.h : clamp(L.h * 0.26, 96, 150)) / mm.H), mw = mm.W * sc, mh = mm.H * sc;
-    const px0 = L.map ? L.map.x : L.w - L.m - L.safe.r - pw, x0 = px0 + (pw - mw) / 2, y0 = L.map ? L.map.y : this.narrow ? this.timingBottom + 8 : L.pause.y;
+    const pw = clamp(L.w * 0.2, 130, 210), sc = Math.min(pw / mm.W, clamp(L.h * 0.26, 96, 150) / mm.H), mw = mm.W * sc, mh = mm.H * sc;
+    const px0 = L.w - L.m - L.safe.r - pw, x0 = px0 + (pw - mw) / 2, y0 = this.narrow ? this.timingBottom + 8 : L.pause.y;
     panel(ctx, px0 - 4, y0 - 2, pw + 8, mh + 4, 8, 0.4);
     ctx.drawImage(mm.c, x0, y0, mw, mh);
     const pl = S.player;
@@ -508,7 +492,7 @@ export class Hud {
     const rh = 15 * u, bw = this.mapW + 8, x0 = this.mapX - 4, y0 = this.mapBottom + 2;
     if (y0 + rows * rh > L.shiftUp.y - 6 && L.shiftUp.x > L.w / 2) return; // パドルに被るなら省略
     if (y0 + rows * rh > L.shiftDown.y - 6 && L.shiftDown.x > L.w / 2) return;
-    panel(ctx, x0, y0, bw, rows * rh + 6, 8, 0.5); this.topBottom = Math.max(this.topBottom || 0, y0 + rows * rh + 6);
+    panel(ctx, x0, y0, bw, rows * rh + 6, 8, 0.5);
     for (let k = 0; k < rows; k++) {
       const e = order[start + k], y = y0 + 3 + k * rh;
       if (e === pl) { rr(ctx, x0 + 2, y, bw - 4, rh, 4); ctx.fillStyle = 'rgba(255,140,30,0.35)'; ctx.fill(); }

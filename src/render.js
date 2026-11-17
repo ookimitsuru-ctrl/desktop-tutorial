@@ -380,8 +380,7 @@ export class Renderer {
   // ---------------------------------------------------------------- カメラ
   updateCamera(target, cfg, dt, snap) {
     const cam = this.cam, w = this.w, h = this.h;
-    const portrait = h > w * 1.15;
-    const mode = portrait && cfg.camera === 'right' ? 'up' : (cfg.camera || 'up');   // 縦画面では横スクロールの視点は使わない
+    const mode = cfg.camera || 'up';
     const v = target.speed || 0;
     const zf = cfg.zoom === 'near' ? 0.78 : cfg.zoom === 'far' ? 1.3 : 1;
     let scale, ax, ay, targetAng;
@@ -391,8 +390,7 @@ export class Renderer {
     } else if (mode === 'north') {
       scale = h / (lerp(150, 290, tt) * zf); ax = w * 0.5; ay = h * 0.47; targetAng = null;
     } else {
-      // 縦画面は少し引いて、自車をやや上 (操作部の上) に置き前方を広く見せる
-      scale = portrait ? h / (lerp(66, 200, tt) * zf) : h / (lerp(56, 176, tt) * zf); ax = w * 0.5; ay = h * (portrait ? 0.64 : 0.68); targetAng = target.yaw;
+      scale = h / (lerp(56, 176, tt) * zf); ax = w * 0.5; ay = h * 0.68; targetAng = target.yaw;
     }
     if (!cam.init || snap) {
       cam.x = target.x; cam.y = target.y; cam.scale = scale; cam.ang = targetAng ?? 0; cam.init = true; cam.lx = 0; cam.ly = 0;

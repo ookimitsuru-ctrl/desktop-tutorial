@@ -3,7 +3,6 @@ export const VARIANT = {
   id: 'original',
   tag: 'BAYSIDE &nbsp;·&nbsp; MISTRAL &nbsp;·&nbsp; HORIZON &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90',
   storageKey: 'okracing.original.v1',
-  orientation: 'landscape',
   // 自車 (OK RACING) は水色のカラーリング。似た色のチーム (ミラージュ) は入れ替える
   teams: {
     ok: { c1: '#4fc3ea', c2: '#10304f', c3: '#ffffff' },

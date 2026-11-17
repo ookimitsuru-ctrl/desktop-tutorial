@@ -3,7 +3,6 @@ export const VARIANT = {
   id: 'main',
   tag: 'SUZUKA &nbsp;·&nbsp; FUJI &nbsp;·&nbsp; INDY &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90',   // タイトル画面の小見出し
   storageKey: 'okracing.v1',   // 記録・設定の保存キー
-  orientation: 'portrait',     // 画面の向き (portrait: 縦 / landscape: 横)
   teams: {},                   // チーム色の上書き { チームid: { c1, c2, c3 } }
   credits: `
         <p><b>Formula simulator</b> — 鈴鹿サーキットを舞台にした見下ろし型F1レーシングシミュレーター。チーム「OK RACING」、マシン「OK-90」および登場するチーム名・ドライバー名はすべて架空のものです。</p>
