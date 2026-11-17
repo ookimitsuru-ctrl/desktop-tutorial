@@ -46,7 +46,7 @@ const BASE_RATIOS = [-13.2, 13.44, 10.18, 8.27, 6.91, 5.96, 5.25];
 // セッティング 3種
 export const SETUPS = {
   high: { id: 'high', name: '高速寄り', cda: 1.04, cla: 2.50, final: 0.955, front: 0.365, desc: '最高速重視。ストレートで有利' },
-  mid: { id: 'mid', name: '中速寄り', cda: 1.20, cla: 2.90, final: 1.0, front: 0.37, desc: 'バランス型。鈴鹿の標準設定' },
+  mid: { id: 'mid', name: '中速寄り', cda: 1.20, cla: 2.90, final: 1.0, front: 0.37, desc: 'バランス型。標準の設定' },
   low: { id: 'low', name: '低速寄り', cda: 1.43, cla: 3.25, final: 1.055, front: 0.375, desc: '旋回と立ち上がり重視。最高速は低下' },
 };
 

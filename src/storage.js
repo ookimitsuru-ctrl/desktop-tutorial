@@ -1,6 +1,7 @@
 // 設定・記録・ゴーストの保存 (localStorage)
 import { trackSuffix } from './tracks.js';
-const KEY = 'okracing.v1';
+import { VARIANT } from './variant.js';
+const KEY = VARIANT.storageKey;
 // 記録・予選結果・ゴースト・練習のベストはサーキットごとに分けて保存する (鈴鹿は従来のキーのまま)
 const K = name => name + trackSuffix();
 

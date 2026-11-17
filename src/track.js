@@ -30,8 +30,8 @@ function smoothArr(a, r, passes = 1) {
   return src;
 }
 
-// def: サーキット定義 (src/tracks.js)。省略時は鈴鹿。
-export function buildTrack(def = TRACKS.suzuka) {
+// def: サーキット定義 (src/tracks.js)。省略時は先頭のサーキット。
+export function buildTrack(def = TRACKS[Object.keys(TRACKS)[0]]) {
   const raw = def.points, m = raw.length;
   const LENGTH = def.length;
   // --- 1) 高密度補間して弧長を測る ---
@@ -197,7 +197,7 @@ export function buildTrack(def = TRACKS.suzuka) {
   T.cross = null;
   outer:
   for (let a = 0; a < N; a++) {
-    for (let b = a + 100; b < N; b++) {
+    for (let b = a + 100; b < N - 100 + a; b++) {   // 周回の継ぎ目 (最後の点と先頭の点) どうしは比べない
       const dx = T.x[a] - T.x[b], dy = T.y[a] - T.y[b];
       if (dx * dx + dy * dy < 2.2) { T.cross = { lo: a, hi: b }; break outer; }
     }

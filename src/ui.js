@@ -4,6 +4,7 @@ import { WEATHERS, DIFFICULTY, DRIVERS, TEAMS, fmtTime, estimateQualiTime } from
 import { drawCarShowcase } from './carsprite.js';
 import { Store, DEFAULT_SETTINGS } from './storage.js';
 import { TRACKS, TRACK_IDS, currentTrack } from './tracks.js';
+import { VARIANT } from './variant.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const MODES = {
@@ -62,7 +63,7 @@ export class UI {
   title() {
     return `<div class="title">
       <div class="logo"><span class="ok">Formula</span><span class="racing">simulator</span></div>
-      <div class="tag">SUZUKA &nbsp;·&nbsp; FUJI &nbsp;·&nbsp; INDY &nbsp;·&nbsp; 1990 F1 &nbsp;·&nbsp; OK-90</div>
+      <div class="tag">${VARIANT.tag}</div>
       <canvas class="showcase"></canvas>
       <button class="big" data-act="start">TAP TO START</button>
       <div class="foot">操作はアクセル・ブレーキ・シフトだけ — ステアリングは自動</div>
@@ -161,12 +162,7 @@ export class UI {
   credits() {
     return `<div class="panel wide">
       <header><button class="back" data-act="back">‹ 戻る</button><h2>クレジット<em>CREDITS</em></h2><span></span></header>
-      <div class="scroll credits">
-        <p><b>Formula simulator</b> — 鈴鹿サーキットを舞台にした見下ろし型F1レーシングシミュレーター。チーム「OK RACING」、マシン「OK-90」および登場するチーム名・ドライバー名はすべて架空のものです。</p>
-        <p><b>コースデータ</b><br>コース中心線と幅員: TUMFTM racetrack-database (LGPL-3.0) — https://github.com/TUMFTM/racetrack-database<br>中心線の原データ: © OpenStreetMap contributors (ODbL)<br>全長を 5,807m に正規化し、高低差 (約52m)・立体交差・ピットレーン・縁石・ランオフを追加しています。</p>
-        <p><b>富士スピードウェイ</b><br>提供されたコース図 (画像) の線を読み取り、図に記載の全長 4,563m・コーナー半径・標高グラフに合わせて補正した近似形状です。測量データではありません。ピットレーン・縁石・ランオフ・スタンドは本作で追加したものです。</p>
-        <p>本作は鈴鹿サーキット、富士スピードウェイ、およびいかなる実在のレース主催者・チームとも関係ありません。</p>
-      </div></div>`;
+      <div class="scroll credits">${VARIANT.credits}      </div></div>`;
   }
   pause({ mode }) {
     const s = Store.settings(), l = Store.last();

@@ -10,11 +10,11 @@ import { GameAudio } from './audio.js';
 import { UI, MODES } from './ui.js';
 import { Store, DEFAULT_SETTINGS } from './storage.js';
 import { tyreBaseMu, totalMass, TYRES } from './physics.js';
-import { TRACKS, setCurrentTrack } from './tracks.js';
+import { TRACKS, TRACK_IDS, setCurrentTrack } from './tracks.js';
 
 const canvas = document.getElementById('game');
 // 選択中のサーキット (メニューで切り替える)
-let T = buildTrack(setCurrentTrack(TRACKS[Store.last().track] ? Store.last().track : 'suzuka'));
+let T = buildTrack(setCurrentTrack(TRACKS[Store.last().track] ? Store.last().track : TRACK_IDS[0]));
 let line = computeRacingLine(T);
 const R = new Renderer(canvas, T, line);
 const hud = new Hud();

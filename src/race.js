@@ -3,6 +3,7 @@
 import { createCar, stepCar, placeCar, collideCars, fitTyres, applySetup, requestShift, trimSetup, CAR, SETUPS, TYRES } from './physics.js';
 import { Driver, rand, seedRand } from './ai.js';
 import { Trainer } from './trainer.js';
+import { VARIANT } from './variant.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const sat = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -20,6 +21,7 @@ export const TEAMS = [
   { id: 'kmk', name: 'カミカワ', c1: '#101010', c2: '#c9a24a', c3: '#c9a24a', power: 0.955, grip: 0.978 },
   { id: 'rss', name: 'ロッソ・ピッコロ', c1: '#8c1d2f', c2: '#f3e9d2', c3: '#2b2b2b', power: 0.95, grip: 0.972 },
 ];
+for (const t of TEAMS) Object.assign(t, VARIANT.teams[t.id] || {});   // 版ごとのカラーリング (オリジナル版の自車は水色)
 export const DRIVERS = [
   { no: 1, name: 'YOU', short: 'YOU', team: 0, skill: 1, aggr: 0.5, player: true },
   { no: 2, name: '岡 健一', short: 'OKA', team: 0, skill: 0.80, aggr: 0.5 },
