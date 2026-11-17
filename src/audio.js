@@ -25,7 +25,10 @@ export class GameAudio {
     const satG = this.satG = ctx.createGain(), cleanG = this.cleanG = ctx.createGain(); cleanG.gain.value = 0;
     master.connect(sat); sat.connect(satG); satG.connect(comp);
     master.connect(cleanG); cleanG.connect(comp);
-    comp.connect(ctx.destination);
+    // 最後にピークだけを抑えるリミッター (音量を一瞬下げるだけで波形は歪ませない)。高回転のシフトダウンなどで出力が 1 を超えて音割れしないように
+    const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -2.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.12;
+    const trim = ctx.createGain(); trim.gain.value = 0.86;   // リミッターの自動補正 (約 +1.3dB) を打ち消して元の音量に
+    comp.connect(lim); lim.connect(trim); trim.connect(ctx.destination);
     // ノイズバッファ
     const nb = this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
