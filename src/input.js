@@ -10,6 +10,7 @@ export const PEDAL_EDGE = 0.04;   // 端の余白 (ここまで動かせば100%)
 
 // 画面レイアウト (CSS px)。HUD と共有する。
 export function computeLayout(w, h, cfg = {}, safe = { l: 0, r: 0, t: 0, b: 0 }) {
+  if (h > w * 1.15) return portraitLayout(w, h, cfg, safe);   // 縦画面
   const m = Math.max(8, Math.round(h * 0.022));
   const ml = m + safe.l, mr = m + safe.r, mb = m + safe.b, mt = m + safe.t;
   const padW = clamp(w * 0.40, 230, 430) * 0.9, padH = clamp(h * 0.21, 62, 96);
@@ -32,6 +33,38 @@ export function computeLayout(w, h, cfg = {}, safe = { l: 0, r: 0, t: 0, b: 0 })
   };
   for (let k = 0; k < 4; k++) L.tyreBtns.push({ x: ml + k * (bs + 6), y: mt + bs + 8, w: bs, h: bs });
   { const tw = clamp(w * 0.105, 74, 104); for (let k = 0; k < 3; k++) L.trRow.push({ x: ml + k * (tw + 6), y: mt + bs + 8, w: tw, h: bs * 0.82 }); }
+  return L;
+}
+// 縦画面のレイアウト
+//  上段: ボタン類と順位 / その下: 左にタイム、右にコースマップ (下にタイヤ・燃料と順位表)
+//  最下段: 左にペダルパッド、右にシフトパドル (左 DOWN / 右 UP)。その上にタコメーター・ギヤ・速度
+function portraitLayout(w, h, cfg, safe) {
+  const m = Math.max(8, Math.round(w * 0.022));
+  const ml = m + safe.l, mr = m + safe.r, mb = m + safe.b, mt = m + safe.t;
+  const u = clamp(Math.min(h / 400, w / 800), 0.82, 1.5);   // HUD の文字の大きさの係数 (hud.js と同じ)
+  const gap = 8;
+  const pw = clamp(w * 0.19, 66, 110), ph = clamp(h * 0.14, 96, 140);
+  const shiftUp = { x: w - mr - pw, y: h - mb - ph, w: pw, h: ph };
+  const shiftDown = { x: shiftUp.x - gap - pw, y: h - mb - ph, w: pw, h: ph };
+  const padW = shiftDown.x - gap, padH = clamp(h * 0.11, 70, 104), padY = h - mb - padH;
+  const pedal = { x: 0, y: padY, w: padW, h: padH };   // 画面の左端に密着
+  const bs = clamp(w * 0.105, 34, 46);
+  const row2 = mt + bs + 8;
+  const mapW = clamp(w * 0.3, 100, 150);
+  const map = { x: w - mr - mapW, y: row2, w: mapW, h: clamp(h * 0.16, 100, 150) };
+  const timing = { x: ml, y: row2, w: map.x - 8 - ml };
+  const row3 = row2 + 58 * u + 8;
+  const L = {
+    w, h, m, safe, portrait: true, pedal, shiftUp, shiftDown, map, timing,
+    pedalZone: { x: 0, y: padY - padH * 0.45, w: padW + 6, h: h - padY + padH * 0.45 },
+    pause: { x: ml, y: mt, w: bs, h: bs },
+    pit: { x: ml + bs + 8, y: mt, w: bs * 1.7, h: bs },
+    reset: { x: ml + bs * 2.7 + 16, y: mt, w: bs * 1.5, h: bs },
+    tyreBtns: [], retry: { x: ml + bs + 8, y: mt, w: bs * 1.7, h: bs }, trRow: [],
+    centre: { x: ml, w: w - ml - mr }, clusterBottom: Math.min(padY, shiftUp.y) - 10,
+  };
+  for (let k = 0; k < 4; k++) L.tyreBtns.push({ x: ml + k * (bs + 6), y: row3, w: bs, h: bs });
+  { const tw = clamp((timing.w - 12) / 3, 64, 104); for (let k = 0; k < 3; k++) L.trRow.push({ x: ml + k * (tw + 6), y: row3, w: tw, h: bs * 0.82 }); }
   return L;
 }
 const inRect = (r, x, y, pad = 0) => x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;

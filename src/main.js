@@ -11,6 +11,10 @@ import { UI, MODES } from './ui.js';
 import { Store, DEFAULT_SETTINGS } from './storage.js';
 import { tyreBaseMu, totalMass, TYRES } from './physics.js';
 import { TRACKS, TRACK_IDS, setCurrentTrack } from './tracks.js';
+import { VARIANT } from './variant.js';
+// 画面の向き: 版の向きと違う向きで持っているときだけ、回転を促す表示を出す (style.css)
+document.documentElement.dataset.orient = VARIANT.orientation;
+{ const r = document.querySelector('#rotate p'); if (r) r.textContent = VARIANT.orientation === 'portrait' ? '端末を縦向きにしてください' : '端末を横向きにしてください'; }
 
 const canvas = document.getElementById('game');
 // 選択中のサーキット (メニューで切り替える)
