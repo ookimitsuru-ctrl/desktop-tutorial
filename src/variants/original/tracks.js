@@ -32,9 +32,10 @@ export const TRACKS = {
     smooth: false,
     width: { min: 15, max: 20, scale: 1 },
     elevation: { range: null, keys: elev(BL, [[0, 1.5], [0.25, 0], [0.5, 2.5], [0.75, 3], [1, 1.5]]) },   // 高低差 3m
-    banking: { deg: 9.2, radius: 260 },               // 90度ターンで約9度、45度ターンで約5度のバンク
+    banking: { deg: 9.2, radius: 190 },               // 90度ターンで約9度、45度ターンで約6度のバンク
     aero: { cl: 0.35, cd: 0.5, final: 0.8, spread: 0.4 },   // スーパースピードウェイ仕様: 薄いウイングと長いギヤ比
     runoff: { l: 13, r: 2.2 },                        // 内側は芝、外側はすぐ壁
+    aiGrip: 0.9,                                    // AI の旋回の見積もりに余裕を持たせる (高速のバンクターンでフロントが先に限界になるため)
     sections: sections(BAYSIDE),
     sectorSplits: [r1(BL / 3), r1(BL * 2 / 3)],
     pit: { side: -1, sEntry: r1(BL - 470), sEntryEnd: r1(BL - 380), sExitStart: 120, sExit: 230, boxStart: r1(BL - 350), garage: [r1(BL - 362), 96], apron: [r1(BL - 370), 108], paddock: [r1(BL - 385), 120] },
@@ -48,7 +49,7 @@ export const TRACKS = {
       trainSec(BAYSIDE, 't3', 'ターン3', 'T3', 3, 3, 250, 150),
       trainSec(BAYSIDE, 't45', 'ターン4〜5', 'T4-5', 4, 5, 250, 120),
     ],
-    fullLaps: 180, baseLap: 44.8,
+    fullLaps: 200, baseLap: 44.6,
   },
 
   // ------------------------------------------------------------------ 低速コーナー主体のテクニカルコース (右回り)

@@ -119,8 +119,9 @@ export class Driver {
     this.wet = wet;
     const mu = this.estMu(wet);
     this.profileMu = mu;
+    // aiGrip: コースごとに旋回の見積もりへ余裕を持たせる (高速のバンクターンでフロントが先に限界になるコースなど)
     speedProfile(this.T, this.line, {
-      mu, use: this.use * (wet > 0.3 ? 0.97 : 1), cla: c.setup.cla * (1 - 0.3 * c.dmgF - 0.25 * c.dmgR), cda: c.setup.cda,
+      mu, use: this.use * (wet > 0.3 ? 0.97 : 1) * (this.T.def.aiGrip ?? 1), cla: c.setup.cla * (1 - 0.3 * c.dmgF - 0.25 * c.dmgR), cda: c.setup.cda,
       mass: totalMass(c), power: c.power, brake: 0.86 + 0.06 * this.skill, dfUse: Driver.DF_USE, gUse: Driver.G_USE, vtop: this.T.def.aero ? 125 : undefined,
     }, this.profile);
   }
