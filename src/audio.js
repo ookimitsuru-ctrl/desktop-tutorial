@@ -4,7 +4,8 @@
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NOISE_LEVEL = 0.55;   // エンジンのノイズ層の基準量 (低・中回転でこの値)
 // 高回転では歪みを外す (歪んだ経路から歪みのない経路へなめらかに切り替える)。歪みのない経路の音量合わせの係数
-const ENGINE_CLEAN_K = 1.5, MASTER_CLEAN_K = 1.5;
+const ENGINE_CLEAN_K = 2.8, MASTER_CLEAN_K = 1.5;
+const SOFT_DRIVE = 2.4;   // 高回転の経路に残す歪みの強さ (0 に近いほど歪みなし)。尖ったピークを丸めて音量を稼ぐ
 const smooth01 = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
 const highBand = rpm => smooth01((rpm - 11000) / 1500);   // 高回転帯 (11,500rpm〜) の重み 0〜1
 
@@ -76,8 +77,12 @@ export class GameAudio {
     ns.connect(nf); nf.connect(ng); ng.connect(mix);
     // 歪みあり (sh) と歪みなし の 2 経路を回転数で切り替える (setEngine): 高回転では歪みを外す
     const shG = ctx.createGain(), cleanG = ctx.createGain(); cleanG.gain.value = 0;
+    // 高回転の経路: ごく弱いソフトサチュレーション (入力を半分にしてから tanh で丸める。小さい音はほぼそのまま)
+    const pre = ctx.createGain(); pre.gain.value = 0.5;
+    const soft = ctx.createWaveShaper(); soft.oversample = main ? '2x' : 'none';
+    { const c = new Float32Array(1024), A = SOFT_DRIVE; for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; c[i] = Math.tanh(A * x) / Math.tanh(A); } soft.curve = c; }
     mix.connect(sh); sh.connect(shG); shG.connect(lp);
-    mix.connect(cleanG); cleanG.connect(lp);
+    mix.connect(pre); pre.connect(soft); soft.connect(cleanG); cleanG.connect(lp);
     lp.connect(pk); pk.connect(out);
     if (pan) { out.connect(pan); pan.connect(this.master); } else out.connect(this.master);
     o1.start(); o2.start(); o3.start(); o4.start(); ns.start(0, Math.random() * 1.5);
