@@ -3,6 +3,7 @@
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NOISE_LEVEL = 0.55;   // エンジンのノイズ層の基準量 (低・中回転でこの値)
+const DRIVE = { mid: 2.5, midHi: 3.0, comp: 0.15, gritMid: 0.4, gritMidHi: 0.5 };   // 中回転・中高回転で歪みを強める量 (歪ませる前の入力を 1 + この値 倍)
 const ROUGH = { pitch: 0.04, level: 0.8, noise: 0.9 };   // 低回転のバラツキの幅 (音程 ±2%・音量 ±40%・ノイズ量 ±45%)
 // 高回転では歪みを外す (歪んだ経路から歪みのない経路へなめらかに切り替える)。歪みのない経路の音量合わせの係数
 const ENGINE_CLEAN_K = 2.8, MASTER_CLEAN_K = 1.5;
@@ -82,12 +83,19 @@ export class GameAudio {
     const pre = ctx.createGain(); pre.gain.value = 0.5;
     const soft = ctx.createWaveShaper(); soft.oversample = main ? '2x' : 'none';
     { const c = new Float32Array(1024), A = SOFT_DRIVE; for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; c[i] = Math.tanh(A * x) / Math.tanh(A); } soft.curve = c; }
-    mix.connect(sh); sh.connect(shG); shG.connect(lp);
+    const drive = ctx.createGain(); drive.gain.value = 1;   // 歪ませる量 (中回転・中高回転で持ち上げる。setEngine)
+    mix.connect(drive); drive.connect(sh); sh.connect(shG); shG.connect(lp);
     mix.connect(pre); pre.connect(soft); soft.connect(cleanG); cleanG.connect(lp);
-    lp.connect(pk); pk.connect(out);
+    // ざらつき: 高域を丸めたあとにもう一度軽く歪ませる (中回転・中高回転だけ。setEngine で量を決める)
+    const gritIn = ctx.createGain(); gritIn.gain.value = 2.2;
+    const grit = ctx.createWaveShaper(); grit.oversample = main ? '2x' : 'none';
+    { const c = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; c[i] = Math.tanh(x * 2.2 + 0.18) / Math.tanh(2.2) - Math.tanh(0.18) / Math.tanh(2.2); } grit.curve = c; }
+    const gritG = ctx.createGain(), dryG = ctx.createGain(); gritG.gain.value = 0; dryG.gain.value = 1;
+    lp.connect(pk); pk.connect(dryG); dryG.connect(out);
+    pk.connect(gritIn); gritIn.connect(grit); grit.connect(gritG); gritG.connect(out);
     if (pan) { out.connect(pan); pan.connect(this.master); } else out.connect(this.master);
     o1.start(); o2.start(); o3.start(); o4.start(); ns.start(0, Math.random() * 1.5);
-    return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4, nf, ng, shG, cleanG };
+    return { o1, o2, o3, o4, lp, pk, out, pan, mix, g1, g2, g3, g4, nf, ng, shG, cleanG, drive, gritG, dryG };
   }
   setEngine(e, rpm, load, gain, pan = 0) {
     const t = this.ctx.currentTime, f = clamp(rpm, 1500, 14500) / 60 * 5; // V10: 1回転で5回点火
@@ -118,7 +126,11 @@ export class GameAudio {
     e.ng._target = nz * NOISE_LEVEL;   // (音量の測定用に目標値を保持)
     e.ng.gain.setTargetAtTime(nz * NOISE_LEVEL * jn, t, rough > 0.05 ? 0.02 : 0.05);
     e.nf.frequency.setTargetAtTime(clamp(f * (wLow * 2.0 + wMid * 2.4 + wMidHi * 3.2 + wHigh * 3.2), 350, 4200), t, 0.06);   // 低回転は低めの帯域のごろつき、上がるほどざらざら
-    e.shG.gain.setTargetAtTime(Math.cos(wHigh * Math.PI / 2), t, 0.05);
+    const dr = 1 + DRIVE.mid * wMid + DRIVE.midHi * wMidHi;   // 低回転・高回転は 1 (これまでどおり)
+    e.drive.gain.setTargetAtTime(dr, t, 0.05);
+    const gr = DRIVE.gritMid * wMid + DRIVE.gritMidHi * wMidHi;   // ざらつきの量 (低回転・高回転は 0)
+    e.gritG.gain.setTargetAtTime(gr * 0.62, t, 0.05); e.dryG.gain.setTargetAtTime(1 - gr * 0.3, t, 0.05);
+    e.shG.gain.setTargetAtTime(Math.cos(wHigh * Math.PI / 2) * Math.pow(dr, -DRIVE.comp), t, 0.05);   // 歪ませると音が大きくなる分を少し戻す
     e.cleanG.gain.setTargetAtTime(Math.sin(wHigh * Math.PI / 2) * ENGINE_CLEAN_K, t, 0.05);
     e.out.gain.setTargetAtTime(gain * ja, t, rough > 0.05 ? 0.01 : 0.05);   // 音量の揺らぎは歪みの後段で (前段だと歪みで潰れて消える)
     if (e.pan) e.pan.pan.setTargetAtTime(clamp(pan, -1, 1), t, 0.08);
