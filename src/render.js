@@ -384,13 +384,14 @@ export class Renderer {
     const v = target.speed || 0;
     const zf = cfg.zoom === 'near' ? 0.78 : cfg.zoom === 'far' ? 1.3 : 1;
     let scale, ax, ay, targetAng;
-    const t = sat((v - 8) / 72), tt = t * t * (3 - 2 * t);
+    // 速度に応じたズーム: 低速ほど寄る (低速では大きく寄り、中速まではゆっくり引いて、高速で全体を見せる)
+    const t = sat((v - 6) / 84), tt = Math.pow(t * t * (3 - 2 * t), 1.3);
     if (mode === 'right') {
-      scale = w / (lerp(110, 330, tt) * zf); ax = w * 0.3; ay = h * 0.47; targetAng = target.yaw;
+      scale = w / (lerp(70, 330, tt) * zf); ax = w * 0.3; ay = h * 0.47; targetAng = target.yaw;
     } else if (mode === 'north') {
-      scale = h / (lerp(150, 290, tt) * zf); ax = w * 0.5; ay = h * 0.47; targetAng = null;
+      scale = h / (lerp(95, 290, tt) * zf); ax = w * 0.5; ay = h * 0.47; targetAng = null;
     } else {
-      scale = h / (lerp(56, 176, tt) * zf); ax = w * 0.5; ay = h * 0.68; targetAng = target.yaw;
+      scale = h / (lerp(32, 176, tt) * zf); ax = w * 0.5; ay = h * 0.68; targetAng = target.yaw;   // 停止時は縦 32m、100km/h で約 46m、高速は 176m を映す
     }
     if (!cam.init || snap) {
       cam.x = target.x; cam.y = target.y; cam.scale = scale; cam.ang = targetAng ?? 0; cam.init = true; cam.lx = 0; cam.ly = 0;

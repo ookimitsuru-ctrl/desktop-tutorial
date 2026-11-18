@@ -16,7 +16,7 @@
 
 | 方法 | 手順 |
 |---|---|
-| **Android (APK)** | `release/FormulaSimulator-1.3.10-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
+| **Android (APK)** | `release/FormulaSimulator-1.3.11-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
 | **ブラウザ** | `npm run dev` → `http://localhost:8080/` を開く。HTTPS で公開すればホーム画面に追加(PWA)も可能 |
 | **単体HTML** | `npm run build` で作られる `dist/index.html` 1ファイルだけで動作 |
 
@@ -81,7 +81,7 @@
 `tools/device-test.mjs` は、Mac などに USB でつないだ Android 端末でゲームを長時間自動で動かし、記録を残します (Node.js 22 以上と adb が必要)。デバッグ版の APK は WebView のリモートデバッグが有効なので、スクリプトがゲームの中身を操作・計測できます。
 
 ```
-node tools/device-test.mjs --minutes 60 --apk release/FormulaSimulator-1.3.10-debug.apk --llm http://127.0.0.1:8080/v1 --model <モデル名>
+node tools/device-test.mjs --minutes 60 --apk release/FormulaSimulator-1.3.11-debug.apk --llm http://127.0.0.1:8080/v1 --model <モデル名>
 ```
 
 - 3 コースで フリー走行 / トレーニング / 決勝 を自動運転で順に回し、最後に adb のタッチでペダルとパドルを実際に操作する
