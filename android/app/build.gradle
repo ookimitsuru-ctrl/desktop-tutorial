@@ -1,0 +1,26 @@
+plugins { id 'com.android.application' }
+
+// 版の切り替え:  gradle assembleDebug                    … 標準版 (dist/ を同梱)
+//               gradle -Pvariant=original assembleDebug … オリジナル版 (架空サーキット・水色の車)。別アプリとして並べて入れられる
+def ORIGINAL = project.findProperty('variant') == 'original'
+if (ORIGINAL) layout.buildDirectory = file('build-original')
+
+android {
+    namespace 'jp.okracing.game'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'jp.okracing.game'
+        minSdk 24
+        targetSdk 35
+        versionCode 35
+        versionName '1.3.15'
+        if (ORIGINAL) { applicationId 'jp.okracing.original'; versionCode 8; versionName '1.1.5' }
+    }
+    // ゲーム本体は Web 版のビルド成果物 (../dist) をそのままアセットとして同梱する。
+    // 先にリポジトリ直下で `npm run build` を実行しておくこと。
+    sourceSets { main { assets.srcDirs = [ORIGINAL ? '../../dist-original' : '../../dist']; res.srcDirs = [ORIGINAL ? 'src/original/res' : 'src/main/res'] } }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.debug }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
