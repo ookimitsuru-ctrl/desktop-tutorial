@@ -13,6 +13,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const D2R = Math.PI / 180, STEP = 0.25;
 
 // 要素: ['s', 長さ, 調整用?] / ['c', 旋回角(度, 右回り+), 半径, 緩和曲線の長さ, 名前, 番号]
+//       ['m', [[旋回角, 半径], ...], 緩和曲線の長さ, 名前, 番号] … 複数の半径を緩和曲線でつないだ 1 つのコーナー
+//         (2 つの半径を持つ複合コーナーや、左右に切り返す S 字。旋回角の符号が違えば切り返しになる)
 //   旋回角に 'auto' を指定したコーナーは、合計が ±360° になるよう角度を決める (1 つだけ)
 const COURSES = {
   bayside: {
@@ -32,26 +34,32 @@ const COURSES = {
     ],
   },
   mistral: {
-    name: 'ミストラル・テクニカルパーク', dir: 1, width: 12, cornerWidth: 13,
-    // 頂点 [x, y, 半径, 緩和曲線, 名前, 番号]。頂点 0→1 の辺にコントロールライン (line: 辺の何割の位置か)
-    poly: [
-      [0, 0, 45, 25, '最終コーナー', 15],
-      [880, 0, 28, 20, '1コーナー', 1],
-      [880, 180, 30, 20, '2コーナー', 2],
-      [1100, 180, 30, 20, '3コーナー', 3],
-      [1100, 500, 25, 18, '4コーナー', 4],
-      [960, 500, 30, 20, '5コーナー', 5],
-      [960, 660, 30, 20, '6コーナー', 6],
-      [800, 660, 25, 16, 'シケイン', 7],
-      [760, 630, 25, 16, 'シケイン', 8],
-      [460, 630, 22, 18, 'ヘアピン', 9],
-      [720, 480, 30, 20, '10コーナー', 10],
-      [580, 400, 90, 20, '11コーナー', 11],
-      [360, 400, 32, 20, '12コーナー', 12],
-      [360, 260, 30, 20, '13コーナー', 13],
-      [0, 260, 40, 22, '14コーナー', 14],
+    name: 'ミストラル・テクニカルパーク', dir: 1, width: 12, cornerWidth: 13.5,
+    elements: [
+      ['s', 300],
+      ['m', [[55, 70], [60, 38]], 25, '1コーナー', 1],          // 2 つの半径の複合 (入口 70m → 奥 38m と締まっていく)
+      ['s', 120],
+      ['c', -25, 60, 25, '2コーナー', 2],
+      ['s', 150],
+      ['m', [[-30, 200], [60, 170], [-30, 190]], 40, 'S字', 3],  // 高速 S 字 (左右に切り返しながら抜ける)
+      ['s', 140],
+      ['c', 90, 70, 35, '4コーナー', 4],
+      ['s', 250, 'adj'],
+      ['c', -58, 60, 30, '5コーナー', 5],
+      ['s', 250],
+      ['c', 148, 20, 18, 'ヘアピン', 6],                        // 鈴鹿のヘアピンと同じ半径 (中心線で約 20m)
+      ['s', 300, 'adj'],
+      ['c', 25, 300, 40, '7コーナー', 7],                       // 緩い高速キンク
+      ['s', 120],
+      ['m', [[-40, 45], [-35, 80]], 25, '8コーナー', 8],         // 2 つの半径の複合 (奥 45m → 出口 80m と開いていく)
+      ['s', 140],
+      ['c', 70, 55, 30, '9コーナー', 9],
+      ['s', 100],
+      ['c', -45, 70, 30, '10コーナー', 10],
+      ['s', 120],
+      ['c', 'auto', 90, 40, '最終コーナー', 11],
+      ['s', 560],
     ],
-    line: 0.62,
   },
   horizon: {
     name: 'ホライゾン・ハイスピードサーキット', dir: 1, width: 15, cornerWidth: 17,
@@ -84,6 +92,17 @@ const COURSES = {
 // 1 要素ぶんの曲率を、距離 u (0〜長さ) の関数として返す
 function profile(el) {
   if (el[0] === 's') return { len: el[1], k: () => 0 };
+  if (el[0] === 'm') {
+    // 曲率の折れ点: 0 → k1 (一定 L1) → k2 (一定 L2) … → 0。区間ごとの旋回角が指定どおりになるよう Li = |θi|Ri − rp
+    const [, arcs, rp] = el, knots = [[0, 0]]; let u = 0;
+    for (const [ang, R] of arcs) {
+      const k = Math.sign(ang) / R, L = Math.abs(ang) * D2R * R - rp;
+      if (L < 0) throw new Error(`緩和曲線が長すぎる: ${JSON.stringify(arcs)}`);
+      u += rp; knots.push([u, k]); u += L; knots.push([u, k]);
+    }
+    u += rp; knots.push([u, 0]);
+    return { len: u, k: x => { for (let i = 1; i < knots.length; i++) if (x <= knots[i][0]) { const [a, ka] = knots[i - 1], [b, kb] = knots[i]; return b > a ? ka + (kb - ka) * (x - a) / (b - a) : kb; } return 0; } };
+  }
   const [, ang, R, rp] = el, th = Math.abs(ang) * D2R, sg = Math.sign(ang);
   if (th * R < rp) throw new Error(`緩和曲線が長すぎる: ${el}`);
   const len = th * R + rp;   // 台形の曲率分布 (立ち上がり rp, 一定区間, 戻り rp) で旋回角が th になる
@@ -131,14 +150,15 @@ function build(id, C) {
   const els = (C.poly ? polyToElements(C) : C.elements).map(e => e.slice());
   // 旋回角の合計を ±360° に合わせる
   const auto = els.find(e => e[0] === 'c' && e[1] === 'auto');
-  const fixed = els.filter(e => e[0] === 'c' && e !== auto).reduce((a, e) => a + e[1], 0);
+  const angOf = e => (e[0] === 'c' ? e[1] : e[0] === 'm' ? e[1].reduce((a, x) => a + x[0], 0) : 0);
+  const fixed = els.filter(e => e !== auto).reduce((a, e) => a + angOf(e), 0);
   if (auto) auto[1] = C.dir * 360 - fixed;
   // 位置のずれ: 'adj' の直線 2 本の長さを連立方程式で調整して閉じる
   const adj = els.map((e, i) => (e[0] === 's' && e[2] === 'adj' ? i : -1)).filter(i => i >= 0);
   for (let it = 0; it < 3; it++) {
     const r = integrate(els);
     if (adj.length !== 2) break;
-    const hd = adj.map(i => { let h = 0; for (let j = 0; j < i; j++) if (els[j][0] === 'c') h += els[j][1] * D2R; return h; });
+    const hd = adj.map(i => { let h = 0; for (let j = 0; j < i; j++) h += angOf(els[j]) * D2R; return h; });
     const a = Math.cos(hd[0]), b = Math.cos(hd[1]), c = Math.sin(hd[0]), d = Math.sin(hd[1]), det = a * d - b * c;
     const dl0 = (-r.x * d + r.y * b) / det, dl1 = (-a * r.y + c * r.x) / det;
     els[adj[0]][1] += dl0; els[adj[1]][1] += dl1;
@@ -154,7 +174,9 @@ function build(id, C) {
     const cw = Math.min(1, kk * 120), w = C.width + (C.cornerWidth - C.width) * cw;
     out.push([+r.pts[i][0].toFixed(2), +r.pts[i][1].toFixed(2), +(w / 2).toFixed(2), +(w / 2).toFixed(2)]);
   }
-  const corners = r.marks.filter(m => m.el[0] === 'c').map(m => ({ name: m.el[4], no: m.el[5], angle: Math.round(m.el[1]), radius: m.el[2], from: Math.round(m.from), to: Math.round(m.to) }));
+  const corners = r.marks.filter(m => m.el[0] === 'c' || m.el[0] === 'm').map(m => m.el[0] === 'c'
+    ? { name: m.el[4], no: m.el[5], angle: Math.round(m.el[1]), radius: m.el[2], from: Math.round(m.from), to: Math.round(m.to) }
+    : { name: m.el[3], no: m.el[4], angle: Math.round(angOf(m.el)), radius: Math.min(...m.el[1].map(x => x[1])), radii: m.el[1].map(x => x[1]), from: Math.round(m.from), to: Math.round(m.to) });
   const straights = r.marks.filter(m => m.el[0] === 's').map(m => ({ from: Math.round(m.from), to: Math.round(m.to) }));
   // 自分自身と近づきすぎていないか (コース上で 300m 以上離れた点どうしの最短距離)
   let minSep = 1e9, at = null;

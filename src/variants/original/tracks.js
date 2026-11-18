@@ -52,7 +52,8 @@ export const TRACKS = {
     fullLaps: 200, baseLap: 44.6,
   },
 
-  // ------------------------------------------------------------------ 低速コーナー主体のテクニカルコース (右回り)
+  // ------------------------------------------------------------------ 曲線主体の低速テクニカルコース (右回り)
+  //  2 つの半径を持つ複合コーナー (1・8)、高速 S 字 (3)、鈴鹿と同じ半径 20m のヘアピン (6)
   mistral: {
     id: 'mistral', name: 'ミストラル・テクニカルパーク', short: 'MISTRAL', country: '架空のサーキット',
     points: MISTRAL.points, length: ML, raceline: MISTRAL_LINE,
@@ -63,18 +64,18 @@ export const TRACKS = {
     sectorSplits: [r1(ML / 3), r1(ML * 2 / 3)],
     pit: { sEntry: r1(ML - 470), sEntryEnd: r1(ML - 380), sExitStart: 120, sExit: 230, boxStart: r1(ML - 350), garage: [r1(ML - 362), 96], apron: [r1(ML - 370), 108], paddock: [r1(ML - 385), 120] },
     standWall: [r1(ML - 480), 280],
-    stands: [[r1(ML - 475), 270, -1, 3.5, 24, '#6d7682'], ...stands(MISTRAL, [1, 4, 9, 15])],
+    stands: [[r1(ML - 475), 270, -1, 3.5, 24, '#6d7682'], ...stands(MISTRAL, [1, 4, 6, 11])],
     park: null,
-    boards: boards(MISTRAL, [1, 4, 7, 9, 12]),
+    boards: boards(MISTRAL, [1, 4, 5, 6, 8, 11]),
     train: [
       { id: 'lap', name: 'ラップ全体', short: '全周' },
-      trainSec(MISTRAL, 'c13', '1〜3コーナー', '1-3', 1, 3),
-      trainSec(MISTRAL, 'c46', '4〜6コーナー', '4-6', 4, 6),
-      trainSec(MISTRAL, 'hp', 'シケイン〜ヘアピン', 'ヘアピン', 7, 9),
-      trainSec(MISTRAL, 'c1012', '10〜12コーナー', '10-12', 10, 12),
-      trainSec(MISTRAL, 'fin', '13〜最終コーナー', '最終', 13, 15, 150, 60),
+      trainSec(MISTRAL, 'c12', '1〜2コーナー (複合)', '1-2', 1, 2),
+      trainSec(MISTRAL, 'ss', '高速S字〜4コーナー', 'S字', 3, 4),
+      trainSec(MISTRAL, 'hp', '5コーナー〜ヘアピン', 'ヘアピン', 5, 6),
+      trainSec(MISTRAL, 'c79', '7〜9コーナー (複合)', '7-9', 7, 9),
+      trainSec(MISTRAL, 'fin', '10〜最終コーナー', '最終', 10, 11, 150, 60),
     ],
-    fullLaps: 86, baseLap: 79.1,
+    fullLaps: 69, baseLap: 73.8,
   },
 
   // ------------------------------------------------------------------ 長いストレートを持つ高・中速コース (右回り)
