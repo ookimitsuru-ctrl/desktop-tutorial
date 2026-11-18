@@ -3,6 +3,7 @@
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NOISE_LEVEL = 0.55;   // エンジンのノイズ層の基準量 (低・中回転でこの値)
+const ROUGH = { pitch: 0.04, level: 0.8, noise: 0.9 };   // 低回転のバラツキの幅 (音程 ±2%・音量 ±40%・ノイズ量 ±45%)
 // 高回転では歪みを外す (歪んだ経路から歪みのない経路へなめらかに切り替える)。歪みのない経路の音量合わせの係数
 const ENGINE_CLEAN_K = 2.8, MASTER_CLEAN_K = 1.5;
 const SOFT_DRIVE = 2.4;   // 高回転の経路に残す歪みの強さ (0 に近いほど歪みなし)。尖ったピークを丸めて音量を稼ぐ
@@ -90,31 +91,36 @@ export class GameAudio {
   }
   setEngine(e, rpm, load, gain, pan = 0) {
     const t = this.ctx.currentTime, f = clamp(rpm, 1500, 14500) / 60 * 5; // V10: 1回転で5回点火
+    // エンジンを回転数で 4 つの帯に分けて扱う (帯の境目はなめらかにつなぐ)
+    //   低回転 (〜5,000) / 中回転 (5,000〜9,000) / 中高回転 (9,000〜11,500) / 高回転 (11,500〜)
+    const sm = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
+    const a1 = sm((rpm - 4500) / 2500), a2 = sm((rpm - 8000) / 2000), a3 = sm((rpm - 11000) / 1500);
+    const wLow = 1 - a1, wMid = a1 * (1 - a2), wMidHi = a2 * (1 - a3), wHigh = a3;
+    // 低回転のバラツキ: 燃焼が不揃いな荒れた音にするため、音程・音量・ノイズ量を毎フレームわずかにランダムに揺らす
+    //   低回転ほど強く、中回転は少し、中高回転から上は揺らさない
+    const rough = wLow + wMid * 0.35;
+    const jf = 1 + (Math.random() - 0.5) * ROUGH.pitch * rough, ja = 1 + (Math.random() - 0.5) * ROUGH.level * rough, jn = 1 + (Math.random() - 0.5) * ROUGH.noise * rough;
+    const tj = rough > 0.05 ? 0.012 : 0.02;   // 揺らすときは追従を速く
     // 濁り: 低〜中回転 (約9,000rpm まで) で強く、11,000rpm 以上では 0 (高回転は澄んだ高音)
     const x = clamp((rpm - 8500) / 3000, 0, 1), murk = 1 - x * x * (3 - 2 * x);
-    e.o1.frequency.setTargetAtTime(f, t, 0.02);
-    e.o2.frequency.setTargetAtTime(f * 0.5, t, 0.02);
-    e.o3.frequency.setTargetAtTime(f * 0.2, t, 0.02);
-    e.o4.frequency.setTargetAtTime(f * (1 + 0.011 + 0.006 * (1 - murk)), t, 0.02); // 約1%ずれ → うなり
+    e.o1.frequency.setTargetAtTime(f * jf, t, tj);
+    e.o2.frequency.setTargetAtTime(f * 0.5 * jf, t, tj);
+    e.o3.frequency.setTargetAtTime(f * 0.2 * jf, t, tj);
+    e.o4.frequency.setTargetAtTime(f * jf * (1 + 0.011 + 0.006 * (1 - murk)), t, tj); // 約1%ずれ → うなり
     e.g4.gain.setTargetAtTime(0.30 * murk, t, 0.05);
     e.g2.gain.setTargetAtTime(0.30 + 0.12 * murk, t, 0.05);   // 1/2 次を足して太く
     e.g3.gain.setTargetAtTime(0.35 + 0.12 * murk, t, 0.05);
     e.lp.frequency.setTargetAtTime((900 + load * 4200 + rpm * 0.16) * (1 - 0.30 * murk), t, 0.04); // 高域を少し丸める
     e.pk.gain.setTargetAtTime(5 - 2.5 * murk, t, 0.06);
     e.mix.gain.setTargetAtTime(0.55 + load * 0.75, t, 0.03);
-    // エンジンを回転数で 4 つの帯に分けて扱う (帯の境目はなめらかにつなぐ)
-    //   低回転 (〜5,000) / 中回転 (5,000〜9,000) / 中高回転 (9,000〜11,500) / 高回転 (11,500〜)
-    const sm = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
-    const a1 = sm((rpm - 4500) / 2500), a2 = sm((rpm - 8000) / 2000), a3 = sm((rpm - 11000) / 1500);
-    const wLow = 1 - a1, wMid = a1 * (1 - a2), wMidHi = a2 * (1 - a3), wHigh = a3;
     // ノイズ量: 低・中回転はしっかり、中高回転は軽く、高回転はなし (これまでの澄んだ音のまま)
-    const nz = wLow * 1.6 + wMid * 1.3 + wMidHi * 0.4 + wHigh * 0;
+    const nz = wLow * 2.3 + wMid * 1.4 + wMidHi * 0.4 + wHigh * 0;
     e.ng._target = nz * NOISE_LEVEL;   // (音量の測定用に目標値を保持)
-    e.ng.gain.setTargetAtTime(nz * NOISE_LEVEL, t, 0.05);
+    e.ng.gain.setTargetAtTime(nz * NOISE_LEVEL * jn, t, rough > 0.05 ? 0.02 : 0.05);
     e.nf.frequency.setTargetAtTime(clamp(f * (wLow * 2.0 + wMid * 2.4 + wMidHi * 3.2 + wHigh * 3.2), 350, 4200), t, 0.06);   // 低回転は低めの帯域のごろつき、上がるほどざらざら
     e.shG.gain.setTargetAtTime(Math.cos(wHigh * Math.PI / 2), t, 0.05);
     e.cleanG.gain.setTargetAtTime(Math.sin(wHigh * Math.PI / 2) * ENGINE_CLEAN_K, t, 0.05);
-    e.out.gain.setTargetAtTime(gain, t, 0.05);
+    e.out.gain.setTargetAtTime(gain * ja, t, rough > 0.05 ? 0.01 : 0.05);   // 音量の揺らぎは歪みの後段で (前段だと歪みで潰れて消える)
     if (e.pan) e.pan.pan.setTargetAtTime(clamp(pan, -1, 1), t, 0.08);
   }
   setVolume(v) { this.volume = v; if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : v, this.ctx.currentTime, 0.05); }
