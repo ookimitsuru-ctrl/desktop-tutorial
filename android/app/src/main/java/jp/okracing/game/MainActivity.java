@@ -2,6 +2,7 @@ package jp.okracing.game;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -23,6 +24,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // デバッグ版のときだけ WebView のリモートデバッグを有効にする (実機テスト tools/device-test.mjs が画面の中身を操作・計測するため)
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(11, 16, 32));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);

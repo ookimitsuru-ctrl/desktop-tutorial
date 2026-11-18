@@ -16,7 +16,7 @@
 
 | 方法 | 手順 |
 |---|---|
-| **Android (APK)** | `release/FormulaSimulator-1.3.8-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
+| **Android (APK)** | `release/FormulaSimulator-1.3.9-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
 | **ブラウザ** | `npm run dev` → `http://localhost:8080/` を開く。HTTPS で公開すればホーム画面に追加(PWA)も可能 |
 | **単体HTML** | `npm run build` で作られる `dist/index.html` 1ファイルだけで動作 |
 
@@ -75,6 +75,19 @@
 - テスト: `npm run test:original`
 - コースを作り直す: `node tools/build-original.mjs` → `node tools/build-line.mjs 400 <コースid> original` (レーシングライン)
 - 版ごとの違いは `src/variant.js` (標準版) と `src/variants/original/` (オリジナル版の設定・コース定義・データ・アイコン) にまとめてあり、ビルド時に差し替わります。オリジナル版のビルドは、実在のサーキット名が含まれていると失敗します。
+
+## 実機テスト (adb で接続した端末)
+
+`tools/device-test.mjs` は、Mac などに USB でつないだ Android 端末でゲームを長時間自動で動かし、記録を残します (Node.js 22 以上と adb が必要)。デバッグ版の APK は WebView のリモートデバッグが有効なので、スクリプトがゲームの中身を操作・計測できます。
+
+```
+node tools/device-test.mjs --minutes 60 --apk release/FormulaSimulator-1.3.9-debug.apk --llm http://127.0.0.1:8080/v1 --model <モデル名>
+```
+
+- 3 コースで フリー走行 / トレーニング / 決勝 を自動運転で順に回し、最後に adb のタッチでペダルとパドルを実際に操作する
+- 15 秒ごとにフレームレート・状態・JS エラー、1 分ごとに端末のメモリと温度、5 分ごとにスクリーンショットを記録する
+- 終了後に `device-test-<日時>/report.md` (要約) と `report.json` (全記録) を書き出す。`--llm` を付けるとローカル LLM (OpenAI 互換 API) に要約を渡して分析させ、`report-llm.md` に保存する (`--llm-images` で画像も送る)
+- オリジナル版は `--variant original` (オリジナル版のデバッグ版 APK を入れておく)
 
 ## 開発
 
