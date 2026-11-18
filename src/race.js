@@ -322,7 +322,11 @@ export class Session {
         const wrong = Math.abs(c.relH) > 2.0;
         const bogged = c.offCount >= 3 && c.speed < 5;
         const walled = c.speed < 1.5 && c.throttle > 0.25 && this.stateT > 4;
-        if (wrong || bogged || walled) e.stuckT += dt; else e.stuckT = Math.max(0, e.stuckT - dt * 2);
+        // スピン: 斜め〜横を向いたままほぼ止まっている (後続の通り道をふさぐので早めに戻す)
+        const spun = Math.abs(c.relH) > 0.45 && c.speed < 4 && this.stateT > 3;
+        // 決勝: コース上で止まったまま (後続が詰まるので、端へ寄せて戻す)
+        const parked = this.mode === 'race' && c.speed < 1 && this.stateT > 6;
+        if (wrong || bogged || walled || spun || parked) e.stuckT += dt * (spun && !wrong ? 1.5 : parked && !spun ? 0.75 : 1); else e.stuckT = Math.max(0, e.stuckT - dt * 2);
         if (e.stuckT > 2.2) { if (this.trainer) this.trainer.abort('stuck'); else this.resetToTrack(e); e.stuckT = 0; }
       }
       c.entry = e;
@@ -579,8 +583,9 @@ export class Session {
       for (const o of this.entries) { if (o === e || o.out) continue; if (Math.abs(T.sDiff(o.car.s, s)) < 10 && !o.pit) { ok = false; break; } }
       if (ok) break; s = T.wrapS(s - 12);
     }
-    const before = c.s;
-    placeCar(c, T, s, 0, 0);
+    const before = c.s, i = T.idx(s), lo = this.line.off[i];
+    const d = lo > 0 ? -(T.wl[i] - 1.7) : (T.wr[i] - 1.7);   // 走行ラインと反対側の端へ
+    placeCar(c, T, s, d, 0);
     e.dist += T.sDiff(c.s, before); e.prevS = c.s;
     if (this.mode !== 'race') { e.lapValid = false; }
     if (e.isPlayer) this.emit('reset', {});

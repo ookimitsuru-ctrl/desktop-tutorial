@@ -2,6 +2,8 @@
 import { CAR, G, steerLock, tyreBaseMu, tyreGripFactor, totalMass, engineTorque } from './physics.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+// 車がコースの横方向に占める半幅 [m]。前を向いていれば約 0.95m、スピンして横を向いていれば約 2.3m
+const halfAcross = (T, o) => { const a = o.yaw - Math.atan2(T.ty[o.i], T.tx[o.i]); return 0.95 * Math.abs(Math.cos(a)) + 2.25 * Math.abs(Math.sin(a)); };
 const sat = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const RHO = 1.2;
 
@@ -152,8 +154,8 @@ export class Driver {
         if (gap > 0 && gap < aGap) { aGap = gap; ahead = o; }
         // 自分の進路上にいる最も近い車 (隣の列の車に隠れた前走車を見落とさない)
         if (gap > 0 && gap < blGap) {
-          const l1 = o.d - myOff, l2 = (o.d - L.off[o.i]) - (myOff - L.off[c.i]);
-          if (Math.abs(l1) < 2.3 || Math.abs(l2) < 2.3 || (info?.caution && gap > 4)) { blGap = gap; block = o; }
+          const l1 = o.d - myOff, l2 = (o.d - L.off[o.i]) - (myOff - L.off[c.i]), wo = halfAcross(T, o) + 1.35;   // 横を向いた車は幅を広く見る
+          if (Math.abs(l1) < wo || Math.abs(l2) < wo || (info?.caution && gap > 4)) { blGap = gap; block = o; }
         }
         if (gap <= 0 && -gap < bGap) { bGap = -gap; behind = o; }
         // 横並び: 間隔を確保
@@ -175,21 +177,23 @@ export class Driver {
         const ov = Math.max(0, ahead.vx);
         const closing = v - ov;
         const lat = ahead.d - myOff;
-        const slow = ov < 12 && v > 20;
-        if (aGap < (this.steerOnly ? 16 + Math.max(0, closing) * 2.2 : 9 + Math.max(0, closing) * 1.4) + (slow ? 40 : 0)) {
-          if (Math.abs(lat) < 2.5 || this.passT > 0) {
+        const slow = ov < 12 && v > 20, stopped = ov < 4;   // stopped: スピンなどで止まりかけている車
+        const hw = halfAcross(T, ahead);                      // 前の車の横への張り出し (横を向いていれば広い)
+        if (aGap < (this.steerOnly ? 16 + Math.max(0, closing) * 2.2 : 9 + Math.max(0, closing) * 1.4) + (slow || stopped ? 40 : 0)) {
+          if (Math.abs(lat) < hw + 1.55 || this.passT > 0) {
             // 抜く側を決める
             if (this.passT <= 0) {
-              const roomR = L.hi[c.i] - (ahead.d + 2.4), roomL = (ahead.d - 2.4) - L.lo[c.i];
+              const roomR = L.hi[c.i] - (ahead.d + hw + 1.45), roomL = (ahead.d - hw - 1.45) - L.lo[c.i];
               let side = 0;
-              if (inside > 0 && roomR > 0.2) side = 1; else if (inside < 0 && roomL > 0.2) side = -1;
+              if (stopped) side = roomR > roomL ? (roomR > 0.2 ? 1 : 0) : (roomL > 0.2 ? -1 : 0);   // 止まった車は空いている側から抜く
+              else if (inside > 0 && roomR > 0.2) side = 1; else if (inside < 0 && roomL > 0.2) side = -1;
               else side = roomR > roomL ? (roomR > 0.2 ? 1 : 0) : (roomL > 0.2 ? -1 : 0);
               const cornering = Math.abs(L.curv[c.i]) > 0.008;
-              if (cornering && !slow && !this.steerOnly && rand() > 0.02 + this.aggr * 0.05) side = 0;
+              if (cornering && !slow && !stopped && !this.steerOnly && rand() > 0.02 + this.aggr * 0.05) side = 0;   // コーナーでは原則抜かない (止まった車は例外)
               this.passSide = side; this.passT = side ? 2.5 : 0.4;
             }
             if (this.passSide) {
-              const tgt = ahead.d + this.passSide * 2.55 - L.off[c.i];
+              const tgt = ahead.d + this.passSide * (hw + 1.6) - L.off[c.i];
               this.offsetTarget += (tgt - this.offsetTarget) * Math.min(1, dt * 3.5);
             }
           }
@@ -203,6 +207,8 @@ export class Driver {
         cap = Math.min(cap, Math.sqrt(ov * ov + 2 * decel * room));
         if (blGap < 25 && Math.abs(L.curv[c.i]) > 0.004) cap = Math.min(cap, this.profile[c.i] * 0.985 + 1);
         if (blGap < 5.2) cap = Math.min(cap, ov - 1.5);
+        // 止まった車を抜く側を決めたら、真後ろで止まり切らずに横へ出る (止まるとハンドルで横に動けず、後続まで詰まる)
+        if (ov < 4 && this.passSide && block === ahead && blGap > 3) cap = Math.max(cap, blGap > 8 ? 5 : 2.5);
       }
       if ((!ahead || aGap > 30) && !sideBy) { if (this.passT <= 0) this.offsetTarget *= (1 - Math.min(1, dt * 0.9)); }
       if (sideBy) cap = Math.min(cap, Math.max(20, this.profile[c.i] * 0.95));
