@@ -122,7 +122,7 @@ export class UI {
         ${this.seg('set', 'camera', s.camera, [{ v: 'up', label: '進行方向が上' }, { v: 'right', label: '進行方向が右', sub: '先が広く見える' }, { v: 'north', label: '北が上 (固定)' }])}
         ${this.seg('set', 'zoom', s.zoom, [{ v: 'near', label: '近い' }, { v: 'normal', label: '標準' }, { v: 'far', label: '遠い' }])}
         <h3>表示</h3>
-        ${this.seg('set', 'lineAssist', s.lineAssist, [{ v: true, label: '走行ライン表示 ON', sub: '赤=ブレーキ 黄=旋回' }, { v: false, label: 'OFF' }])}
+        ${this.seg('set', 'lineAssist', s.lineAssist, [{ v: true, label: '走行ライン表示 ON', sub: 'フリー走行・トレーニングのみ。赤=ブレーキ 黄=旋回' }, { v: false, label: 'OFF' }])}
         ${this.seg('set', 'ghost', s.ghost, [{ v: true, label: 'ゴースト ON' }, { v: false, label: 'OFF' }])}
         ${this.seg('set', 'quality', s.quality, [{ v: 'auto', label: '画質 自動', sub: '60fpsを保つよう調整' }, { v: 'high', label: '高画質' }, { v: 'low', label: '軽量' }])}
         <h3>ダメージ</h3>${this.seg('set', 'damage', s.damage, [{ v: true, label: 'あり' }, { v: false, label: 'なし' }])}

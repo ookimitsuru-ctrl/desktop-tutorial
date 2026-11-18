@@ -30,7 +30,12 @@ let assistKey = '', menuStack = [];
 let wakeLock = null;
 // 60fps を目標とした自動負荷調整 (画質「自動」のとき): 解像度 → 描画品質の順に下げる
 const perf = { dprCap: 2.5, low: false, acc: 0, n: 0, level: 0 };
-const rcfg = () => (cfg.quality === 'auto' ? (perf.low ? { ...cfg, quality: 'low' } : cfg) : cfg);
+// 描画用の設定。コース上の走行ライン (緑・黄・赤のガイド) はフリー走行とトレーニングだけで表示する
+const rcfg = () => {
+  const guide = !!session && (session.mode === 'free' || session.mode === 'train');
+  const c = cfg.quality === 'auto' && perf.low ? { ...cfg, quality: 'low' } : cfg;
+  return guide || !c.lineAssist ? c : { ...c, lineAssist: false };
+};
 
 // サーキットの切り替え: コース・理想ライン・描画データを作り直す
 function loadTrack(id) {
