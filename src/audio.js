@@ -3,7 +3,7 @@
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const NOISE_LEVEL = 0.55;   // エンジンのノイズ層の基準量 (低・中回転でこの値)
-const DRIVE = { mid: 2.5, midHi: 3.0, comp: 0.15, gritMid: 0.4, gritMidHi: 0.5 };   // 中回転・中高回転で歪みを強める量 (歪ませる前の入力を 1 + この値 倍)
+const DRIVE = { mid: 2.5, midHi: 3.0, comp: 0.15, gritMid: 0.4, gritMidHi: 0.5, gritHigh: 0.25 };   // 中回転・中高回転で歪みを強める量 (歪ませる前の入力を 1 + この値 倍)
 const ROUGH = { pitch: 0.04, level: 0.8, noise: 0.9 };   // 低回転のバラツキの幅 (音程 ±2%・音量 ±40%・ノイズ量 ±45%)
 // 高回転では歪みを外す (歪んだ経路から歪みのない経路へなめらかに切り替える)。歪みのない経路の音量合わせの係数
 const ENGINE_CLEAN_K = 2.8, MASTER_CLEAN_K = 1.5;
@@ -128,7 +128,7 @@ export class GameAudio {
     e.nf.frequency.setTargetAtTime(clamp(f * (wLow * 2.0 + wMid * 2.4 + wMidHi * 3.2 + wHigh * 3.2), 350, 4200), t, 0.06);   // 低回転は低めの帯域のごろつき、上がるほどざらざら
     const dr = 1 + DRIVE.mid * wMid + DRIVE.midHi * wMidHi;   // 低回転・高回転は 1 (これまでどおり)
     e.drive.gain.setTargetAtTime(dr, t, 0.05);
-    const gr = DRIVE.gritMid * wMid + DRIVE.gritMidHi * wMidHi;   // ざらつきの量 (低回転・高回転は 0)
+    const gr = DRIVE.gritMid * wMid + DRIVE.gritMidHi * wMidHi + DRIVE.gritHigh * wHigh;   // ざらつきの量 (低回転は 0、高回転は軽く)
     e.gritG.gain.setTargetAtTime(gr * 0.62, t, 0.05); e.dryG.gain.setTargetAtTime(1 - gr * 0.3, t, 0.05);
     e.shG.gain.setTargetAtTime(Math.cos(wHigh * Math.PI / 2) * Math.pow(dr, -DRIVE.comp), t, 0.05);   // 歪ませると音が大きくなる分を少し戻す
     e.cleanG.gain.setTargetAtTime(Math.sin(wHigh * Math.PI / 2) * ENGINE_CLEAN_K, t, 0.05);
