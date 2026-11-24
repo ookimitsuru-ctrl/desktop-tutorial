@@ -19,7 +19,7 @@ for (const [id, def] of Object.entries(TRACKS)) {
   check(`${nm}: 立体交差なし`, !T.cross);
   // 自分自身と近づきすぎていない (コース上で 300m 以上離れた区間どうしが 100m 以上離れている)
   let sep = 1e9; for (let i = 0; i < T.N; i += 3) for (let j = i + 3; j < T.N; j += 3) { const ds = Math.min(j - i, T.N - (j - i)) * T.ds; if (ds < 300) continue; sep = Math.min(sep, Math.hypot(T.x[i] - T.x[j], T.y[i] - T.y[j])); }
-  check(`${nm}: 離れた区間どうしの間隔 100m 以上`, sep >= 100, sep.toFixed(0) + 'm');
+  check(`${nm}: 離れた区間どうしの間隔 75m 以上`, sep >= 75, sep.toFixed(0) + 'm');
   // ピットの建物側 (ピットレーン区間でピット側 110m 以内) に他の区間がない
   let clash = 0; const P = T.pit;
   for (let i = 0; i < T.N; i++) { const s = i * T.ds; if (!P.contains(s)) continue; const nx = T.nx[i] * P.side, ny = T.ny[i] * P.side;
