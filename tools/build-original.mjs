@@ -34,29 +34,10 @@ const COURSES = {
     ],
   },
   mistral: {
-    // 手描きのレイアウト図をなぞった多角形 (画像のピクセル座標 × scale [m])。各頂点の角を半径 R の緩和曲線つき円弧で丸める
-    // 頂点: [x, y, 半径, 緩和曲線の長さ, 名前, 番号]  先頭の頂点から次の頂点までがメインストレート
-    name: 'ミストラル・テクニカルパーク', dir: 1, width: 12, cornerWidth: 13.5, line: 0.2, scale: 0.75,
-    poly: [
-      [1500, 1110, 200, 40, '最終コーナー', 18],
-      [375, 1150, 40, 25, '1コーナー', 1],
-      [380, 1000, 60, 25, '2コーナー', 2],
-      [510, 912, 35, 22, '3コーナー', 3],
-      [790, 1040, 40, 22, '4コーナー', 4],
-      [1065, 830, 30, 20, '5コーナー', 5],
-      [875, 560, 60, 25, '6コーナー', 6],
-      [600, 575, 25, 18, '7コーナー', 7],
-      [580, 752, 25, 18, '8コーナー', 8],
-      [72, 755, 45, 25, '9コーナー', 9],
-      [325, 172, 70, 30, '10コーナー', 10],
-      [1022, 172, 45, 25, '11コーナー', 11],
-      [1125, 745, 40, 20, 'ヘアピン入口', 12],
-      [1300, 715, 40, 20, 'ヘアピン出口', 13],
-      [1180, 182, 30, 20, '14コーナー', 14],
-      [1440, 200, 120, 40, '15コーナー', 15],
-      [1745, 520, 120, 40, '16コーナー', 16],
-      [1735, 960, 100, 40, '17コーナー', 17],
-    ],
+    // 手描きのレイアウト図の線をそのままなぞった曲線 (tools/data/mistral-trace.json、写真のピクセル座標 × scale [m])
+    // 手描きの揺れをならし (smooth = ガウス平滑の幅 [m])、角のない曲線のまま中心線にする。コーナーは曲率から自動で区切る
+    name: 'ミストラル・テクニカルパーク', dir: 1, width: 12, cornerWidth: 13.5, scale: 0.68, smooth: 14,
+    trace: 'tools/data/mistral-trace.json', start: [1060, 1170],
   },
   horizon: {
     name: 'ホライゾン・ハイスピードサーキット', dir: 1, width: 15, cornerWidth: 17,
@@ -143,7 +124,42 @@ function polyToElements(C) {
   return els;
 }
 
+// なぞった曲線 → 一定間隔の点列 (平滑化・コントロールラインを先頭に)・曲率
+function fromTrace(C) {
+  const raw = JSON.parse(fs.readFileSync(path.join(root, C.trace), 'utf8')).points.map(([x, y]) => [x * C.scale, y * C.scale]);
+  const resample = (P, step) => {
+    const n = P.length, d = [0]; for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; d.push(d[i] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+    const L = d[n], m = Math.round(L / step), out = []; let j = 0;
+    for (let k = 0; k < m; k++) { const s = k * L / m; while (d[j + 1] < s) j++; const t = (s - d[j]) / (d[j + 1] - d[j]), a = P[j], b = P[(j + 1) % n]; out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+    return out;
+  };
+  const gauss = (P, sig) => {   // 周期境界のガウス平滑 (sig は点の数)
+    const n = P.length, r = Math.ceil(sig * 3), w = []; let ws = 0; for (let i = -r; i <= r; i++) { w.push(Math.exp(-0.5 * (i / sig) ** 2)); ws += w[w.length - 1]; }
+    return P.map((_, i) => { let x = 0, y = 0; for (let k = -r; k <= r; k++) { const q = P[((i + k) % n + n) % n], ww = w[k + r]; x += q[0] * ww; y += q[1] * ww; } return [x / ws, y / ws]; });
+  };
+  const ds = 1;
+  let P = gauss(resample(raw, ds), C.smooth / ds); P = resample(P, STEP);
+  // コントロールライン (start に最も近い点) を先頭に
+  const st = [C.start[0] * C.scale, C.start[1] * C.scale]; let i0 = 0, bd = 1e18;
+  P.forEach((p, i) => { const d = (p[0] - st[0]) ** 2 + (p[1] - st[1]) ** 2; if (d < bd) { bd = d; i0 = i; } });
+  P = P.slice(i0).concat(P.slice(0, i0));
+  const n = P.length, h = P.map((p, i) => { const q = P[(i + 1) % n]; return Math.atan2(q[1] - p[1], q[0] - p[0]); });
+  const k = h.map((_, i) => { let d = h[i] - h[(i - 1 + n) % n]; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d / STEP; });
+  const ks = gauss(k.map(v => [v, 0]), 8).map(v => v[0]);
+  const x0 = P[0][0], y0 = P[0][1];
+  const pts = P.map((p, i) => [p[0] - x0, p[1] - y0, i * STEP, ks[i]]); pts.push([0, 0, n * STEP, ks[0]]);
+  // コーナーの区切り: 曲率 1/400 を超える区間 (30m 未満の切れ目はつなぐ、旋回 20° 未満は除く)
+  const on = ks.map(v => Math.abs(v) > 1 / 400), segs = [];
+  for (let i = 0; i < n; i++) if (on[i] && !on[(i - 1 + n) % n]) { let j = i; while (on[(j + 1) % n] && j - i < n) j++; segs.push([i, j]); }
+  const merged = []; for (const sg of segs) { const last = merged[merged.length - 1]; if (last && (sg[0] - last[1]) * STEP < 30 && Math.sign(ks[sg[0]]) === Math.sign(ks[last[1]])) last[1] = sg[1]; else merged.push(sg.slice()); }
+  const corners = []; for (const [a, b] of merged) { let ang = 0, kmax = 0; for (let i = a; i <= b; i++) { ang += ks[i % n] * STEP; kmax = Math.max(kmax, Math.abs(ks[i % n])); } if (Math.abs(ang) * 180 / Math.PI < 20) continue; corners.push({ angle: Math.round(ang * 180 / Math.PI), radius: Math.round(1 / kmax), from: Math.round(a * STEP), to: Math.round(b * STEP) }); }
+  let no = 0; for (const c of corners) { no++; c.no = no; c.name = Math.abs(c.angle) >= 150 && c.to - c.from < 220 ? 'ヘアピン' : no === corners.length ? '最終コーナー' : `${no}コーナー`; }
+  const straights = corners.map((c, i) => ({ from: c.to, to: i + 1 < corners.length ? corners[i + 1].from : Math.round(n * STEP) })); straights.unshift({ from: 0, to: corners[0].from });
+  return { pts, len: n * STEP, x: 0, y: 0, corners, straights, minR: Math.round(1 / Math.max(...ks.map(Math.abs))) };
+}
+
 function build(id, C) {
+  if (C.trace) return finish(id, C, fromTrace(C), [], null);
   const els = (C.poly ? polyToElements(C) : C.elements).map(e => e.slice());
   // 旋回角の合計を ±360° に合わせる
   const auto = els.find(e => e[0] === 'c' && e[1] === 'auto');
@@ -162,6 +178,10 @@ function build(id, C) {
     if (els[adj[0]][1] < 30 || els[adj[1]][1] < 30) throw new Error(`${id}: 調整用の直線が短くなりすぎた (${els[adj[0]][1].toFixed(0)}, ${els[adj[1]][1].toFixed(0)})`);
   }
   const r = integrate(els);
+  return finish(id, C, r, adj.map(i => els[i][1]), auto);
+}
+
+function finish(id, C, r, adjLens, auto) {
   const L = r.len, gap = Math.hypot(r.x, r.y);
   // 約 5m 間隔で出力 (幅はコーナーで少し広げ、なめらかにつなぐ)
   const every = Math.round(5 / STEP), out = [];
@@ -171,17 +191,17 @@ function build(id, C) {
     const cw = Math.min(1, kk * 120), w = C.width + (C.cornerWidth - C.width) * cw;
     out.push([+r.pts[i][0].toFixed(2), +r.pts[i][1].toFixed(2), +(w / 2).toFixed(2), +(w / 2).toFixed(2)]);
   }
-  const corners = r.marks.filter(m => m.el[0] === 'c' || m.el[0] === 'm').map(m => m.el[0] === 'c'
+  const corners = r.corners || r.marks.filter(m => m.el[0] === 'c' || m.el[0] === 'm').map(m => m.el[0] === 'c'
     ? { name: m.el[4], no: m.el[5], angle: Math.round(m.el[1]), radius: m.el[2], from: Math.round(m.from), to: Math.round(m.to) }
     : { name: m.el[3], no: m.el[4], angle: Math.round(angOf(m.el)), radius: Math.min(...m.el[1].map(x => x[1])), radii: m.el[1].map(x => x[1]), from: Math.round(m.from), to: Math.round(m.to) });
-  const straights = r.marks.filter(m => m.el[0] === 's').map(m => ({ from: Math.round(m.from), to: Math.round(m.to) }));
+  const straights = r.straights || r.marks.filter(m => m.el[0] === 's').map(m => ({ from: Math.round(m.from), to: Math.round(m.to) }));
   // 自分自身と近づきすぎていないか (コース上で 300m 以上離れた点どうしの最短距離)
   let minSep = 1e9, at = null;
   for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) {
     const ds = Math.min(j - i, out.length - (j - i)) * 5; if (ds < 300) continue;
     const dd = Math.hypot(out[i][0] - out[j][0], out[i][1] - out[j][1]); if (dd < minSep) { minSep = dd; at = [i * 5, j * 5]; }
   }
-  console.log(`${id}: 全長 ${L.toFixed(1)}m  閉合誤差 ${gap.toFixed(3)}m  点数 ${out.length}  自己間隔の最小 ${minSep.toFixed(0)}m (s=${at})  調整直線 ${adj.map(i => els[i][1].toFixed(0)).join(', ')}  自動コーナー ${auto ? auto[1].toFixed(1) + '°' : '-'}`);
+  console.log(`${id}: 全長 ${L.toFixed(1)}m  閉合誤差 ${gap.toFixed(3)}m  点数 ${out.length}  自己間隔の最小 ${minSep.toFixed(0)}m (s=${at})  調整直線 ${adjLens.map(v => v.toFixed(0)).join(', ') || '-'}${r.minR ? '  最小半径 ' + r.minR + 'm' : ''}  自動コーナー ${auto ? auto[1].toFixed(1) + '°' : '-'}`);
   return { id, name: C.name, dir: C.dir, length: +L.toFixed(1), points: out, corners, straights, minSep: Math.round(minSep) };
 }
 
