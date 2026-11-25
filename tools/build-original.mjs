@@ -36,7 +36,7 @@ const COURSES = {
   mistral: {
     // 手描きのレイアウト図の線をそのままなぞった曲線 (tools/data/mistral-trace.json、写真のピクセル座標 × scale [m])
     // 手描きの揺れをならし (smooth = ガウス平滑の幅 [m])、角のない曲線のまま中心線にする。コーナーは曲率から自動で区切る
-    name: 'ミストラル・テクニカルパーク', dir: 1, width: 12, cornerWidth: 13.5, scale: 0.68, smooth: 14,
+    name: 'ミストラル・テクニカルパーク', dir: 1, width: 12, cornerWidth: 13.5, scale: 0.68, smooth: 14, spiral: 55,
     trace: 'tools/data/mistral-trace.json', start: [1060, 1170],
   },
   horizon: {
@@ -158,9 +158,83 @@ function fromTrace(C) {
   return { pts, len: n * STEP, x: 0, y: 0, corners, straights, minR: Math.round(1 / Math.max(...ks.map(Math.abs))) };
 }
 
+// なぞった曲線 → 多角形 (頂点ごとの半径つき)。直線部分の位置と向きは図のまま、コーナーだけ一定半径の円弧に置き換える
+//   各直線の中央 6 割を通る直線を引き、隣り合う直線の交点を頂点にする。
+//   120° を超えるコーナーは途中の接線でさらに 2 つの頂点に分け、2 つの R を持つ複合コーナーは曲率の谷で分ける。
+//   半径は円弧が図の線のコーナーの頂上を通るように決める
+function traceToPoly(C, noSplit = new Set()) {
+  const r = fromTrace(C), P = r.pts.slice(0, -1), ks = P.map(p => p[3]), n = P.length, cs = r.corners, m = cs.length;
+  const pt = i => P[((i % n) + n) % n];
+  const tangent = i => { const a = pt(i - 20), b = pt(i + 20); return Math.atan2(b[1] - a[1], b[0] - a[0]); };   // ±5m
+  const ang = (u, v) => { let t = 0; for (let i = u; i < v; i++) t += ks[((i % n) + n) % n] * STEP; return t; };
+  const straightLine = j => {   // 直線 j: コーナー j-1 の終わり〜コーナー j の始まり
+    const a0 = j === 0 ? cs[m - 1].to - n * STEP : cs[j - 1].to, b0 = j === m ? cs[0].from + n * STEP : cs[j].from;
+    const u = Math.round((a0 + (b0 - a0) * 0.2) / STEP), v = Math.round((a0 + (b0 - a0) * 0.8) / STEP), A = pt(u), B = pt(v);
+    return { x: (A[0] + B[0]) / 2, y: (A[1] + B[1]) / 2, h: Math.atan2(B[1] - A[1], B[0] - A[0]) };
+  };
+  const lines = [straightLine(0)], vR = [], vName = [];
+  cs.forEach((c, ci) => {
+    const a = Math.round(c.from / STEP), b = Math.round(c.to / STEP);
+    const seg = ks.slice(a, b).map(Math.abs), mx = Math.max(...seg), im = seg.indexOf(mx);
+    let cut = -1;
+    for (const dir of [-1, 1]) {
+      let lo = im, i = im; while (i + dir >= 0 && i + dir < seg.length) { i += dir; if (seg[i] < seg[lo]) lo = i; if (seg[lo] < mx * 0.6 && seg[i] > mx * 0.7) { cut = lo; break; } }
+      if (cut >= 0) break;
+    }
+    let parts = cut > 0 && !noSplit.has(ci) ? [[a, a + cut], [a + cut, b]] : [[a, b]];
+    // 120° を超える部分は旋回角の半分の所で分ける (1 つにまとめ直すコーナーは 150° まで分けない)
+    parts = parts.flatMap(([u, v]) => { const t = ang(u, v); if (Math.abs(t) * 180 / Math.PI <= (noSplit.has(ci) ? 150 : 120)) return [[u, v]]; let acc = 0, mid = u; for (let i = u; i < v; i++) { acc += ks[i] * STEP; if (Math.abs(acc) >= Math.abs(t) / 2) { mid = i; break; } } return [[u, mid], [mid, v]]; });
+    const radius = ([u, v]) => { const sub = ks.slice(u, v).map(Math.abs), pk = Math.max(...sub), top = sub.filter(x => x >= pk * 0.8); return Math.max(25, Math.round(top.length / top.reduce((t, x) => t + x, 0))); };
+    parts.forEach((pp, k) => {
+      vR.push(radius(pp)); vName.push(ci);
+      if (k < parts.length - 1) { const i = pp[1], q = pt(i); lines.push({ x: q[0], y: q[1], h: tangent(i) }); }
+    });
+    if (ci < m - 1) lines.push(straightLine(ci + 1));
+  });
+  // 頂点 k = 直線 k-1 と直線 k の交点 (頂点 0 は最後の直線とメインストレート)
+  const N = lines.length, inter = (L1, L2) => {
+    const d1 = [Math.cos(L1.h), Math.sin(L1.h)], d2 = [Math.cos(L2.h), Math.sin(L2.h)], den = d1[0] * d2[1] - d1[1] * d2[0];
+    const t = ((L2.x - L1.x) * d2[1] - (L2.y - L1.y) * d2[0]) / den; return [L1.x + d1[0] * t, L1.y + d1[1] * t];
+  };
+  // vR / vName は「直線 k と直線 k+1 の間の頂点」の順。頂点 0 (最後の直線→メインストレート) は最後の要素
+  const verts = []; for (let k = 0; k < N; k++) { const v = inter(lines[(k - 1 + N) % N], lines[k]), idx = (k - 1 + N) % N; verts.push([v[0], v[1], vR[idx], vName[idx]]); }
+  // 名前と番号 (分けた頂点も同じコーナー番号)
+  const names = cs.map((c, ci) => { const no = ci + 1, ap = Math.abs(c.angle), rr = Math.min(...verts.filter(v => v[3] === ci).map(v => v[2]));
+    return ap >= 150 && rr < 40 ? 'ヘアピン' : no === m ? '最終コーナー' : `${no}コーナー`; });
+  const poly = verts.map(([x, y, R, ci]) => [x, y, R, 0, names[ci], ci + 1]);
+  // 半径: 円弧が図の線のコーナーの頂上 (頂点に最も近い点) を通るように。距離 d と旋回角 θ から R = d / (1/cos(θ/2) − 1)
+  const near = (k) => { const c = cs[poly[k][5] - 1], a = Math.round((c.from - 60) / STEP), b = Math.round((c.to + 60) / STEP); let d = 1e9; for (let i = a; i <= b; i++) { const q = pt(i); d = Math.min(d, Math.hypot(q[0] - poly[k][0], q[1] - poly[k][1])); } return d; };
+  for (let k = 0; k < N; k++) {
+    const a = poly[(k - 1 + N) % N], b = poly[k], c = poly[(k + 1) % N]; let th = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]); while (th > Math.PI) th -= 2 * Math.PI; while (th < -Math.PI) th += 2 * Math.PI;
+    poly[k][2] = Math.max(25, Math.round(near(k) / (1 / Math.cos(Math.abs(th) / 2) - 1)));
+  }
+  // 緩和曲線: 円弧の長さの半分と spiral [m] の小さい方 (円弧部分が必ず残るように)
+  for (let k = 0; k < N; k++) {
+    const h0 = Math.atan2(poly[k][1] - poly[(k - 1 + N) % N][1], poly[k][0] - poly[(k - 1 + N) % N][0]), h1 = Math.atan2(poly[(k + 1) % N][1] - poly[k][1], poly[(k + 1) % N][0] - poly[k][0]);
+    let d = h1 - h0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    poly[k][3] = +Math.min(C.spiral || 25, Math.abs(d) * poly[k][2] * 0.5).toFixed(1);
+  }
+  // 隣り合うコーナーの円弧が辺に収まらない所 (同じコーナーを分けた頂点どうしなど) は、2 つの半径を同じ比で少し小さくする
+  const turnAt = k => { const a = poly[(k - 1 + N) % N], b = poly[k], c = poly[(k + 1) % N]; let d = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]); while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); };
+  const tanOf = k => poly[k][2] * Math.tan(turnAt(k) / 2) + poly[k][3] / 2;
+  for (let k = 0; k < N; k++) {
+    const k2 = (k + 1) % N;
+    const len = Math.hypot(poly[k2][0] - poly[k][0], poly[k2][1] - poly[k][1]);
+    for (let it = 0; it < 50 && tanOf(k) + tanOf(k2) > len - 6; it++) for (const q of [k, k2]) { poly[q][2] = +(poly[q][2] * 0.97).toFixed(1); poly[q][3] = +Math.min(C.spiral || 25, turnAt(q) * poly[q][2] * 0.5).toFixed(1); }
+  }
+  // 半径 30m 未満になった複合コーナーは、分けずに 1 つの円弧で作り直す
+  const tight = new Set(poly.filter((v, k) => v[2] < 30 && poly.some((w, j) => j !== k && w[5] === v[5])).map(v => v[5] - 1).filter(ci => !noSplit.has(ci)));
+  if (tight.size) return traceToPoly(C, new Set([...noSplit, ...tight]));
+  // コントロールライン: メインストレート (頂点 0→1) 上の start の位置
+  const st = [0, 0], A = poly[0], B = poly[1];   // fromTrace はコントロールラインを原点にしている
+  const e0 = Math.hypot(B[0] - A[0], B[1] - A[1]), proj = ((st[0] - A[0]) * (B[0] - A[0]) + (st[1] - A[1]) * (B[1] - A[1])) / e0;
+  const line = (proj - tanOf(0)) / (e0 - tanOf(0) - tanOf(1));   // 直線部分 (両端の円弧を除く) の中での割合
+  console.log('  頂点', poly.map(v => `(${v[0].toFixed(0)},${v[1].toFixed(0)}) R${v[2]}`).join(' '));
+  return { poly, line };
+}
+
 function build(id, C) {
-  if (C.trace) return finish(id, C, fromTrace(C), [], null);
-  const els = (C.poly ? polyToElements(C) : C.elements).map(e => e.slice());
+  const els = (C.trace ? polyToElements({ ...C, ...traceToPoly(C), scale: 1 }) : C.poly ? polyToElements(C) : C.elements).map(e => e.slice());
   // 旋回角の合計を ±360° に合わせる
   const auto = els.find(e => e[0] === 'c' && e[1] === 'auto');
   const angOf = e => (e[0] === 'c' ? e[1] : e[0] === 'm' ? e[1].reduce((a, x) => a + x[0], 0) : 0);
@@ -168,6 +242,7 @@ function build(id, C) {
   if (auto) auto[1] = C.dir * 360 - fixed;
   // 位置のずれ: 'adj' の直線 2 本の長さを連立方程式で調整して閉じる
   const adj = els.map((e, i) => (e[0] === 's' && e[2] === 'adj' ? i : -1)).filter(i => i >= 0);
+  const adj0 = adj.map(i => els[i][1]);
   for (let it = 0; it < 3; it++) {
     const r = integrate(els);
     if (adj.length !== 2) break;
@@ -178,9 +253,11 @@ function build(id, C) {
     if (els[adj[0]][1] < 30 || els[adj[1]][1] < 30) throw new Error(`${id}: 調整用の直線が短くなりすぎた (${els[adj[0]][1].toFixed(0)}, ${els[adj[1]][1].toFixed(0)})`);
   }
   const r = integrate(els);
+  if (adj.length === 2) console.log(`  調整直線 ${adj0.map(v => v.toFixed(0))} → ${adj.map(i => els[i][1].toFixed(0))}`);
   return finish(id, C, r, adj.map(i => els[i][1]), auto);
 }
 
+const angOfEl = e => (e[0] === 'c' ? e[1] : e[0] === 'm' ? e[1].reduce((t, x) => t + x[0], 0) : 0);
 function finish(id, C, r, adjLens, auto) {
   const L = r.len, gap = Math.hypot(r.x, r.y);
   // 約 5m 間隔で出力 (幅はコーナーで少し広げ、なめらかにつなぐ)
@@ -193,7 +270,9 @@ function finish(id, C, r, adjLens, auto) {
   }
   const corners = r.corners || r.marks.filter(m => m.el[0] === 'c' || m.el[0] === 'm').map(m => m.el[0] === 'c'
     ? { name: m.el[4], no: m.el[5], angle: Math.round(m.el[1]), radius: m.el[2], from: Math.round(m.from), to: Math.round(m.to) }
-    : { name: m.el[3], no: m.el[4], angle: Math.round(angOf(m.el)), radius: Math.min(...m.el[1].map(x => x[1])), radii: m.el[1].map(x => x[1]), from: Math.round(m.from), to: Math.round(m.to) });
+    : { name: m.el[3], no: m.el[4], angle: Math.round(angOfEl(m.el)), radius: Math.min(...m.el[1].map(x => x[1])), radii: m.el[1].map(x => x[1]), from: Math.round(m.from), to: Math.round(m.to) });
+  // 頂点を分けた同じ番号のコーナーは 1 つにまとめる (間の直線もコーナーに含める)
+  for (let i = corners.length - 1; i > 0; i--) { const a = corners[i - 1], b = corners[i]; if (a.no === b.no) { a.to = b.to; a.angle += b.angle; a.radii = [...(a.radii || [a.radius]), ...(b.radii || [b.radius])]; a.radius = Math.min(...a.radii); corners.splice(i, 1); } }
   const straights = r.straights || r.marks.filter(m => m.el[0] === 's').map(m => ({ from: Math.round(m.from), to: Math.round(m.to) }));
   // 自分自身と近づきすぎていないか (コース上で 300m 以上離れた点どうしの最短距離)
   let minSep = 1e9, at = null;

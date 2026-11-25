@@ -17,9 +17,9 @@ for (const [id, def] of Object.entries(TRACKS)) {
   let turn = 0; for (let i = 0; i < T.N; i++) turn += T.curv[i] * T.ds;
   check(`${nm}: ${C.dir > 0 ? '右' : '左'}回りの1周 (総旋回角 ≒ ${C.dir * 360}°)`, Math.abs(turn - C.dir * 2 * Math.PI) < 0.1, (turn * 180 / Math.PI).toFixed(1));
   check(`${nm}: 立体交差なし`, !T.cross);
-  // 自分自身と近づきすぎていない (コース上で 300m 以上離れた区間どうしが 100m 以上離れている)
+  // 自分自身と近づきすぎていない (コース上で 300m 以上離れた区間どうしが 60m 以上離れている。ミストラルは手描き図どおり 3コーナーがメインストレートに近い)
   let sep = 1e9; for (let i = 0; i < T.N; i += 3) for (let j = i + 3; j < T.N; j += 3) { const ds = Math.min(j - i, T.N - (j - i)) * T.ds; if (ds < 300) continue; sep = Math.min(sep, Math.hypot(T.x[i] - T.x[j], T.y[i] - T.y[j])); }
-  check(`${nm}: 離れた区間どうしの間隔 70m 以上`, sep >= 70, sep.toFixed(0) + 'm');
+  check(`${nm}: 離れた区間どうしの間隔 60m 以上`, sep >= 60, sep.toFixed(0) + 'm');
   // ピットの建物側 (ピットレーン区間でピット側 110m 以内) に他の区間がない
   let clash = 0; const P = T.pit;
   for (let i = 0; i < T.N; i++) { const s = i * T.ds; if (!P.contains(s)) continue; const nx = T.nx[i] * P.side, ny = T.ny[i] * P.side;

@@ -58,6 +58,7 @@ export const TRACKS = {
     id: 'mistral', name: 'ミストラル・テクニカルパーク', short: 'MISTRAL', country: '架空のサーキット',
     points: MISTRAL.points, length: ML, raceline: MISTRAL_LINE,
     smooth: false,
+    aiGrip: 0.85,                                   // 長い一定半径の高速コーナー (5・6コーナー) で AI がアンダーステアで外へ出ないよう、旋回の見積もりに余裕
     width: { min: 11, max: 14, scale: 1 },
     elevation: { range: null, keys: elev(ML, [[0, 10], [0.1, 6], [0.25, 2], [0.4, 0], [0.55, 8], [0.7, 16], [0.85, 18], [1, 10]]) },
     sections: sections(MISTRAL),
@@ -75,7 +76,7 @@ export const TRACKS = {
       trainSec(MISTRAL, 'hp', '9コーナー〜ヘアピン', 'ヘアピン', 9, 10),
       trainSec(MISTRAL, 'fin', '最終コーナー', '最終', 11, 11, 150, 60),
     ],
-    fullLaps: 55, baseLap: 96.2,
+    fullLaps: 54, baseLap: 93.8,
   },
 
   // ------------------------------------------------------------------ 長いストレートを持つ高・中速コース (右回り)
