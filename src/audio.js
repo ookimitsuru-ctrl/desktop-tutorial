@@ -42,6 +42,7 @@ export class GameAudio {
     this.wind = this.makeNoise('lowpass', 500, 0.6);
     this.rumble = this.makeNoise('lowpass', 150, 1.2);
     this.rainN = this.makeNoise('highpass', 3200, 0.5);
+    this.scrapeN = this.makeNoise('bandpass', 3800, 1.6);   // 底擦り (金属が路面を擦る高いざらつき)
     this.ready = true;
   }
   makeNoise(type, freq, q) {
@@ -188,13 +189,21 @@ export class GameAudio {
     let rough = 0; for (let k = 0; k < 4; k++) rough += c.surf[k] === 1 ? 0.3 : c.surf[k] >= 2 ? 0.25 : 0;
     this.rumble.g.gain.setTargetAtTime(pl.pit ? 0 : clamp(rough * c.speed / 30, 0, 1) * 0.5, t, 0.04);
     this.rumble.f.frequency.setTargetAtTime(90 + c.speed * 3.5, t, 0.05);
+    // バンピーな路面: ゴトゴトという振動と、底が擦れたときの「ガリッ」という音
+    const T = session.T;
+    if (T && T.scrape && !pl.pit && c.offCount < 3) {
+      const vib = T.bumpAt(c.s, c.speed), sc = T.scrape(c.s, c.vx);
+      if (vib > 0) this.rumble.g.gain.setTargetAtTime(clamp(rough * c.speed / 30 + vib * 0.35, 0, 1) * 0.5, t, 0.04);
+      this.scrapeN.g.gain.setTargetAtTime(sc > 0.12 ? Math.min(0.32, sc * 0.4) : 0, t, sc > 0.12 ? 0.005 : 0.03);
+      this.scrapeN.f.frequency.setTargetAtTime(3000 + Math.random() * 1800, t, 0.01);
+    } else this.scrapeN.g.gain.setTargetAtTime(0, t, 0.03);
     // 雨
     this.rainN.g.gain.setTargetAtTime(session.rain * 0.05 + session.wet * clamp(c.speed / 80, 0, 1) * 0.07, t, 0.3);
   }
   silence() {
     if (!this.ready) return; const t = this.ctx.currentTime;
     for (const e of [this.player, ...this.others]) e.out.gain.setTargetAtTime(0, t, 0.08);
-    for (const n of [this.squeal, this.wind, this.rumble, this.rainN]) n.g.gain.setTargetAtTime(0, t, 0.08);
+    for (const n of [this.squeal, this.wind, this.rumble, this.rainN, this.scrapeN]) n.g.gain.setTargetAtTime(0, t, 0.08);
   }
   // 効果音
   blip(freq, dur = 0.12, vol = 0.2, type = 'sine') {

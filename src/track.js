@@ -343,6 +343,7 @@ export function buildTrack(def = TRACKS[Object.keys(TRACKS)[0]]) {
 
   T.fuelPerLap = 2.1 * LENGTH / 5807;   // 1周あたりの燃料消費の目安 [kg]
   attachQueries(T);
+  buildBumps(T, def);
   return T;
 }
 
@@ -431,4 +432,43 @@ function attachQueries(T) {
     out.d = d;
     return out;
   };
+}
+
+// ---------------------------------------------------------------- バンピーな路面
+// T.bumpy[i]: その地点の凹凸の強さ (0〜1)。def.bumps = [[s0, s1, 強さ], ...] があればそれを使い、
+// 無ければ自動で決める: 長い直線の終わり (ブレーキングで路面が荒れる区間) と、特に長い直線の途中の一部。
+// 凹凸の形は T.bumpWave(s) (0〜1 の山がところどころに来る波)。高速では車体が沈むので、山で底が路面に当たる。
+// 見た目と音だけに使い、車の挙動 (物理) は変えない。
+function buildBumps(T, def) {
+  const N = T.N, ds = T.ds, b = T.bumpy = new Float32Array(N);
+  const add = (s0, s1, amp) => {   // 両端 12m はなだらかに
+    const len = ((s1 - s0) % T.length + T.length) % T.length;
+    for (let x = 0; x <= len; x += ds) { const i = T.idx(s0 + x), e = Math.min(1, x / 12, (len - x) / 12); b[i] = Math.max(b[i], amp * e); }
+  };
+  if (def.bumps) for (const [s0, s1, amp] of def.bumps) add(s0, s1, amp);
+  else {
+    // コース id から決まる疑似乱数 (毎回同じ配置になる)
+    let seed = 0; for (const ch of String(def.id || 'track')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    // 直線 (曲率が小さい区間) を探す: 曲がっている所から始めて一周
+    const straight = i => Math.abs(T.curv[i]) < 1 / 600;
+    let st = 0; while (st < N && straight(st)) st++;
+    for (let k = 0; k < N; k++) {
+      const i = (st + k) % N; if (!straight(i) || straight((i - 1 + N) % N)) continue;
+      let j = i, n = 0; while (straight(j % N) && n < N) { j++; n++; }
+      const L = n * ds, s0 = i * ds, s1 = s0 + L;
+      if (L < 180) continue;
+      add(s1 - 150 - rnd() * 40, s1 + 5, 0.75 + rnd() * 0.25);                       // ブレーキング区間
+      if (L >= 450 && rnd() < 0.6) { const c = s0 + L * (0.3 + rnd() * 0.3); add(c - 45 - rnd() * 30, c + 45 + rnd() * 30, 0.5 + rnd() * 0.3); }   // 直線の途中
+    }
+  }
+  // 凹凸の波: 周期の違う山を重ね、ところどころに鋭い山が来るように
+  T.bumpWave = s => {
+    const a = Math.max(0, Math.sin(s * 0.571)) ** 6 * (0.65 + 0.35 * Math.sin(s * 0.17 + 1.3));
+    const c = Math.max(0, Math.sin(s * 1.19 + 2.1)) ** 10 * 0.55;
+    return Math.min(1, a + c);
+  };
+  // 底擦りの強さ (0〜1): 凹凸の強さ × 山 × 車体の沈み込み (速度が高いほどダウンフォースで沈む。約 140km/h から)
+  T.scrape = (s, v) => { const a = b[T.idx(s)]; if (a <= 0 || v < 38) return 0; return a * Math.min(1, (v - 38) / 40) * T.bumpWave(s); };
+  T.bumpAt = (s, v) => { const a = b[T.idx(s)]; return a > 0 ? a * Math.min(1, v / 60) : 0; };   // 振動の強さ
 }

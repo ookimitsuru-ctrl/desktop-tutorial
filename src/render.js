@@ -50,7 +50,7 @@ export class Renderer {
     const cr = T.cross;
     for (const ch of T.chunks) {
       const { a, b } = ch;
-      const P = { asphalt: new Path2D(), lineL: new Path2D(), lineR: new Path2D(), kerbA: new Path2D(), kerbB: new Path2D(), gravel: new Path2D(), wall: new Path2D(), tyre: new Path2D(), tyreW: new Path2D(), rubber: new Path2D(), verge: new Path2D(), deck: new Path2D() };
+      const P = { asphalt: new Path2D(), lineL: new Path2D(), lineR: new Path2D(), kerbA: new Path2D(), kerbB: new Path2D(), gravel: new Path2D(), wall: new Path2D(), tyre: new Path2D(), tyreW: new Path2D(), rubber: new Path2D(), verge: new Path2D(), deck: new Path2D(), patch: new Path2D(), seam: new Path2D() };
       for (let q = a; q <= b; q++) { const i = q % N; q === a ? P.asphalt.moveTo(X(i, -T.wl[i]), Y(i, -T.wl[i])) : P.asphalt.lineTo(X(i, -T.wl[i]), Y(i, -T.wl[i])); }
       for (let q = b; q >= a; q--) { const i = q % N; P.asphalt.lineTo(X(i, T.wr[i]), Y(i, T.wr[i])); }
       P.asphalt.closePath();
@@ -64,6 +64,11 @@ export class Renderer {
       for (let q = a; q < b; q++) {
         const i = q % N, j = (q + 1) % N;
         const quad = (path, d1i, d2i, d1j, d2j) => { path.moveTo(X(i, d1i), Y(i, d1i)); path.lineTo(X(j, d1j), Y(j, d1j)); path.lineTo(X(j, d2j), Y(j, d2j)); path.lineTo(X(i, d2i), Y(i, d2i)); path.closePath(); };
+        // バンピーな区間: 補修跡のような路面の色むらと、凹凸の山の継ぎ目
+        if (T.bumpy[i] > 0.05 && T.bumpy[j] > 0.05) {
+          quad(P.patch, -T.wl[i], T.wr[i], -T.wl[j], T.wr[j]);
+          const si = q * T.ds; if (T.bumpWave(si) > 0.55 && T.bumpWave(si) >= T.bumpWave(si - T.ds) && T.bumpWave(si) >= T.bumpWave(si + T.ds)) { P.seam.moveTo(X(i, -T.wl[i] + 0.4), Y(i, -T.wl[i] + 0.4)); P.seam.lineTo(X(i, T.wr[i] - 0.4), Y(i, T.wr[i] - 0.4)); }
+        }
         const kp = (q & 1) ? P.kerbA : P.kerbB;
         if (T.kerbL[i] > 0 && T.kerbL[j] > 0) quad(kp, -T.wl[i], -(T.wl[i] + T.kerbL[i]), -T.wl[j], -(T.wl[j] + T.kerbL[j]));
         if (T.kerbR[i] > 0 && T.kerbR[j] > 0) quad(kp, T.wr[i], T.wr[i] + T.kerbR[i], T.wr[j], T.wr[j] + T.kerbR[j]);
@@ -321,7 +326,7 @@ export class Renderer {
   clearEffects() { this.skids.length = 0; this.skidHead = 0; this.parts.length = 0; this.lastWheel.clear(); }
 
   updateEffects(session, dt) {
-    const wet = session.wet;
+    const wet = session.wet, T = this.T;
     const cam = this.cam, R2 = Math.pow(Math.hypot(this.w, this.h) / cam.scale * 0.6 + 30, 2);
     for (const e of session.entries) {
       if (e.out) continue;
@@ -362,6 +367,22 @@ export class Renderer {
       if (c.vx > 66 && !e.pit && Math.random() < 0.10 + 0.25 * sat((c.fuel - 40) / 100)) {
         const bx = c.x - cs * 1.4, by = c.y - sn * 1.4;
         for (let q = 0; q < 2; q++) this.addPart(4, bx + (Math.random() - 0.5) * 0.6, by + (Math.random() - 0.5) * 0.6, -cs * c.vx * 0.15 + (Math.random() - 0.5) * 5, -sn * c.vx * 0.15 + (Math.random() - 0.5) * 5, 0.25 + Math.random() * 0.2, 0.28, -0.3);
+      }
+      // バンピーな路面で底が擦れて出る火花: 凹凸の山に乗った瞬間、車体の底 (前後のスキッドブロック) から後ろへ散る
+      if (!e.pit && T.scrape) {
+        const onRoad = c.surf[0] === 0 && c.surf[1] === 0 && c.surf[2] === 0 && c.surf[3] === 0;
+        const sc = onRoad ? T.scrape(c.s, c.vx) * (1 + 0.3 * sat((c.fuel - 40) / 100)) : 0;
+        if (sc > 0.12) {
+          const n = Math.min(10, Math.floor(sc * 10 + Math.random() * 2));
+          const vwx = cs * c.vx - sn * c.vy, vwy = sn * c.vx + cs * c.vy;   // 車の速度 (ワールド座標)
+          for (let q = 0; q < n; q++) {
+            const along = -0.2 - Math.random() * 1.6, side = (Math.random() - 0.5) * 0.7;
+            const px = c.x + cs * along - sn * side, py = c.y + sn * along + cs * side;
+            const k = 0.35 + Math.random() * 0.35, spread = 5 + sc * 6;
+            this.addPart(4, px, py, vwx * k + (Math.random() - 0.5) * spread, vwy * k + (Math.random() - 0.5) * spread, 0.22 + Math.random() * 0.35 * (0.5 + sc), 0.25 + sc * 0.3, -0.25);
+          }
+        }
+        if (e.isPlayer) { const vib = T.bumpAt(c.s, c.speed); if (vib > 0) cam.shake = Math.max(cam.shake, 0.05 + vib * 0.12 + sc * 0.2); }
       }
       if (c.hit > 3) {
         for (let q = 0; q < Math.min(14, c.hit * 0.8); q++) this.addPart(Math.random() < 0.3 ? 4 : 1, c.x, c.y, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, 0.5 + Math.random() * 0.5, 0.8, 2.5);
@@ -476,6 +497,9 @@ export class Renderer {
         ctx.fillStyle = '#8a8f96'; ctx.fill(merge('deck', true));
       }
       ctx.fillStyle = asphaltCol; ctx.fill(merge('asphalt', bridge));
+      // バンピーな区間 (補修跡の色むらと継ぎ目)
+      ctx.fillStyle = `rgba(20,20,24,${0.16 * (1 - wet * 0.5)})`; ctx.fill(merge('patch', bridge));
+      ctx.strokeStyle = 'rgba(150,150,155,0.22)'; ctx.lineWidth = Math.max(0.18, lw * 1.2); ctx.stroke(merge('seam', bridge));
       // ラバーが乗ったレコードライン
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.strokeStyle = `rgba(0,0,0,${0.10 * (1 - wet * 0.7)})`; ctx.lineWidth = 3.4; ctx.stroke(merge('rubber', bridge));
@@ -608,15 +632,23 @@ export class Renderer {
   }
   drawParts(ctx, upper, cr, onBridge) {
     const ps = this.parts; if (!ps.length) return;
+    const px = 1 / this.cam.scale;   // 1 CSS px [m]
+    const streak = [new Path2D(), new Path2D()];
     for (let i = 0; i < ps.length; i++) {
       const p = ps[i];
       const isUp = cr ? (Math.hypot(p.x - cr.x, p.y - cr.y) < 30 && p.up) : false;
       if (isUp !== upper) continue;
       const a = p.life / p.max; ctx.globalAlpha = p.type === 4 ? Math.min(1, a * 2) : a;
-      const sz = Math.max(0.1, p.size);
+      // 火花: 画面上で小さくなりすぎないよう最小 2px の光と、速度方向に尾を引く筋
+      const sz = p.type === 4 ? Math.max(p.size, px * 2.2) : Math.max(0.1, p.size);
       ctx.drawImage(this.partSpr[p.type], p.x - sz, p.y - sz, sz * 2, sz * 2);
+      if (p.type === 4) { const tl = Math.min(0.045, 0.02 + a * 0.03), q = streak[a > 0.5 ? 1 : 0]; q.moveTo(p.x, p.y); q.lineTo(p.x - p.vx * tl, p.y - p.vy * tl); }
     }
     ctx.globalAlpha = 1;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(0.12, px * 1.4);
+    ctx.strokeStyle = 'rgba(255,170,60,0.75)'; ctx.stroke(streak[0]);
+    ctx.strokeStyle = 'rgba(255,240,170,0.95)'; ctx.stroke(streak[1]);
   }
   drawScenery(ctx, vx, vy, vr, wet, cfg) {
     const lw = 1 / this.cam.scale;
