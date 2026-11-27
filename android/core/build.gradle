@@ -1,0 +1,11 @@
+// ゲームの中身 (コース・物理・AI・レース進行・トレーニング)。Android に依存しない純粋な Kotlin で、
+// PC の JVM でもそのまま動かして検証できる:  gradle :core:sim -Pargs="suzuka"
+plugins { id 'org.jetbrains.kotlin.jvm' }
+java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+kotlin { compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 } }
+tasks.register('sim', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'jp.okracing.core.SimCheckKt'
+    workingDir = rootProject.projectDir
+    args = (project.findProperty('args') ?: '').toString().split(' ').findAll { it }
+}
