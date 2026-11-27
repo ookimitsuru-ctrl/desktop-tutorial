@@ -6,3 +6,6 @@ android/.gradle/
 *.log
 dist-original/
 android/app/build-original/
+android/core/build/
+.kotlin/
+android/.kotlin/

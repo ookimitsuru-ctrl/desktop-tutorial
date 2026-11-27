@@ -16,7 +16,7 @@
 
 | 方法 | 手順 |
 |---|---|
-| **Android (APK)** | `release/FormulaSimulator-1.3.16-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可) |
+| **Android (APK)** | `release/FormulaSimulator-2.0.0-debug.apk` を端末にコピーしてインストール(提供元不明のアプリを許可)。2.0.0 からは Kotlin のネイティブアプリ (下記) |
 | **ブラウザ** | `npm run dev` → `http://localhost:8080/` を開く。HTTPS で公開すればホーム画面に追加(PWA)も可能 |
 | **単体HTML** | `npm run build` で作られる `dist/index.html` 1ファイルだけで動作 |
 
@@ -61,7 +61,7 @@
 
 実在のサーキットを使わない別バージョンです。標準版と同じゲームを、本作で設計した架空の3コースで遊べます。自車 (OK RACING) は水色のカラーリングで、アイコンとUIのアクセント色も水色です。標準版とは別アプリ (`jp.okracing.original`) なので、両方を並べて入れられます。
 
-- APK: `release/FormulaSimulatorOriginal-1.2.4-debug.apk`
+- APK: `release/FormulaSimulatorOriginal-2.0.0-debug.apk` (Kotlin のネイティブアプリ)
 
 | コース | 全長 | 性格 | 元にした既存コースの性格 |
 |---|---|---|---|
@@ -71,17 +71,17 @@
 
 コースの形は実在のサーキットの図面・測量データ・地図データを使わず、`tools/build-original.mjs` で直線と緩和曲線つきの円弧を並べて設計しています (旋回角と位置の閉合は自動で合わせる)。
 
-- ビルド: `npm run build:original` (→ `dist-original/`)、APK は `cd android && gradle -Pvariant=original assembleDebug`
+- ビルド: Web 版は `npm run build:original` (→ `dist-original/`)、APK は `cd android && gradle -Pvariant=original assembleDebug`
 - テスト: `npm run test:original`
 - コースを作り直す: `node tools/build-original.mjs` → `node tools/build-line.mjs 400 <コースid> original` (レーシングライン)
 - 版ごとの違いは `src/variant.js` (標準版) と `src/variants/original/` (オリジナル版の設定・コース定義・データ・アイコン) にまとめてあり、ビルド時に差し替わります。オリジナル版のビルドは、実在のサーキット名が含まれていると失敗します。
 
 ## 実機テスト (adb で接続した端末)
 
-`tools/device-test.mjs` は、Mac などに USB でつないだ Android 端末でゲームを長時間自動で動かし、記録を残します (Node.js 22 以上と adb が必要)。デバッグ版の APK は WebView のリモートデバッグが有効なので、スクリプトがゲームの中身を操作・計測できます。
+`tools/device-test.mjs` は、Mac などに USB でつないだ Android 端末でゲームを長時間自動で動かし、記録を残します (Node.js 22 以上と adb が必要)。WebView 版のデバッグ APK (標準版 1.3.x / オリジナル版 1.2.x まで) は WebView のリモートデバッグが有効なので、スクリプトがゲームの中身を操作・計測できます。Kotlin のネイティブ版 (2.0.0 以降) には対応していません。
 
 ```
-node tools/device-test.mjs --minutes 60 --apk release/FormulaSimulator-1.3.16-debug.apk --llm http://127.0.0.1:8080/v1 --model <モデル名>
+node tools/device-test.mjs --minutes 60 --apk <WebView 版のデバッグ APK> --llm http://127.0.0.1:8080/v1 --model <モデル名>
 ```
 
 - 3 コースで フリー走行 / トレーニング / 決勝 を自動運転で順に回し、最後に adb のタッチでペダルとパドルを実際に操作する
@@ -96,7 +96,7 @@ npm install        # esbuild のみ
 npm run dev        # 開発サーバー (ビルド不要、ES Modules のまま動く)
 npm test           # 画面なしの自動テスト (コース寸法・車両性能・20台レース)
 npm run build      # dist/ に単体版を出力
-cd android && gradle assembleDebug   # APK (要 Android SDK。先に npm run build)
+cd android && gradle assembleDebug   # APK (Kotlin のネイティブ版。要 Android SDK)
 ```
 
 | パス | 内容 |
@@ -112,7 +112,32 @@ cd android && gradle assembleDebug   # APK (要 Android SDK。先に npm run bui
 | `tools/build-track.mjs` `tools/build-line.mjs` | コースデータ変換、最小曲率レーシングラインの事前計算 |
 | `tools/build-indy.mjs` | インディ (オーバル) のコースデータを諸元から生成 |
 | `tools/build-fuji.py` | 富士のコースデータをコース図の画像から生成 (Python: numpy, pillow, scipy, scikit-image) |
-| `android/` | WebView でゲームを全画面表示する Android プロジェクト |
+| `android/` | Android アプリ (Kotlin のネイティブ版。下記) |
+
+## Android ネイティブ版 (Kotlin)
+
+2.0.0 から Android アプリはゲーム全体を Kotlin で動かすネイティブアプリです (WebView は使いません)。Web 版 (`src/`) の処理をそのまま移植しており、物理・AI・レース進行・トレーニングの結果は Web 版と一致します (同じ条件の AI ラップタイムが全 6 コースで小数第 2 位まで同じ)。
+
+| パス | 内容 |
+|---|---|
+| `android/core/` | ゲームの中身 (コース生成・物理・AI・レース進行・トレーニング)。Android に依存しない純粋な Kotlin で、PC の JVM でも動く |
+| `android/app/src/main/java/.../Ctx2D.kt` | Web 版の Canvas 2D と同じ書き方で Android の Canvas に描く層 |
+| `android/app/src/main/java/.../Renderer.kt` `Hud.kt` `CarSprite.kt` | 描画 (Web 版 render.js / hud.js / carsprite.js の移植) |
+| `android/app/src/main/java/.../Game.kt` `Ui.kt` | 画面遷移とメニュー (Web 版 main.js / ui.js / style.css を Canvas 上の UI で再現) |
+| `android/app/src/main/java/.../GameAudio.kt` | サウンド (Web Audio の発振器・フィルタ・歪み・コンプレッサを自前で実装し AudioTrack に流す) |
+| `android/app/src/main/java/.../Input.kt` `Store.kt` `GameView.kt` `MainActivity.kt` | 入力 (タッチ・キーボード・ゲームパッド)・保存・描画ループ |
+| `android/app/src/{main,original}/assets/` | コース定義と版設定の JSON (`node tools/export-kotlin-data.mjs` で Web 版の定義から書き出す。コースを変えたら実行し直す) |
+
+```
+cd android
+gradle assembleDebug                              # 標準版 APK
+gradle -Pvariant=original assembleDebug           # オリジナル版 APK
+gradle :core:sim -Pargs=test                      # 中身のテスト (全 6 コースで 決勝・ピット・トレーニング)
+gradle :core:sim -Pargs=lap                       # AI 単独ラップ (Web 版と同じ値になることを確認)
+gradle :app:testDebugUnitTest -ProbolectricDir=<dir> -PshotDir=<出力先>   # 画面を PC 上で描いて PNG に、エンジン音を WAV に書き出す (Robolectric)
+```
+
+`-ProbolectricDir` には Robolectric が使う `android-all-instrumented-14-robolectric-10818077-i7.jar` と `android-all-instrumented-15-robolectric-12650502-i7.jar` を置いたディレクトリを指定します (ネット経由の自動取得が使えない環境向け)。
 
 ## 富士スピードウェイのデータ
 

@@ -1,7 +1,9 @@
-plugins { id 'com.android.application' }
+plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
 
-// 版の切り替え:  gradle assembleDebug                    … 標準版 (dist/ を同梱)
+// ネイティブ (Kotlin) 版。ゲームの中身は :core、描画・画面・音・入力はこのモジュール。
+// 版の切り替え:  gradle assembleDebug                    … 標準版
 //               gradle -Pvariant=original assembleDebug … オリジナル版 (架空サーキット・水色の車)。別アプリとして並べて入れられる
+// コースのデータは assets/tracks.json (Web 版の定義から `node tools/export-kotlin-data.mjs` で書き出す)
 def ORIGINAL = project.findProperty('variant') == 'original'
 if (ORIGINAL) layout.buildDirectory = file('build-original')
 
@@ -12,15 +14,25 @@ android {
         applicationId 'jp.okracing.game'
         minSdk 24
         targetSdk 35
-        versionCode 36
-        versionName '1.3.16'
-        if (ORIGINAL) { applicationId 'jp.okracing.original'; versionCode 13; versionName '1.2.4' }
+        versionCode 37
+        versionName '2.0.0'
+        if (ORIGINAL) { applicationId 'jp.okracing.original'; versionCode 14; versionName '2.0.0' }
     }
-    // ゲーム本体は Web 版のビルド成果物 (../dist) をそのままアセットとして同梱する。
-    // 先にリポジトリ直下で `npm run build` を実行しておくこと。
-    sourceSets { main { assets.srcDirs = [ORIGINAL ? '../../dist-original' : '../../dist']; res.srcDirs = [ORIGINAL ? 'src/original/res' : 'src/main/res'] } }
+    sourceSets { main { assets.srcDirs = [ORIGINAL ? 'src/original/assets' : 'src/main/assets']; res.srcDirs = [ORIGINAL ? 'src/original/res' : 'src/main/res'] } }
     buildTypes {
         release { minifyEnabled false; signingConfig signingConfigs.debug }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    kotlinOptions { jvmTarget = '17' }
+    // 画面の確認用テスト (Robolectric で Android の描画を PC 上で実行して画像に書き出す):  gradle :app:testDebugUnitTest
+    testOptions { unitTests { includeAndroidResources = true; all { it.systemProperty 'shotDir', project.findProperty('shotDir') ?: "${buildDir}/shots"; it.maxHeapSize = '3g' } } }
+}
+// Robolectric が使う Android 本体 (android-all-instrumented の jar) は、プロキシ環境では自前のダウンロードが失敗するため、
+// 手元に置いたディレクトリ (-ProbolectricDir=...) からオフラインで読ませる
+tasks.withType(Test).configureEach { def d = project.findProperty('robolectricDir'); if (d) { systemProperty 'robolectric.offline', 'true'; systemProperty 'robolectric.dependency.dir', d } }
+dependencies {
+    implementation project(':core')
+    testImplementation project(':core')
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
 }
